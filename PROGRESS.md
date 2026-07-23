@@ -29,7 +29,7 @@ Same push as Batch 1 above, continuing per the plan. All 7 items are real, worki
 
 **Environment note for next time**: `prisma migrate dev` cannot run in this non-interactive shell at all (always errors "environment is non-interactive," even with `--create-only`) — every migration this session used a hand-authored `migration.sql` (matching the exact style of prior auto-generated ones) applied via `prisma migrate deploy`, which also intermittently hit a Neon advisory-lock timeout while the dev server held a connection open — stopping the dev server first fixed it every time. Worth setting up a real non-interactive migration path if this project's tooling changes.
 
-**Deferred to Batch 3**: English + Greek via `next-intl` — not started yet.
+**Deferred to Batch 3**: English + Greek via `next-intl` — see the Batch 3 entry above, since completed.
 
 
 ## "Complete, upload-ready eshop" push — Batch 1 (Production essentials) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
