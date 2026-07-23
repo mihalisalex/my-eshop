@@ -21,7 +21,14 @@ export async function getAllOrdersForAdmin(): Promise<Order[]> {
 }
 
 export async function updateOrderStatus(id: string, status: Order["status"]): Promise<Order> {
-  const row = await prisma.order.update({ where: { id }, data: { status } });
+  const row = await prisma.order.update({
+    where: { id },
+    // deliveredAt schedules the post-delivery review-request follow-up (services/email-followups.ts).
+    // No status-history table exists, so re-marking an already-delivered order as
+    // "delivered" again overwrites it — an accepted edge case, matches this function's
+    // existing best-effort philosophy elsewhere.
+    data: { status, ...(status === "delivered" ? { deliveredAt: new Date() } : {}) },
+  });
   const order = toOrder(row);
 
   // "confirmed" is covered by the order-confirmation email sent at checkout —

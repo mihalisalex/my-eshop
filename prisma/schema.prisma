@@ -68,6 +68,7 @@ model Product {
   collections ProductCollection[]
   cartLineItems  CartLineItem[]
   wishlistItems  WishlistItem[]
+  backInStockRequests BackInStockRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -199,6 +200,7 @@ model Customer {
   referralsMade        Referral[]            @relation("ReferralsMade")
   referralReceived     Referral?             @relation("ReferralReceived")
   oauthAccounts        CustomerOAuthAccount[]
+  backInStockRequests  BackInStockRequest[]
 
   @@map("customers")
 }
@@ -265,6 +267,13 @@ model Cart {
   /// sessions over its lifetime — one per purchase. `services/checkout.ts`'s
   /// `createCheckout` finds the latest non-completed row or opens a fresh one.
   checkouts Checkout[]
+
+  /// Set once an abandoned-cart recovery email has been sent for the CURRENT idle
+  /// episode — but also doubles as the "may I send again" gate: eligible again once
+  /// any CartLineItem.addedAt is newer than this (see services/email-followups.ts),
+  /// since the Cart row itself is reused indefinitely and never reflects a plain
+  /// "already emailed, never again" boolean would be wrong after the customer returns.
+  abandonedCartEmailSentAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -395,6 +404,14 @@ model Order {
   carrier        String?
   trackingUrl    String?
 
+  /// Set exactly once, the moment status transitions to "delivered" (services/orders.ts's
+  /// updateOrderStatus) — used to schedule the post-delivery review-request follow-up.
+  /// No status-history table exists, so re-marking an already-delivered order as
+  /// "delivered" again overwrites this — an accepted, disclosed edge case.
+  deliveredAt         DateTime?
+  /// Set once the review-request follow-up email has actually been sent for this order.
+  reviewRequestSentAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -402,6 +419,27 @@ model Order {
 
   @@index([customerId])
   @@map("orders")
+}
+
+/// A customer's request to be emailed when a specific product size is back in stock.
+/// Keyed on (productId, sizeName) rather than ProductSize.id, because
+/// lib/products-import/write.ts's writeProductRow() deletes and recreates every
+/// ProductSize row on every product edit — size ids churn constantly and can't be a
+/// stable target. See lib/products-import/back-in-stock.ts for the detection/send logic.
+model BackInStockRequest {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sizeName   String
+  email      String
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([productId, sizeName, email])
+  @@index([productId, sizeName, notifiedAt])
+  @@map("back_in_stock_requests")
 }
 
 /// A customer-initiated return request against one order. Items is a snapshot

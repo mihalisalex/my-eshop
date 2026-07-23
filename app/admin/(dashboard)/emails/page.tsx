@@ -9,6 +9,12 @@ const TEMPLATE_LABELS: Record<string, string> = {
   "shipping-update": "Shipping Update",
   "password-reset": "Password Reset",
   "return-status-update": "Return Status Update",
+  welcome: "Welcome",
+  "contact-message": "Contact Message",
+  "referral-reward": "Referral Reward",
+  "abandoned-cart": "Abandoned Cart",
+  "review-request": "Review Request",
+  "back-in-stock": "Back in Stock",
 };
 
 export default async function AdminEmailsPage() {

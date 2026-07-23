@@ -16,6 +16,7 @@ import { getDeliveryEstimate } from "@/lib/delivery";
 import { suggestSize } from "@/lib/fit-recommendation";
 import { VariantSelector } from "@/components/product/VariantSelector";
 import { SizeGuideDialog } from "@/components/product/SizeGuideDialog";
+import { BackInStockDialog } from "@/components/product/BackInStockDialog";
 import { useCart } from "@/components/providers/CartProvider";
 import { useWishlist } from "@/components/providers/WishlistProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -45,6 +46,7 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
   const [quantity, setQuantity] = useState(1);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [sizeSuggestion, setSizeSuggestion] = useState<string | null>(null);
+  const [notifySize, setNotifySize] = useState<string | null>(null);
 
   useEffect(() => {
     if (!customer) return;
@@ -107,6 +109,7 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
           onSelectColor={setSelectedColor}
           onSelectSize={setSelectedSize}
           onOpenSizeGuide={() => setSizeGuideOpen(true)}
+          onRequestNotify={setNotifySize}
         />
         {sizeSuggestion && !selectedSize ? (
           <button
@@ -179,6 +182,12 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
       </div>
 
       <SizeGuideDialog open={sizeGuideOpen} onOpenChange={setSizeGuideOpen} />
+      <BackInStockDialog
+        productId={product.id}
+        sizeName={notifySize}
+        open={notifySize !== null}
+        onOpenChange={(open) => !open && setNotifySize(null)}
+      />
     </div>
   );
 }

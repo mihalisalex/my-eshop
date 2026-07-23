@@ -50,14 +50,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // A `?cart=` link (e.g. an abandoned-cart recovery email) takes priority over
+    // whatever's already in localStorage — the whole point is to resume THAT cart, on
+    // whatever browser the link is opened in. Cart ids are unguessable cuids, same
+    // security posture as the existing wishlist-share-token pattern.
+    const linkedCartId = new URLSearchParams(window.location.search).get("cart");
     // Postgres needs an id to look up a cart — the mock's "whole cart object lives in
     // localStorage" shortcut is gone, so only the id itself is persisted client-side now.
     const storedCartId = readStorage<string | null>(CART_ID_KEY, null);
-    commerce.cart.getOrCreateCart(storedCartId).then((initial) => {
+    commerce.cart.getOrCreateCart(linkedCartId ?? storedCartId).then((initial) => {
       if (!cancelled) {
         writeStorage(CART_ID_KEY, initial.id);
         setCart(initial);
         setIsLoading(false);
+        if (linkedCartId) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("cart");
+          window.history.replaceState({}, "", url);
+        }
       }
     });
     return () => {

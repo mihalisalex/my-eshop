@@ -285,6 +285,91 @@ export function contactMessageNotificationEmail(input: {
   return { subject: emailSubject, html, text };
 }
 
+export function abandonedCartEmail(input: {
+  siteName: string;
+  firstName?: string;
+  lineItems: CartLineItem[];
+  resumeUrl: string;
+}): RenderedEmail {
+  const { siteName, firstName, lineItems, resumeUrl } = input;
+  const greeting = firstName ? `Still thinking it over, ${firstName}?` : "Still thinking it over?";
+  const subject = "You left something in your bag";
+  const html = layout(
+    siteName,
+    "Your bag is still saved — pick up right where you left off.",
+    `
+    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">${greeting}</h1>
+    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Your bag is still saved. Prices and availability aren't guaranteed to hold, so it's worth coming back soon.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
+    <a href="${resumeUrl}" style="display:inline-block;margin-top:24px;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Return to Your Bag</a>`
+  );
+  const text = `${greeting}\n\nYour bag is still saved:\n\n${lineItems
+    .map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity}`)
+    .join("\n")}\n\nReturn to your bag: ${resumeUrl}`;
+  return { subject, html, text };
+}
+
+/**
+ * Links back to the product page itself, not a "submit a review" form — this app has
+ * no real review-submission mechanism (reviews are still static data/reviews.json,
+ * explicitly future-ready-but-not-built), so the email is honest about what exists
+ * today rather than pointing at a form that doesn't work.
+ */
+export function reviewRequestEmail(input: {
+  siteName: string;
+  orderId: string;
+  lineItems: CartLineItem[];
+  siteUrl: string;
+}): RenderedEmail {
+  const { siteName, orderId, lineItems, siteUrl } = input;
+  const orderNumber = `#${orderId.slice(-8).toUpperCase()}`;
+  const subject = "How's everything fitting?";
+  const itemLinksHtml = lineItems
+    .map(
+      (item) => `
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #F5F5F5;color:#111111;font-size:14px;">
+          <a href="${siteUrl}/products/${item.slug}" style="color:#111111;text-decoration:underline;">${item.name}</a><br/>
+          <span style="color:#555555;font-size:12px;">${item.color} · ${item.size}</span>
+        </td>
+      </tr>`
+    )
+    .join("");
+  const html = layout(
+    siteName,
+    `How's your order ${orderNumber} working out?`,
+    `
+    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">How's everything fitting?</h1>
+    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Order ${orderNumber} was delivered a few days ago — take another look at what you ordered, or start shopping your next piece.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemLinksHtml}</table>
+    <a href="${siteUrl}" style="display:inline-block;margin-top:24px;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Continue Shopping</a>`
+  );
+  const text = `How's everything fitting?\n\nOrder ${orderNumber} was delivered a few days ago.\n\n${lineItems
+    .map((i) => `${i.name} — ${siteUrl}/products/${i.slug}`)
+    .join("\n")}\n\n${siteUrl}`;
+  return { subject, html, text };
+}
+
+export function backInStockEmail(input: {
+  siteName: string;
+  productName: string;
+  sizeName: string;
+  productUrl: string;
+}): RenderedEmail {
+  const { siteName, productName, sizeName, productUrl } = input;
+  const subject = `${productName} is back in stock`;
+  const html = layout(
+    siteName,
+    `${productName} (${sizeName}) is back in stock.`,
+    `
+    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Good news — it's back</h1>
+    <p style="color:#555555;font-size:14px;margin:0 0 24px;"><strong>${productName}</strong> in size <strong>${sizeName}</strong> is back in stock. Popular sizes tend to sell out again quickly.</p>
+    <a href="${productUrl}" style="display:inline-block;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Shop Now</a>`
+  );
+  const text = `Good news — it's back\n\n${productName} in size ${sizeName} is back in stock.\n\n${productUrl}`;
+  return { subject, html, text };
+}
+
 export function returnStatusUpdateEmail(input: {
   siteName: string;
   orderId: string;

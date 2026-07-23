@@ -11,6 +11,8 @@ interface VariantSelectorProps {
   onSelectColor: (color: string) => void;
   onSelectSize: (size: string) => void;
   onOpenSizeGuide?: () => void;
+  /** Called instead of onSelectSize when a size is out of stock — omit to keep the size simply inert. */
+  onRequestNotify?: (size: string) => void;
 }
 
 export function VariantSelector({
@@ -20,6 +22,7 @@ export function VariantSelector({
   onSelectColor,
   onSelectSize,
   onOpenSizeGuide,
+  onRequestNotify,
 }: VariantSelectorProps) {
   return (
     <div className="space-y-6">
@@ -65,12 +68,14 @@ export function VariantSelector({
               <button
                 key={size.name}
                 type="button"
-                disabled={!purchasable}
+                aria-disabled={!purchasable}
                 aria-pressed={selectedSize === size.name}
-                onClick={() => onSelectSize(size.name)}
+                aria-label={!purchasable && onRequestNotify ? `Notify me when size ${size.name} is back in stock` : undefined}
+                onClick={() => (purchasable ? onSelectSize(size.name) : onRequestNotify?.(size.name))}
                 className={cn(
                   "relative flex h-11 min-w-11 items-center justify-center border px-3 text-sm transition-colors",
-                  !purchasable && "cursor-not-allowed border-border text-luxe-gray-dark/40 line-through",
+                  !purchasable && !onRequestNotify && "cursor-not-allowed border-border text-luxe-gray-dark/40 line-through",
+                  !purchasable && onRequestNotify && "cursor-pointer border-border text-luxe-gray-dark/40 line-through hover:border-luxe-black",
                   purchasable && selectedSize === size.name && "border-luxe-black bg-luxe-black text-luxe-white",
                   purchasable && selectedSize !== size.name && "border-border hover:border-luxe-black"
                 )}

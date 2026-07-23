@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { notifyBackInStockIfNeeded } from "@/lib/products-import/back-in-stock";
 import type { ProductFormValues } from "@/lib/validation/product";
 
 function toProductWriteData(data: ProductFormValues) {
@@ -68,6 +69,13 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
   };
 
   if (existingId) {
+    // Read before the transaction — needed to diff old vs. new per-size purchasability
+    // for back-in-stock notifications, since the delete-then-recreate below discards it.
+    const oldState = await prisma.product.findUnique({
+      where: { id: existingId },
+      select: { inventoryPolicy: true, sizes: { select: { name: true, quantity: true } } },
+    });
+
     await prisma.$transaction([
       prisma.productColor.deleteMany({ where: { productId: existingId } }),
       prisma.productSize.deleteMany({ where: { productId: existingId } }),
@@ -77,6 +85,15 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
         data: { ...toProductWriteData(data), ...nestedWrites },
       }),
     ]);
+
+    if (oldState) {
+      try {
+        await notifyBackInStockIfNeeded(existingId, oldState, data);
+      } catch (error) {
+        console.error("Failed to process back-in-stock notifications", error);
+      }
+    }
+
     return { id: existingId };
   }
 

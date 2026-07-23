@@ -3,7 +3,7 @@ export interface EmailMessage {
   subject: string;
   html: string;
   text: string;
-  /** "order-confirmation" | "shipping-update" | "password-reset" | "return-status-update" | "welcome" | "contact-message" | "referral-reward" — logged, not enforced. */
+  /** "order-confirmation" | "shipping-update" | "password-reset" | "return-status-update" | "welcome" | "contact-message" | "referral-reward" | "abandoned-cart" | "review-request" | "back-in-stock" — logged, not enforced. */
   template: string;
 }
 
