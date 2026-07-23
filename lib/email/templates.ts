@@ -7,36 +7,43 @@ interface RenderedEmail {
   text: string;
 }
 
+const SERIF = "Georgia, 'Times New Roman', Times, serif";
+const INK = "#111111";
+const MUTED = "#8A8A8A";
+const HAIRLINE = "#EDEDED";
+
 /**
  * Table-based layout with inline styles, not a <style> block — the only markup
  * pattern that renders consistently across real email clients (Gmail/Outlook both
- * strip <head> styles). Kept deliberately close to the storefront's black/white
- * palette (see globals.css's luxe-* tokens) without trying to share code with it,
- * since email CSS and web CSS are different enough dialects that "sharing" would
- * just mean constantly working around what email clients don't support.
+ * strip <head> styles). Editorial treatment (black masthead, serif display type,
+ * generous whitespace) deliberately mirrors the storefront's own luxury-editorial
+ * design language (see app/globals.css's font-heading + luxe-* tokens) without
+ * sharing code with it — email CSS and web CSS are different enough dialects that
+ * "sharing" would just mean constantly working around what email clients don't support.
  */
 function layout(siteName: string, preheader: string, bodyHtml: string): string {
   return `<!doctype html>
 <html>
-  <body style="margin:0;padding:0;background-color:#F5F5F5;font-family:Helvetica,Arial,sans-serif;">
-    <span style="display:none;font-size:1px;color:#F5F5F5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5F5;padding:32px 16px;">
+  <body style="margin:0;padding:0;background-color:#EDEDED;font-family:Helvetica,Arial,sans-serif;">
+    <span style="display:none;font-size:1px;color:#EDEDED;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EDEDED;padding:48px 16px;">
       <tr>
         <td align="center">
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;">
             <tr>
-              <td style="padding:32px 40px 24px;border-bottom:1px solid #111111;">
-                <span style="font-size:20px;letter-spacing:2px;font-weight:600;color:#111111;text-transform:uppercase;">${siteName}</span>
+              <td align="center" style="padding:44px 40px 36px;background-color:${INK};">
+                <span style="font-family:${SERIF};font-size:21px;letter-spacing:6px;font-weight:400;color:#FFFFFF;text-transform:uppercase;">${siteName}</span>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px 40px;">
+              <td style="padding:48px 44px;">
                 ${bodyHtml}
               </td>
             </tr>
             <tr>
-              <td style="padding:24px 40px;border-top:1px solid #F5F5F5;color:#555555;font-size:12px;">
-                ${siteName} — this is a demo store. No real order was charged.
+              <td align="center" style="padding:28px 40px;border-top:1px solid ${HAIRLINE};">
+                <p style="margin:0;font-family:${SERIF};font-size:11px;letter-spacing:2px;color:${MUTED};text-transform:uppercase;">${siteName}</p>
+                <p style="margin:8px 0 0;color:#B8B8B8;font-size:11px;">This is a demo store — no real order was charged.</p>
               </td>
             </tr>
           </table>
@@ -45,6 +52,22 @@ function layout(siteName: string, preheader: string, bodyHtml: string): string {
     </table>
   </body>
 </html>`;
+}
+
+function eyebrow(text: string): string {
+  return `<p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;color:${MUTED};text-transform:uppercase;">${text}</p>`;
+}
+
+function heading(text: string): string {
+  return `<h1 style="font-family:${SERIF};font-weight:400;font-size:26px;line-height:1.3;color:${INK};margin:0 0 14px;">${text}</h1>`;
+}
+
+function bodyText(text: string): string {
+  return `<p style="color:#555555;font-size:14px;line-height:1.65;margin:0 0 28px;">${text}</p>`;
+}
+
+function ctaButton(label: string, href: string): string {
+  return `<a href="${href}" style="display:inline-block;background-color:${INK};color:#FFFFFF;text-decoration:none;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:16px 40px;">${label}</a>`;
 }
 
 function addressLines(address: Address): string {
@@ -60,16 +83,20 @@ function addressLines(address: Address): string {
     .join("\n");
 }
 
+/** Each line item gets a real product thumbnail — a fashion email with no imagery at all was the single biggest "boring" complaint to fix. */
 function lineItemsHtml(lineItems: CartLineItem[]): string {
   return lineItems
     .map(
       (item) => `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #F5F5F5;color:#111111;font-size:14px;">
-          ${item.name}<br/>
-          <span style="color:#555555;font-size:12px;">${item.color} · ${item.size} · Qty ${item.quantity}</span>
+        <td width="64" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
+          <img src="${item.image.src}" alt="${item.image.alt}" width="64" height="80" style="display:block;width:64px;height:80px;object-fit:cover;background-color:#F5F5F5;" />
         </td>
-        <td align="right" style="padding:12px 0;border-bottom:1px solid #F5F5F5;color:#111111;font-size:14px;white-space:nowrap;">
+        <td style="padding:16px 0 16px 16px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;vertical-align:top;">
+          ${item.name}<br/>
+          <span style="color:${MUTED};font-size:12px;">${item.color} · ${item.size} · Qty ${item.quantity}</span>
+        </td>
+        <td align="right" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;white-space:nowrap;vertical-align:top;">
           ${formatMoney({ amount: item.unitPrice.amount * item.quantity, currencyCode: item.unitPrice.currencyCode })}
         </td>
       </tr>`
@@ -80,17 +107,18 @@ function lineItemsHtml(lineItems: CartLineItem[]): string {
 function totalsHtml(totals: CartTotals): string {
   const row = (label: string, money: { amount: number; currencyCode: string }, bold = false) => `
     <tr>
-      <td style="padding:4px 0;color:${bold ? "#111111" : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${label}</td>
-      <td align="right" style="padding:4px 0;color:${bold ? "#111111" : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${formatMoney(money)}</td>
+      <td style="padding:5px 0;color:${bold ? INK : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${label}</td>
+      <td align="right" style="padding:5px 0;color:${bold ? INK : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${formatMoney(money)}</td>
     </tr>`;
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
       ${row("Subtotal", totals.subtotal)}
       ${totals.discountTotal.amount > 0 ? row("Discount", { amount: -totals.discountTotal.amount, currencyCode: totals.discountTotal.currencyCode }) : ""}
       ${totals.giftCardTotal.amount > 0 ? row("Gift Card", { amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode }) : ""}
       ${row("Shipping", totals.shippingTotal)}
       ${totals.giftWrapTotal.amount > 0 ? row("Gift Wrapping", totals.giftWrapTotal) : ""}
       ${row("Tax", totals.taxTotal)}
+      <tr><td colspan="2" style="padding-top:10px;border-top:1px solid ${HAIRLINE};"></td></tr>
       ${row("Total", totals.total, true)}
     </table>`;
 }
@@ -109,26 +137,27 @@ export function orderConfirmationEmail(input: {
   const subject = `Order confirmed — #${orderId.slice(-8).toUpperCase()}`;
   const giftNoteHtml =
     giftWrap && giftMessage
-      ? `<p style="color:#555555;font-size:13px;margin:0 0 24px;"><strong>Gift note:</strong> "${giftMessage}"</p>`
+      ? `<p style="color:#555555;font-size:13px;font-style:italic;margin:0 0 24px;">"${giftMessage}"</p>`
       : "";
   const html = layout(
     siteName,
     `Your order is confirmed. Total ${formatMoney(totals.total)}.`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Thank you for your order</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Order #${orderId.slice(-8).toUpperCase()} — we'll email you again once it ships.</p>
+    ${eyebrow("Order Confirmation")}
+    ${heading("Thank you for your order")}
+    ${bodyText(`Order #${orderId.slice(-8).toUpperCase()} — we'll email you again once it ships.`)}
     ${giftNoteHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
     ${totalsHtml(totals)}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:36px;">
       <tr>
         <td style="width:50%;vertical-align:top;">
-          <p style="font-size:11px;letter-spacing:1px;color:#555555;text-transform:uppercase;margin:0 0 8px;">Shipping to</p>
-          <p style="font-size:13px;color:#111111;white-space:pre-line;margin:0;">${addressLines(shippingAddress)}</p>
+          <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 8px;">Shipping to</p>
+          <p style="font-size:13px;color:${INK};white-space:pre-line;margin:0;">${addressLines(shippingAddress)}</p>
         </td>
         <td style="width:50%;vertical-align:top;">
-          <p style="font-size:11px;letter-spacing:1px;color:#555555;text-transform:uppercase;margin:0 0 8px;">Delivery method</p>
-          <p style="font-size:13px;color:#111111;margin:0;">${shippingRate.label}<br/>${shippingRate.estimatedDelivery}</p>
+          <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 8px;">Delivery method</p>
+          <p style="font-size:13px;color:${INK};margin:0;">${shippingRate.label}<br/>${shippingRate.estimatedDelivery}</p>
         </td>
       </tr>
     </table>`
@@ -150,42 +179,47 @@ export function shippingUpdateEmail(input: {
 }): RenderedEmail {
   const { siteName, orderId, status, lineItems, trackingNumber, carrier, trackingUrl } = input;
   const orderNumber = `#${orderId.slice(-8).toUpperCase()}`;
-  const copy: Record<typeof status, { subject: string; headline: string; body: string }> = {
+  const copy: Record<typeof status, { subject: string; eyebrow: string; headline: string; body: string }> = {
     processing: {
       subject: `Order ${orderNumber} is being prepared`,
+      eyebrow: "Order Update",
       headline: "Your order is being prepared",
       body: "We're picking and packing your items now — we'll email you again as soon as it ships.",
     },
     shipped: {
       subject: `Order ${orderNumber} has shipped`,
+      eyebrow: "Order Update",
       headline: "Your order is on its way",
       body: "Your package has left our warehouse. You can check its status any time from your account.",
     },
     delivered: {
       subject: `Order ${orderNumber} was delivered`,
+      eyebrow: "Order Update",
       headline: "Your order has been delivered",
       body: "We hope you love it. If anything's not right, you can start a return from your account.",
     },
     cancelled: {
       subject: `Order ${orderNumber} was cancelled`,
+      eyebrow: "Order Update",
       headline: "Your order has been cancelled",
       body: "This order has been cancelled and will not be charged or shipped.",
     },
     refunded: {
       subject: `Order ${orderNumber} was refunded`,
+      eyebrow: "Order Update",
       headline: "Your order has been refunded",
       body: "A refund for this order has been processed.",
     },
   };
-  const { subject, headline, body } = copy[status];
+  const { subject, eyebrow: eyebrowText, headline, body } = copy[status];
   const trackingHtml =
     status === "shipped" && trackingNumber
       ? `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;background-color:#F5F5F5;">
-      <tr><td style="padding:16px 20px;">
-        <p style="font-size:11px;letter-spacing:1px;color:#555555;text-transform:uppercase;margin:0 0 6px;">${carrier ?? "Tracking"}</p>
-        <p style="font-size:14px;color:#111111;margin:0 0 10px;">${trackingNumber}</p>
-        ${trackingUrl ? `<a href="${trackingUrl}" style="font-size:13px;color:#111111;text-decoration:underline;">Track your package</a>` : ""}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;background-color:#FAFAFA;border:1px solid ${HAIRLINE};">
+      <tr><td style="padding:20px 24px;">
+        <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 6px;">${carrier ?? "Tracking"}</p>
+        <p style="font-size:14px;color:${INK};margin:0 0 10px;">${trackingNumber}</p>
+        ${trackingUrl ? `<a href="${trackingUrl}" style="font-size:13px;color:${INK};text-decoration:underline;">Track your package</a>` : ""}
       </td></tr>
     </table>`
       : "";
@@ -193,9 +227,10 @@ export function shippingUpdateEmail(input: {
     siteName,
     body,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">${headline}</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Order ${orderNumber}</p>
-    <p style="color:#111111;font-size:14px;margin:0 0 24px;">${body}</p>
+    ${eyebrow(eyebrowText)}
+    ${heading(headline)}
+    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Order ${orderNumber}</p>
+    ${bodyText(body)}
     ${trackingHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>`
   );
@@ -217,15 +252,16 @@ export function referralRewardEmail(input: {
     siteName,
     `${friendFirstName} just placed their first order — here's your reward.`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Thanks for the referral, ${firstName}</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">${friendFirstName} just placed their first order using your link — here's a ${formatMoney(giftCardAmount)} gift card as a thank you.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;background-color:#F5F5F5;">
-      <tr><td style="padding:20px;text-align:center;">
-        <p style="font-size:11px;letter-spacing:1px;color:#555555;text-transform:uppercase;margin:0 0 8px;">Your gift card code</p>
-        <p style="font-size:20px;letter-spacing:2px;color:#111111;margin:0;font-weight:600;">${giftCardCode}</p>
+    ${eyebrow("Referral Reward")}
+    ${heading(`Thanks for the referral, ${firstName}`)}
+    ${bodyText(`${friendFirstName} just placed their first order using your link — here's a ${formatMoney(giftCardAmount)} gift card as a thank you.`)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;background-color:${INK};">
+      <tr><td style="padding:28px;text-align:center;">
+        <p style="font-size:11px;letter-spacing:2px;color:#B8B8B8;text-transform:uppercase;margin:0 0 10px;">Your gift card code</p>
+        <p style="font-family:${SERIF};font-size:22px;letter-spacing:3px;color:#FFFFFF;margin:0;">${giftCardCode}</p>
       </td></tr>
     </table>
-    <p style="color:#555555;font-size:13px;margin:0;">Apply it at checkout any time.</p>`
+    <p style="color:${MUTED};font-size:13px;margin:0;">Apply it at checkout any time.</p>`
   );
   const text = `Thanks for the referral, ${firstName}\n\n${friendFirstName} just placed their first order using your link — here's a ${formatMoney(giftCardAmount)} gift card as a thank you.\n\nCode: ${giftCardCode}\n\nApply it at checkout any time.`;
   return { subject, html, text };
@@ -238,9 +274,10 @@ export function welcomeEmail(input: { siteName: string; firstName: string; shopU
     siteName,
     `Welcome to ${siteName}, ${firstName}.`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Welcome, ${firstName}</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Your account is ready. Track orders, save addresses, and build your wishlist any time from your account.</p>
-    <a href="${shopUrl}" style="display:inline-block;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Start Shopping</a>`
+    ${eyebrow("Welcome")}
+    ${heading(`Welcome, ${firstName}`)}
+    ${bodyText("Your account is ready. Track orders, save addresses, and build your wishlist any time from your account.")}
+    ${ctaButton("Start Shopping", shopUrl)}`
   );
   const text = `Welcome, ${firstName}\n\nYour account is ready. Track orders, save addresses, and build your wishlist any time from your account.\n\n${shopUrl}`;
   return { subject, html, text };
@@ -253,16 +290,17 @@ export function passwordResetEmail(input: { siteName: string; resetUrl: string; 
     siteName,
     "Reset your password.",
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Reset your password</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">We received a request to reset your password. This link expires in ${expiresInMinutes} minutes.</p>
-    <a href="${resetUrl}" style="display:inline-block;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Reset Password</a>
-    <p style="color:#555555;font-size:12px;margin:24px 0 0;">If you didn't request this, you can safely ignore this email.</p>`
+    ${eyebrow("Account Security")}
+    ${heading("Reset your password")}
+    ${bodyText(`We received a request to reset your password. This link expires in ${expiresInMinutes} minutes.`)}
+    ${ctaButton("Reset Password", resetUrl)}
+    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">If you didn't request this, you can safely ignore this email.</p>`
   );
   const text = `Reset your password\n\nWe received a request to reset your password. This link expires in ${expiresInMinutes} minutes.\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.`;
   return { subject, html, text };
 }
 
-/** Sent to the store's own contact address (CONTACT_EMAIL, or settings.contactEmail) — an internal notification, not a customer-facing email. */
+/** Sent to the store's own contact address (CONTACT_EMAIL, or settings.contactEmail) — an internal notification, not a customer-facing email, so it stays plain/functional rather than getting the customer-facing editorial treatment. */
 export function contactMessageNotificationEmail(input: {
   siteName: string;
   name: string;
@@ -276,10 +314,10 @@ export function contactMessageNotificationEmail(input: {
     siteName,
     `New message from ${name}`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">New contact message</h1>
+    <h1 style="font-size:22px;color:${INK};margin:0 0 8px;">New contact message</h1>
     <p style="color:#555555;font-size:13px;margin:0 0 4px;"><strong>From:</strong> ${name} (${email})</p>
     <p style="color:#555555;font-size:13px;margin:0 0 20px;"><strong>Topic:</strong> ${subject}</p>
-    <p style="color:#111111;font-size:14px;white-space:pre-line;margin:0;">${message}</p>`
+    <p style="color:${INK};font-size:14px;white-space:pre-line;margin:0;">${message}</p>`
   );
   const text = `New contact message\n\nFrom: ${name} (${email})\nTopic: ${subject}\n\n${message}`;
   return { subject: emailSubject, html, text };
@@ -298,10 +336,11 @@ export function abandonedCartEmail(input: {
     siteName,
     "Your bag is still saved — pick up right where you left off.",
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">${greeting}</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Your bag is still saved. Prices and availability aren't guaranteed to hold, so it's worth coming back soon.</p>
+    ${eyebrow("Still Shopping?")}
+    ${heading(greeting)}
+    ${bodyText("Your bag is still saved. Prices and availability aren't guaranteed to hold, so it's worth coming back soon.")}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
-    <a href="${resumeUrl}" style="display:inline-block;margin-top:24px;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Return to Your Bag</a>`
+    <div style="margin-top:32px;">${ctaButton("Return to Your Bag", resumeUrl)}</div>`
   );
   const text = `${greeting}\n\nYour bag is still saved:\n\n${lineItems
     .map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity}`)
@@ -328,9 +367,12 @@ export function reviewRequestEmail(input: {
     .map(
       (item) => `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #F5F5F5;color:#111111;font-size:14px;">
-          <a href="${siteUrl}/products/${item.slug}" style="color:#111111;text-decoration:underline;">${item.name}</a><br/>
-          <span style="color:#555555;font-size:12px;">${item.color} · ${item.size}</span>
+        <td width="64" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
+          <img src="${item.image.src}" alt="${item.image.alt}" width="64" height="80" style="display:block;width:64px;height:80px;object-fit:cover;background-color:#F5F5F5;" />
+        </td>
+        <td style="padding:16px 0 16px 16px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;vertical-align:top;">
+          <a href="${siteUrl}/products/${item.slug}" style="color:${INK};text-decoration:underline;">${item.name}</a><br/>
+          <span style="color:${MUTED};font-size:12px;">${item.color} · ${item.size}</span>
         </td>
       </tr>`
     )
@@ -339,10 +381,11 @@ export function reviewRequestEmail(input: {
     siteName,
     `How's your order ${orderNumber} working out?`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">How's everything fitting?</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Order ${orderNumber} was delivered a few days ago — take another look at what you ordered, or start shopping your next piece.</p>
+    ${eyebrow("Tell Us What You Think")}
+    ${heading("How's everything fitting?")}
+    ${bodyText(`Order ${orderNumber} was delivered a few days ago — take another look at what you ordered, or start shopping your next piece.`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemLinksHtml}</table>
-    <a href="${siteUrl}" style="display:inline-block;margin-top:24px;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Continue Shopping</a>`
+    <div style="margin-top:32px;">${ctaButton("Continue Shopping", siteUrl)}</div>`
   );
   const text = `How's everything fitting?\n\nOrder ${orderNumber} was delivered a few days ago.\n\n${lineItems
     .map((i) => `${i.name} — ${siteUrl}/products/${i.slug}`)
@@ -362,9 +405,10 @@ export function backInStockEmail(input: {
     siteName,
     `${productName} (${sizeName}) is back in stock.`,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">Good news — it's back</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;"><strong>${productName}</strong> in size <strong>${sizeName}</strong> is back in stock. Popular sizes tend to sell out again quickly.</p>
-    <a href="${productUrl}" style="display:inline-block;background-color:#111111;color:#FFFFFF;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 32px;">Shop Now</a>`
+    ${eyebrow("Back In Stock")}
+    ${heading("Good news — it's back")}
+    ${bodyText(`<strong>${productName}</strong> in size <strong>${sizeName}</strong> is back in stock. Popular sizes tend to sell out again quickly.`)}
+    ${ctaButton("Shop Now", productUrl)}`
   );
   const text = `Good news — it's back\n\n${productName} in size ${sizeName} is back in stock.\n\n${productUrl}`;
   return { subject, html, text };
@@ -404,9 +448,10 @@ export function returnStatusUpdateEmail(input: {
     siteName,
     body,
     `
-    <h1 style="font-size:22px;color:#111111;margin:0 0 8px;">${headline}</h1>
-    <p style="color:#555555;font-size:14px;margin:0 0 24px;">Order ${orderNumber}</p>
-    <p style="color:#111111;font-size:14px;margin:0;">${body}</p>`
+    ${eyebrow("Return Update")}
+    ${heading(headline)}
+    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Order ${orderNumber}</p>
+    ${bodyText(body)}`
   );
   const text = `${headline}\n\nOrder ${orderNumber}\n\n${body}`;
   return { subject, html, text };

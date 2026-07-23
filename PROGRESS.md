@@ -1,5 +1,20 @@
 # ALEXANDRIS — Progress Notes
 
+## Admin polish: quick product delete, editable nav dropdowns, redesigned dropdown menu + emails — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
+
+Three small-to-medium asks from the same session, each verified live:
+
+**Quick delete on the products list** — a small "X" button per row (`components/admin/DeleteProductButton.tsx`), reuses the exact same `deleteProduct` Server Action the product detail page's delete button already calls, gated by a native `confirm()` since there's no undo. No new backend logic — just a faster access point to something that already existed.
+
+**Navigation Menu editor now manages dropdown sub-items, not just top-level links** — `components/admin/NavigationEditor.tsx` previously only edited each `NavItem`'s `label`/`href`; its own description literally said "sub-menus... follow in a later iteration." Extended it to add/edit/remove each item's `children` (the actual dropdown contents) — no schema change needed, since navigation was already real Postgres-backed (`SiteContent` key `"navigation"`) and `NavItem.children` already existed in the type/data, just wasn't exposed in the editor UI. Verified live: added a real "Dresses" sub-item to Women's dropdown via the admin, confirmed it appeared in the actual storefront dropdown, then removed it and re-saved to restore original state.
+
+**Desktop dropdown menu redesign** — the user found the existing mega-menu (`components/layout/DesktopNav.tsx`) "a little dull" for a luxury brand (mobile was fine, left untouched). Rebuilt the hover panel: a serif section-title anchor column + "View All" link, a divider, a "Shop by Category" eyebrow above the sub-link list with an underline-reveal hover treatment, and a refined featured-image card (gradient caption, serif title, "Discover →" cta that fades in on hover) — plus an animated underline on the top-level nav links themselves. Same data, same `NavItem`/`featured` shape, purely a visual pass.
+
+**Email redesign** — the user called the transactional emails "boring" and asked for a real visual pass (not an admin-editable system — that was explicitly scoped down via `AskUserQuestion`). Rewrote `lib/email/templates.ts`'s shared helpers (`layout`, plus new `eyebrow`/`heading`/`bodyText`/`ctaButton`) for an editorial look: black masthead band with tracked-out serif logo, serif display headlines, a small uppercase eyebrow above each headline, refined footer. **Biggest single change: line items now show a real product thumbnail image** — every prior version of every email had zero imagery, which was very likely the actual source of "boring" for a fashion brand. Every exported template function's signature was preserved exactly (same params, same `{subject,html,text}` return), so no caller anywhere else in the app needed to change. Verified live: triggered a fresh welcome email and a fresh abandoned-cart email (with a real product thumbnail) through the real dev-provider pipeline, confirmed both rendered correctly in `/admin/emails`, then cleaned up test data.
+
+**Verified live in the browser**: delete-X renders on every product row (not click-tested, to avoid risking real catalog data — same underlying action as the already-proven detail-page delete button); nav dropdown editor round-trips through real Postgres to the real storefront dropdown; new desktop mega-menu renders correctly on hover; both a no-line-items email (welcome) and a with-line-items email (abandoned cart) confirmed the redesign end-to-end via the dev provider.
+
+
 ## Follow-up transactional emails (abandoned cart, post-delivery review request, back-in-stock) — COMPLETE, verified clean (tsc + eslint + build + live browser walkthrough)
 
 Extends the existing 7-template email system (Resend/dev-provider, admin log viewer) with the "follow-up" category it was missing — everything before this was instant/single-action (order confirmation, welcome, etc.); these three are time-delayed or behavior-triggered.

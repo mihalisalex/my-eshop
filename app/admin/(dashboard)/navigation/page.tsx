@@ -10,7 +10,7 @@ export default async function AdminNavigationPage() {
     <div>
       <AdminPageHeader
         title="Navigation Menu"
-        description="Edit the primary header links. Sub-menus and footer columns follow in a later iteration of this editor."
+        description="Edit the primary header links and their dropdown items. Footer columns follow in a later iteration of this editor."
       />
       <NavigationEditor initialNavigation={navigation} onSave={saveNavigationAction} />
     </div>

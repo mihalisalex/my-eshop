@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { DataTable } from "@/components/admin/DataTable";
+import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { formatMoney } from "@/lib/format";
 import { getAllProducts } from "@/services";
 import type { Product } from "@/types";
@@ -58,6 +59,11 @@ export default async function AdminProductsPage() {
             header: "Tags",
             cell: (row) => row.tags.join(", "),
             className: "text-luxe-gray-dark",
+          },
+          {
+            header: "",
+            cell: (row) => <DeleteProductButton productId={row.id} productName={row.name} />,
+            className: "w-10",
           },
         ]}
         rows={products}
