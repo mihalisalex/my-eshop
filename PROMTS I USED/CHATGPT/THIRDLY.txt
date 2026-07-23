@@ -1,0 +1,151 @@
+Phase 5 — Checkout
+
+This is where mediocre stores become premium stores.
+
+Ask for:
+
+Build a production-grade checkout experience.
+
+Multi-step checkout.
+
+Guest checkout.
+
+Customer checkout.
+
+Address autocomplete.
+
+Shipping methods.
+
+Billing.
+
+VAT.
+
+Coupons.
+
+Gift cards.
+
+Order summary.
+
+Express checkout placeholders.
+
+Apple Pay.
+
+Google Pay.
+
+PayPal.
+
+Stripe.
+
+Klarna.
+
+Validation.
+
+Accessibility.
+
+Mobile-first.
+
+Phase 6 — Search
+
+Luxury brands invest heavily in search.
+
+Ask for:
+
+Build an enterprise search experience.
+
+Instant search.
+
+Search suggestions.
+
+Trending searches.
+
+Recent searches.
+
+Product previews.
+
+Collection previews.
+
+Search by SKU.
+
+Search by color.
+
+Search by material.
+
+Search by size.
+
+Keyboard navigation.
+
+Debouncing.
+
+Search service abstraction.
+
+Phase 7 — Collection pages
+
+Ask for:
+
+Build enterprise PLP (Product Listing Pages).
+
+Support:
+
+Filtering
+
+Sorting
+
+Infinite scroll
+
+Pagination
+
+Faceted search
+
+Dynamic URLs
+
+Price slider
+
+Color filters
+
+Size filters
+
+Availability
+
+New arrivals
+
+Sale
+
+Responsive
+
+SEO optimized.
+
+Phase 8 — Authentication
+
+Ask for:
+
+Build a future-ready authentication system.
+
+Support:
+
+Email/password
+
+Magic links
+
+Google
+
+Apple
+
+Facebook
+
+Guest checkout
+
+Account dashboard
+
+Addresses
+
+Orders
+
+Wishlist
+
+Returns
+
+Profile
+
+Preferences
+
+Security settings.

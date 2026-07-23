@@ -1,0 +1,38 @@
+{
+  "intro": "Measurements in centimetres, taken flat against the body. If you're between sizes, we recommend sizing up for outerwear and true-to-size for everything else — fit notes on each product page will flag any exception.",
+  "categories": [
+    {
+      "title": "Women's Clothing",
+      "headers": ["Size", "Bust", "Waist", "Hips"],
+      "rows": [
+        ["XS", "80–83", "61–64", "87–90"],
+        ["S", "84–87", "65–68", "91–94"],
+        ["M", "88–92", "69–73", "95–99"],
+        ["L", "93–97", "74–78", "100–104"],
+        ["XL", "98–103", "79–84", "105–110"]
+      ]
+    },
+    {
+      "title": "Men's Clothing",
+      "headers": ["Size", "Chest", "Waist"],
+      "rows": [
+        ["S", "88–93", "76–81"],
+        ["M", "94–99", "82–87"],
+        ["L", "100–105", "88–93"],
+        ["XL", "106–111", "94–99"]
+      ]
+    },
+    {
+      "title": "Footwear",
+      "note": "EU sizing. If you're between sizes, size up.",
+      "headers": ["EU", "UK", "US (Men)", "US (Women)"],
+      "rows": [
+        ["39", "6", "7", "8.5"],
+        ["40", "6.5", "7.5", "9"],
+        ["41", "7.5", "8.5", "10"],
+        ["42", "8", "9", "10.5"],
+        ["43", "9", "10", "11.5"]
+      ]
+    }
+  ]
+}

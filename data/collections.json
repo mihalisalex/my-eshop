@@ -1,0 +1,47 @@
+[
+  {
+    "id": "c1",
+    "slug": "summer-collection",
+    "title": "Summer Collection",
+    "subtitle": "Light layers, considered",
+    "image": { "src": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1200&q=80", "alt": "Summer collection editorial" },
+    "productIds": ["p1", "p10", "p11"],
+    "cta": { "label": "Shop the Edit", "href": "/collections/summer-collection" }
+  },
+  {
+    "id": "c2",
+    "slug": "essentials",
+    "title": "Essentials",
+    "subtitle": "The everyday wardrobe",
+    "image": { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1200&q=80", "alt": "Essentials collection editorial" },
+    "productIds": ["p3", "p4", "p6"],
+    "cta": { "label": "Shop Essentials", "href": "/collections/essentials" }
+  },
+  {
+    "id": "c3",
+    "slug": "linen",
+    "title": "Linen",
+    "subtitle": "Breathable, natural fibres",
+    "image": { "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=80", "alt": "Linen collection editorial" },
+    "productIds": ["p2"],
+    "cta": { "label": "Shop Linen", "href": "/collections/linen" }
+  },
+  {
+    "id": "c4",
+    "slug": "new-arrivals",
+    "title": "New Arrivals",
+    "subtitle": "Just landed",
+    "image": { "src": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80", "alt": "New arrivals collection editorial" },
+    "productIds": ["p1", "p2", "p5", "p10", "p12"],
+    "cta": { "label": "Shop New In", "href": "/collections/new-arrivals" }
+  },
+  {
+    "id": "c5",
+    "slug": "accessories",
+    "title": "Accessories",
+    "subtitle": "The finishing details",
+    "image": { "src": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1200&q=80", "alt": "Accessories collection editorial" },
+    "productIds": ["p7", "p8", "p9", "p12"],
+    "cta": { "label": "Shop Accessories", "href": "/collections/accessories" }
+  }
+]

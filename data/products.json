@@ -1,0 +1,411 @@
+[
+  {
+    "id": "p1",
+    "slug": "oversized-wool-coat",
+    "name": "Oversized Wool Coat",
+    "description": "A relaxed, oversized silhouette cut from a heavyweight wool blend. Fully lined with dropped shoulders and horn-effect buttons.",
+    "price": { "amount": 289, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1200&q=80", "alt": "Oversized wool coat, front view" },
+      { "src": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80", "alt": "Oversized wool coat, styled view" },
+      { "src": "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=1200&q=80", "alt": "Oversized wool coat, detail view" },
+      { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1200&q=80", "alt": "Oversized wool coat, worn on model" }
+    ],
+    "videos": [
+      { "src": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4", "poster": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1200&q=80", "alt": "Oversized wool coat, styling video" }
+    ],
+    "colors": [
+      { "name": "Black", "hex": "#111111" },
+      { "name": "Camel", "hex": "#B79C7D" }
+    ],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 8, "sku": "LX-WMN-0001-XS", "barcode": "5901234123457" },
+      { "name": "S", "inStock": true, "quantity": 12, "sku": "LX-WMN-0001-S", "barcode": "5901234123464" },
+      { "name": "M", "inStock": true, "quantity": 15, "sku": "LX-WMN-0001-M", "barcode": "5901234123471" },
+      { "name": "L", "inStock": false, "quantity": 0, "sku": "LX-WMN-0001-L", "barcode": "5901234123488" },
+      { "name": "XL", "inStock": true, "quantity": 5, "sku": "LX-WMN-0001-XL", "barcode": "5901234123495" }
+    ],
+    "category": "women",
+    "collectionIds": ["c1", "c4"],
+    "tags": ["outerwear", "new"],
+    "gender": "women",
+    "season": "autumn-winter",
+    "materials": ["80% Wool", "20% Polyester", "Lining: 100% Viscose"],
+    "careInstructions": ["Dry clean only", "Do not bleach", "Cool iron if needed", "Do not tumble dry"],
+    "relatedProductIds": ["p11", "p4", "p9"],
+    "isNew": true,
+    "sku": "LX-WMN-0001",
+    "barcode": "5901234123457",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 1400,
+    "availableForSale": true,
+    "seo": {
+      "title": "Oversized Wool Coat",
+      "description": "A relaxed, oversized wool-blend coat with dropped shoulders and full lining. Part of the Autumn/Winter 2026 collection."
+    }
+  },
+  {
+    "id": "p2",
+    "slug": "tailored-linen-trousers",
+    "name": "Tailored Linen Trousers",
+    "description": "Wide-leg trousers in breathable European linen with a high, fluid waistband and pressed centre creases.",
+    "price": { "amount": 89, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=80", "alt": "Tailored linen trousers, front view" },
+      { "src": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80", "alt": "Tailored linen trousers, detail view" },
+      { "src": "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=80", "alt": "Tailored linen trousers, styled view" }
+    ],
+    "colors": [
+      { "name": "Sand", "hex": "#D8CBB8" },
+      { "name": "Black", "hex": "#111111" }
+    ],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 10 },
+      { "name": "S", "inStock": true, "quantity": 14 },
+      { "name": "M", "inStock": true, "quantity": 14 },
+      { "name": "L", "inStock": true, "quantity": 8 }
+    ],
+    "category": "women",
+    "collectionIds": ["c3", "c4"],
+    "tags": ["linen", "new"],
+    "gender": "women",
+    "season": "spring-summer",
+    "materials": ["100% European Linen"],
+    "careInstructions": ["Machine wash cold", "Do not tumble dry", "Iron on low heat", "Do not bleach"],
+    "relatedProductIds": ["p3", "p10"],
+    "isNew": true,
+    "sku": "LX-WMN-0002",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 400,
+    "availableForSale": true
+  },
+  {
+    "id": "p3",
+    "slug": "silk-blend-blouse",
+    "name": "Silk Blend Blouse",
+    "description": "A fluid, lightweight blouse in a lustrous silk blend with mother-of-pearl buttons and a relaxed collar.",
+    "price": { "amount": 79, "currencyCode": "EUR" },
+    "compareAtPrice": { "amount": 99, "currencyCode": "EUR" },
+    "salePrice": { "amount": 79, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=1200&q=80", "alt": "Silk blend blouse, front view" },
+      { "src": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80", "alt": "Silk blend blouse, styled view" }
+    ],
+    "colors": [
+      { "name": "Ivory", "hex": "#F5F5F0" },
+      { "name": "Dark Gray", "hex": "#555555" }
+    ],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 6 },
+      { "name": "S", "inStock": false, "quantity": 0 },
+      { "name": "M", "inStock": true, "quantity": 9 },
+      { "name": "L", "inStock": true, "quantity": 7 }
+    ],
+    "category": "women",
+    "collectionIds": ["c2"],
+    "tags": ["essentials", "sale"],
+    "gender": "women",
+    "materials": ["70% Silk", "30% Cotton"],
+    "careInstructions": ["Hand wash cold", "Do not wring", "Iron on low, inside out", "Dry clean recommended"],
+    "relatedProductIds": ["p1", "p10"],
+    "isSale": true,
+    "sku": "LX-WMN-0003",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 180,
+    "availableForSale": true
+  },
+  {
+    "id": "p4",
+    "slug": "merino-wool-sweater",
+    "name": "Merino Wool Sweater",
+    "description": "A fine-gauge merino wool sweater with a ribbed crew neck. Soft, breathable and season-round.",
+    "price": { "amount": 99, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1200&q=80", "alt": "Merino wool sweater, front view" },
+      { "src": "https://images.unsplash.com/photo-1503341504253-dff4815485f1?auto=format&fit=crop&w=1200&q=80", "alt": "Merino wool sweater, detail view" }
+    ],
+    "colors": [
+      { "name": "Charcoal", "hex": "#3A3A3A" },
+      { "name": "Light Gray", "hex": "#F5F5F5" }
+    ],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 11 },
+      { "name": "M", "inStock": true, "quantity": 16 },
+      { "name": "L", "inStock": true, "quantity": 14 },
+      { "name": "XL", "inStock": true, "quantity": 6 }
+    ],
+    "category": "men",
+    "collectionIds": ["c2"],
+    "tags": ["essentials"],
+    "gender": "men",
+    "season": "autumn-winter",
+    "materials": ["100% Merino Wool"],
+    "careInstructions": ["Hand wash cold", "Dry flat", "Do not iron directly", "Do not tumble dry"],
+    "relatedProductIds": ["p6", "p11"],
+    "sku": "LX-MEN-0001",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 450,
+    "availableForSale": true
+  },
+  {
+    "id": "p5",
+    "slug": "relaxed-fit-chino",
+    "name": "Relaxed Fit Chino",
+    "description": "Cotton-twill chinos with a relaxed leg and garment-washed finish for a broken-in feel from day one.",
+    "price": { "amount": 69, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80", "alt": "Relaxed fit chino, front view" },
+      { "src": "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=1200&q=80", "alt": "Relaxed fit chino, styled view" }
+    ],
+    "colors": [
+      { "name": "Stone", "hex": "#C9C0B1" },
+      { "name": "Navy", "hex": "#2B3140" }
+    ],
+    "sizes": [
+      { "name": "30", "inStock": true, "quantity": 9 },
+      { "name": "32", "inStock": true, "quantity": 13 },
+      { "name": "34", "inStock": true, "quantity": 10 },
+      { "name": "36", "inStock": true, "quantity": 0 }
+    ],
+    "category": "men",
+    "collectionIds": ["c4"],
+    "tags": ["new"],
+    "gender": "men",
+    "materials": ["98% Cotton", "2% Elastane"],
+    "careInstructions": ["Machine wash cold", "Tumble dry low", "Iron on medium heat"],
+    "relatedProductIds": ["p6", "p4"],
+    "isNew": true,
+    "isBackorder": true,
+    "fulfillmentNote": "Size 36 back in stock Aug 5 — order now, ships when available",
+    "sku": "LX-MEN-0002",
+    "inventoryPolicy": "continue",
+    "shippingWeightGrams": 550,
+    "availableForSale": true
+  },
+  {
+    "id": "p6",
+    "slug": "cotton-poplin-shirt",
+    "name": "Cotton Poplin Shirt",
+    "description": "A crisp poplin shirt with a clean point collar and mother-of-pearl buttons, cut for a tailored fit.",
+    "price": { "amount": 65, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=1200&q=80", "alt": "Cotton poplin shirt, front view" },
+      { "src": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=1200&q=80", "alt": "Cotton poplin shirt, detail view" }
+    ],
+    "colors": [
+      { "name": "White", "hex": "#FFFFFF" },
+      { "name": "Light Blue", "hex": "#C7D3DD" }
+    ],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 12 },
+      { "name": "M", "inStock": true, "quantity": 15 },
+      { "name": "L", "inStock": true, "quantity": 9 }
+    ],
+    "category": "men",
+    "collectionIds": ["c2"],
+    "tags": ["essentials", "new"],
+    "gender": "men",
+    "materials": ["100% Cotton Poplin"],
+    "careInstructions": ["Machine wash cold", "Iron on medium heat", "Do not bleach"],
+    "relatedProductIds": ["p5", "p11"],
+    "isNew": true,
+    "sku": "LX-MEN-0003",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 260,
+    "availableForSale": true
+  },
+  {
+    "id": "p7",
+    "slug": "structured-tote-bag",
+    "name": "Structured Tote Bag",
+    "description": "A structured leather tote with an internal zip pocket and detachable shoulder strap.",
+    "price": { "amount": 149, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1200&q=80", "alt": "Structured tote bag, front view" },
+      { "src": "https://images.unsplash.com/photo-1591561954557-26941169b49e?auto=format&fit=crop&w=1200&q=80", "alt": "Structured tote bag, detail view" }
+    ],
+    "colors": [
+      { "name": "Black", "hex": "#111111" },
+      { "name": "Tan", "hex": "#B08B62" }
+    ],
+    "sizes": [{ "name": "One Size", "inStock": true, "quantity": 20 }],
+    "category": "accessories",
+    "collectionIds": ["c5"],
+    "tags": ["accessories"],
+    "gender": "unisex",
+    "materials": ["100% Full-Grain Leather"],
+    "careInstructions": ["Wipe clean with a damp cloth", "Store in dust bag", "Avoid prolonged sun exposure"],
+    "relatedProductIds": ["p8", "p9"],
+    "sku": "LX-ACC-0001",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 900,
+    "availableForSale": true
+  },
+  {
+    "id": "p8",
+    "slug": "leather-belt",
+    "name": "Leather Belt",
+    "description": "A full-grain leather belt with a matte brushed-metal buckle.",
+    "price": { "amount": 45, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=1200&q=80", "alt": "Leather belt, front view" },
+      { "src": "https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=1200&q=80", "alt": "Leather belt, detail view" }
+    ],
+    "colors": [
+      { "name": "Black", "hex": "#111111" },
+      { "name": "Brown", "hex": "#5B4636" }
+    ],
+    "sizes": [
+      { "name": "S", "inStock": true, "quantity": 10 },
+      { "name": "M", "inStock": true, "quantity": 14 },
+      { "name": "L", "inStock": true, "quantity": 8 }
+    ],
+    "category": "accessories",
+    "collectionIds": ["c5"],
+    "tags": ["accessories"],
+    "gender": "unisex",
+    "materials": ["100% Full-Grain Leather", "Buckle: Brushed Zinc Alloy"],
+    "careInstructions": ["Wipe clean with a damp cloth", "Condition leather periodically"],
+    "relatedProductIds": ["p7", "p12"],
+    "sku": "LX-ACC-0002",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 250,
+    "availableForSale": true
+  },
+  {
+    "id": "p9",
+    "slug": "cashmere-scarf",
+    "name": "Cashmere Scarf",
+    "description": "An ultra-soft pure cashmere scarf, woven in a fine gauge for warmth without bulk.",
+    "price": { "amount": 89, "currencyCode": "EUR" },
+    "compareAtPrice": { "amount": 120, "currencyCode": "EUR" },
+    "salePrice": { "amount": 89, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?auto=format&fit=crop&w=1200&q=80", "alt": "Cashmere scarf, front view" },
+      { "src": "https://images.unsplash.com/photo-1544022613-e87ca75a784a?auto=format&fit=crop&w=1200&q=80", "alt": "Cashmere scarf, styled view" }
+    ],
+    "colors": [
+      { "name": "Camel", "hex": "#B79C7D" },
+      { "name": "Charcoal", "hex": "#3A3A3A" }
+    ],
+    "sizes": [{ "name": "One Size", "inStock": true, "quantity": 15 }],
+    "category": "accessories",
+    "collectionIds": ["c5"],
+    "tags": ["accessories", "sale"],
+    "gender": "unisex",
+    "season": "autumn-winter",
+    "materials": ["100% Pure Cashmere"],
+    "careInstructions": ["Dry clean only", "Store folded, away from direct light"],
+    "relatedProductIds": ["p1", "p4"],
+    "isSale": true,
+    "sku": "LX-ACC-0003",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 150,
+    "availableForSale": true
+  },
+  {
+    "id": "p10",
+    "slug": "midi-wrap-dress",
+    "name": "Midi Wrap Dress",
+    "description": "A fluid midi dress with a wrap front, self-tie waist and a bias-cut skirt that moves with the body.",
+    "price": { "amount": 119, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1200&q=80", "alt": "Midi wrap dress, front view" },
+      { "src": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1200&q=80", "alt": "Midi wrap dress, styled view" },
+      { "src": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80", "alt": "Midi wrap dress, detail view" }
+    ],
+    "videos": [
+      { "src": "https://www.w3schools.com/html/mov_bbb.mp4", "poster": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=1200&q=80", "alt": "Midi wrap dress, movement video" }
+    ],
+    "colors": [
+      { "name": "Black", "hex": "#111111" },
+      { "name": "Burgundy", "hex": "#5E2A2A" }
+    ],
+    "sizes": [
+      { "name": "XS", "inStock": true, "quantity": 7 },
+      { "name": "S", "inStock": true, "quantity": 9 },
+      { "name": "M", "inStock": false, "quantity": 0 },
+      { "name": "L", "inStock": true, "quantity": 6 }
+    ],
+    "category": "women",
+    "collectionIds": ["c1", "c4"],
+    "tags": ["new"],
+    "gender": "women",
+    "materials": ["95% Viscose", "5% Elastane"],
+    "careInstructions": ["Hand wash cold", "Do not wring", "Hang dry", "Cool iron if needed"],
+    "relatedProductIds": ["p3", "p1"],
+    "isNew": true,
+    "sku": "LX-WMN-0004",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 320,
+    "availableForSale": true
+  },
+  {
+    "id": "p11",
+    "slug": "double-breasted-blazer",
+    "name": "Double-Breasted Blazer",
+    "description": "A sharply tailored double-breasted blazer in a soft wool blend, fully canvassed for structure.",
+    "price": { "amount": 199, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1200&q=80", "alt": "Double-breasted blazer, front view" },
+      { "src": "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=1200&q=80", "alt": "Double-breasted blazer, styled view" }
+    ],
+    "colors": [
+      { "name": "Navy", "hex": "#2B3140" },
+      { "name": "Black", "hex": "#111111" }
+    ],
+    "sizes": [
+      { "name": "46", "inStock": true, "quantity": 6 },
+      { "name": "48", "inStock": true, "quantity": 9 },
+      { "name": "50", "inStock": true, "quantity": 7 },
+      { "name": "52", "inStock": true, "quantity": 0 }
+    ],
+    "category": "men",
+    "collectionIds": ["c1"],
+    "tags": ["outerwear"],
+    "gender": "men",
+    "materials": ["100% Wool Blend"],
+    "careInstructions": ["Dry clean only", "Store on a padded hanger"],
+    "relatedProductIds": ["p4", "p6"],
+    "isPreorder": true,
+    "fulfillmentNote": "Ships October 14",
+    "sku": "LX-MEN-0004",
+    "inventoryPolicy": "continue",
+    "shippingWeightGrams": 1100,
+    "availableForSale": true
+  },
+  {
+    "id": "p12",
+    "slug": "minimal-leather-sneakers",
+    "name": "Minimal Leather Sneakers",
+    "description": "Clean, low-profile sneakers in smooth full-grain leather with a cupsole and subtle branding.",
+    "price": { "amount": 129, "currencyCode": "EUR" },
+    "images": [
+      { "src": "https://images.unsplash.com/photo-1560243563-062bfc001d68?auto=format&fit=crop&w=1200&q=80", "alt": "Minimal leather sneakers, front view" },
+      { "src": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80", "alt": "Minimal leather sneakers, styled view" }
+    ],
+    "colors": [
+      { "name": "White", "hex": "#FFFFFF" },
+      { "name": "Black", "hex": "#111111" }
+    ],
+    "sizes": [
+      { "name": "39", "inStock": true, "quantity": 10 },
+      { "name": "40", "inStock": true, "quantity": 14 },
+      { "name": "41", "inStock": true, "quantity": 12 },
+      { "name": "42", "inStock": true, "quantity": 11 },
+      { "name": "43", "inStock": false, "quantity": 0 }
+    ],
+    "category": "accessories",
+    "collectionIds": ["c5", "c4"],
+    "tags": ["accessories", "new"],
+    "gender": "unisex",
+    "materials": ["Upper: 100% Leather", "Sole: Rubber"],
+    "careInstructions": ["Wipe clean with a soft, damp cloth", "Use a shoe tree to retain shape"],
+    "relatedProductIds": ["p7", "p8"],
+    "isNew": true,
+    "sku": "LX-ACC-0004",
+    "inventoryPolicy": "deny",
+    "shippingWeightGrams": 800,
+    "availableForSale": true
+  }
+]

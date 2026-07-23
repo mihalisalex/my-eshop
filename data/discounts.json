@@ -1,0 +1,5 @@
+[
+  { "id": "disc-1", "code": "WELCOME10", "type": "percentage", "value": 10, "active": true, "expiresAt": "2026-12-31" },
+  { "id": "disc-2", "code": "FREESHIP", "type": "fixed", "value": 6, "active": true },
+  { "id": "disc-3", "code": "SUMMER25", "type": "percentage", "value": 25, "active": false, "expiresAt": "2026-08-01" }
+]

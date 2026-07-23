@@ -1,0 +1,17 @@
+[
+  {
+    "id": "camp-1",
+    "slug": "autumn-layering",
+    "title": "Autumn Layering",
+    "subtitle": "Wool, cashmere, and considered tailoring for the season ahead",
+    "heroImage": {
+      "src": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1600&q=80",
+      "alt": "Autumn layering campaign"
+    },
+    "description": "Our Autumn edit builds around three fabrics — heavyweight wool, brushed cashmere, and structured cotton — designed to layer from the studio to the street.",
+    "cta": { "label": "Shop the Edit", "href": "/new-in" },
+    "productIds": ["p1", "p4", "p11", "p9"],
+    "startsAt": "2026-09-01",
+    "endsAt": "2026-11-30"
+  }
+]

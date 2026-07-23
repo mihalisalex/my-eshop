@@ -1,0 +1,47 @@
+Phase 4 — Shopping Cart
+
+Now build a serious cart.
+
+Not a basic cart.
+
+Ask for:
+
+Build an enterprise shopping cart system.
+
+Features:
+
+Persistent cart
+
+Guest cart
+
+Logged-in cart
+
+Merge carts
+
+Promo codes
+
+Gift cards
+
+Taxes
+
+Shipping calculation
+
+Multi-currency
+
+Saved for later
+
+Cart recommendations
+
+Inventory validation
+
+Stock reservation hooks
+
+Optimistic UI
+
+Undo remove
+
+Cart drawer
+
+Full cart page
+
+Mobile optimized.

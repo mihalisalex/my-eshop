@@ -1,0 +1,5 @@
+[
+  { "code": "GIFT25", "balance": { "amount": 25, "currencyCode": "EUR" }, "active": true },
+  { "code": "GIFT50", "balance": { "amount": 50, "currencyCode": "EUR" }, "active": true },
+  { "code": "GIFT100", "balance": { "amount": 100, "currencyCode": "EUR" }, "active": false }
+]

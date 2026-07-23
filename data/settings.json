@@ -1,0 +1,20 @@
+{
+  "siteName": "ALEXANDRIS",
+  "tagline": "Modern Luxury, Considered.",
+  "logo": "/logo.svg",
+  "favicon": "/favicon.ico",
+  "contactEmail": "hello@alexandris-demo.example",
+  "currency": "EUR",
+  "locale": "en-US",
+  "socialLinks": [
+    { "platform": "instagram", "url": "https://instagram.com/alexandris" },
+    { "platform": "facebook", "url": "https://facebook.com/alexandris" },
+    { "platform": "tiktok", "url": "https://tiktok.com/@alexandris" },
+    { "platform": "pinterest", "url": "https://pinterest.com/alexandris" }
+  ],
+  "announcementMessages": [
+    "Free shipping on all orders over €150",
+    "Free returns within 30 days",
+    "New Collection — Autumn/Winter 2026 now live"
+  ]
+}

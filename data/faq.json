@@ -1,0 +1,73 @@
+{
+  "intro": "Can't find what you're looking for? Reach us at hello@alexandris-demo.example.",
+  "categories": [
+    {
+      "title": "Orders & Shipping",
+      "questions": [
+        {
+          "question": "How long does delivery take?",
+          "answer": "Standard shipping arrives in 3–5 business days and is free on orders over €150 (€6.95 below that). Express shipping arrives in 1–2 business days for €14.95."
+        },
+        {
+          "question": "Which countries do you ship to?",
+          "answer": "We currently ship within the EU and UK. Broader international shipping is on our roadmap."
+        },
+        {
+          "question": "Can I change or cancel my order after placing it?",
+          "answer": "Orders begin processing shortly after they're placed, so we can't guarantee changes once confirmed. Contact us as soon as possible and we'll do what we can."
+        },
+        {
+          "question": "How do I track my order?",
+          "answer": "Sign in and open Account → Orders to see the current status of any order. You'll also get a shipping confirmation email once it leaves the warehouse."
+        }
+      ]
+    },
+    {
+      "title": "Returns & Exchanges",
+      "questions": [
+        {
+          "question": "What's your return policy?",
+          "answer": "Unworn items with tags attached can be returned within 30 days of delivery for a full refund. Start a return from Account → Returns. Items marked 'Final Sale' aren't eligible."
+        },
+        {
+          "question": "Do you offer exchanges?",
+          "answer": "Not directly — return the item for a refund and place a new order for the size or colour you want, so you're not waiting on stock."
+        },
+        {
+          "question": "How long do refunds take?",
+          "answer": "5–7 business days after we receive and inspect your return, plus however long your bank takes to post the credit."
+        }
+      ]
+    },
+    {
+      "title": "Product & Sizing",
+      "questions": [
+        {
+          "question": "How do I find my size?",
+          "answer": "Check the Size Guide, linked from every product page and in the site footer, for measurements by category."
+        },
+        {
+          "question": "Are your products true to size?",
+          "answer": "Fit notes are listed on each product page. When a style runs small or large, we call it out there rather than only in the general size chart."
+        },
+        {
+          "question": "What are your products made from?",
+          "answer": "Primarily natural fibres — wool, cotton, linen, silk. Full material composition is listed on each product page. See our Sustainability page for how we source them."
+        }
+      ]
+    },
+    {
+      "title": "Account & Payment",
+      "questions": [
+        {
+          "question": "Do I need an account to order?",
+          "answer": "No — guest checkout is available. Creating an account lets you track orders, save addresses, and check out faster next time."
+        },
+        {
+          "question": "What payment methods do you accept?",
+          "answer": "Card, Apple Pay, Google Pay, and PayPal are shown at checkout. This is a demo store — no payment is actually charged."
+        }
+      ]
+    }
+  ]
+}

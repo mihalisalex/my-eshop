@@ -1,0 +1,9 @@
+[
+  { "id": "act-1", "actor": "Alexandris Admin", "action": "Published", "target": "Homepage Sections", "createdAt": "2026-07-21T16:40:00Z" },
+  { "id": "act-2", "actor": "Nina Kostas", "action": "Updated hero image", "target": "Hero Management", "createdAt": "2026-07-21T14:12:00Z" },
+  { "id": "act-3", "actor": "Leo Marchetti", "action": "Created discount code", "target": "SUMMER20", "createdAt": "2026-07-20T11:05:00Z" },
+  { "id": "act-4", "actor": "Alexandris Admin", "action": "Approved return", "target": "RET-2030", "createdAt": "2026-07-19T09:30:00Z" },
+  { "id": "act-5", "actor": "Nina Kostas", "action": "Published", "target": "Journal post \"Autumn Layering\"", "createdAt": "2026-07-18T13:20:00Z" },
+  { "id": "act-6", "actor": "Alexandris Admin", "action": "Updated inventory", "target": "Oversized Wool Coat — size M", "createdAt": "2026-07-17T10:15:00Z" },
+  { "id": "act-7", "actor": "Leo Marchetti", "action": "Invited user", "target": "leo@alexandris-demo.example", "createdAt": "2026-07-05T08:00:00Z" }
+]

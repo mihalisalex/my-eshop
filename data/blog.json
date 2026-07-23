@@ -1,0 +1,42 @@
+[
+  {
+    "id": "b1",
+    "slug": "tailoring-reimagined",
+    "title": "Tailoring, Reimagined",
+    "excerpt": "Soft shoulders, natural fibres and a considered palette — how our tailoring line moves from desk to dinner.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1600&q=80", "alt": "Tailoring editorial cover" },
+    "author": "ALEXANDRIS Editorial",
+    "publishedAt": "2026-06-02",
+    "tags": ["tailoring", "editorial"]
+  },
+  {
+    "id": "b2",
+    "slug": "the-case-for-natural-fibres",
+    "title": "The Case for Natural Fibres",
+    "excerpt": "Why we build every collection around linen, wool and cotton — and what that means for how a garment ages.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=80", "alt": "Natural fibres editorial cover" },
+    "author": "ALEXANDRIS Editorial",
+    "publishedAt": "2026-05-18",
+    "tags": ["materials", "sustainability"]
+  },
+  {
+    "id": "b3",
+    "slug": "a-guide-to-capsule-dressing",
+    "title": "A Guide to Capsule Dressing",
+    "excerpt": "Fewer, better things: how to build a wardrobe around a dozen pieces that all work together.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1600&q=80", "alt": "Capsule dressing editorial cover" },
+    "author": "ALEXANDRIS Editorial",
+    "publishedAt": "2026-04-27",
+    "tags": ["style-guide"]
+  },
+  {
+    "id": "b4",
+    "slug": "inside-our-ateliers",
+    "title": "Inside Our Ateliers",
+    "excerpt": "A look at the small-batch workshops and long-standing mill relationships behind every ALEXANDRIS collection.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=1600&q=80", "alt": "Atelier editorial cover" },
+    "author": "ALEXANDRIS Editorial",
+    "publishedAt": "2026-03-14",
+    "tags": ["craftsmanship"]
+  }
+]

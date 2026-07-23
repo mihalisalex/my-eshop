@@ -1,0 +1,82 @@
+[
+  {
+    "id": "privacy-policy",
+    "slug": "privacy-policy",
+    "title": "Privacy Policy",
+    "updatedAt": "2026-01-01",
+    "sections": [
+      {
+        "heading": "What We Collect",
+        "body": "When you browse or order, we collect the information you give us directly — name, email, shipping/billing address, order history — plus basic usage data (pages visited, device/browser type) to keep the site working and improve it."
+      },
+      {
+        "heading": "How We Use It",
+        "body": "To process and ship orders, manage your account, respond to support requests, and — only if you opt in on the newsletter or during checkout — send marketing communications. We do not sell your personal data."
+      },
+      {
+        "heading": "Cookies",
+        "body": "We use cookies for cart/session persistence and basic analytics. See our Cookie Policy for the full breakdown and how to control them."
+      },
+      {
+        "heading": "Your Rights",
+        "body": "You can access, correct, or delete your account data at any time from Account Settings, or by contacting hello@alexandris-demo.example. Deleting your account removes your stored personal data except where we're required to retain order records for accounting or legal purposes."
+      },
+      {
+        "heading": "This Is a Demo",
+        "body": "ALEXANDRIS is a demo storefront built for evaluation purposes. This policy describes intended behaviour for illustration; no real marketing lists or third-party data sharing occur."
+      }
+    ]
+  },
+  {
+    "id": "terms-of-service",
+    "slug": "terms-of-service",
+    "title": "Terms of Service",
+    "updatedAt": "2026-01-01",
+    "sections": [
+      {
+        "heading": "Using This Site",
+        "body": "By using this site you agree to these terms. Content, product images, and pricing are subject to change without notice. You must be able to form a legally binding contract to place an order."
+      },
+      {
+        "heading": "Orders & Pricing",
+        "body": "All prices are shown in EUR and include VAT unless stated otherwise. We reserve the right to refuse or cancel any order, including in cases of pricing errors or suspected fraud."
+      },
+      {
+        "heading": "Payment",
+        "body": "This is a demo store — no real payment is processed regardless of which method is selected at checkout."
+      },
+      {
+        "heading": "Intellectual Property",
+        "body": "All site content — text, images, logos, design — belongs to ALEXANDRIS or its licensors and may not be reproduced without permission."
+      },
+      {
+        "heading": "Limitation of Liability",
+        "body": "The site is provided 'as is.' To the extent permitted by law, ALEXANDRIS is not liable for indirect or consequential losses arising from use of this site."
+      }
+    ]
+  },
+  {
+    "id": "cookie-policy",
+    "slug": "cookie-policy",
+    "title": "Cookie Policy",
+    "updatedAt": "2026-01-01",
+    "sections": [
+      {
+        "heading": "What Cookies We Use",
+        "body": "Essential cookies keep your cart, wishlist, and session working — the site can't function without them. We may also use basic analytics cookies to understand how the site is used, in aggregate, never tied to your identity for marketing."
+      },
+      {
+        "heading": "Third-Party Cookies",
+        "body": "This demo does not integrate any third-party advertising or tracking pixels. A production deployment would disclose any added here."
+      },
+      {
+        "heading": "Managing Cookies",
+        "body": "Most browsers let you block or delete cookies in their settings. Blocking essential cookies will prevent core features like the cart from working correctly."
+      },
+      {
+        "heading": "Your Consent Choice",
+        "body": "The cookie banner shown on your first visit lets you accept all cookies or decline everything beyond what's strictly necessary. Your choice is stored on your device (not sent to us) and gates whether any future analytics/marketing script is allowed to load — you can change it any time by clearing your browser's local storage for this site."
+      }
+    ]
+  }
+]

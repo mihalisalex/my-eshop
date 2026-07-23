@@ -1,0 +1,46 @@
+[
+  {
+    "id": "lp-1",
+    "slug": "the-edit",
+    "title": "The Edit",
+    "sections": [
+      {
+        "id": "lp-1-hero",
+        "type": "hero",
+        "enabled": true,
+        "order": 0,
+        "data": {
+          "eyebrow": "Curated",
+          "headline": "The Edit",
+          "subheadline": "A season's worth of considered dressing, gathered in one place.",
+          "image": {
+            "src": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1600&q=80",
+            "alt": "The Edit campaign hero"
+          },
+          "primaryCta": { "label": "Shop New In", "href": "/new-in" }
+        }
+      },
+      {
+        "id": "lp-1-collections",
+        "type": "featuredCollections",
+        "enabled": true,
+        "order": 1,
+        "data": {
+          "title": "Shop the Collections",
+          "subtitle": "Three edits, one point of view",
+          "collectionIds": ["c1", "c2", "c3"]
+        }
+      },
+      {
+        "id": "lp-1-new",
+        "type": "newArrivals",
+        "enabled": true,
+        "order": 2,
+        "data": {
+          "title": "New This Week",
+          "productIds": ["p1", "p2", "p3", "p10", "p11"]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,587 @@
+// Prisma 7 schema. The datasource URL lives in prisma.config.ts (via env()),
+// not here — that's the v7 convention, not an oversight.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// The storefront is single-currency today (EUR is hardcoded throughout
+// lib/commerce/providers/mock/cart.service.ts) — Product.currencyCode is the
+// one source of truth price/compareAtPrice/salePrice share.
+model Product {
+  id          String @id @default(cuid())
+  slug        String @unique
+  name        String
+  description String
+
+  priceAmount          Decimal @db.Decimal(10, 2)
+  compareAtPriceAmount Decimal? @db.Decimal(10, 2)
+  salePriceAmount      Decimal? @db.Decimal(10, 2)
+  currencyCode         String  @default("EUR")
+
+  /// Image[] — order matters (images[0] = card image, images[1] = hover-swap). Zod-validated on read/write.
+  images Json
+  /// ProductVideo[] | null. Zod-validated on read/write.
+  videos Json?
+
+  category String
+  tags     String[]
+  gender   String
+  season   String?
+
+  materials        String[]
+  careInstructions String[]
+
+  /// Explicit cross-sell override; falls back to same-category products when empty.
+  relatedProductIds String[] @default([])
+
+  isNew           Boolean  @default(false)
+  isSale          Boolean  @default(false)
+  isPreorder      Boolean  @default(false)
+  isBackorder     Boolean  @default(false)
+  fulfillmentNote String?
+
+  rating      Float?
+  reviewCount Int?
+
+  sku     String  @unique
+  barcode String?
+
+  /// "deny" | "continue" — mirrors the Shopify-style convention used across the app.
+  inventoryPolicy     String  @default("deny")
+  shippingWeightGrams Int?
+  availableForSale    Boolean @default(true)
+
+  /// ProductSeoOverride | null. Zod-validated on read/write.
+  seo Json?
+
+  colors      ProductColor[]
+  sizes       ProductSize[]
+  collections ProductCollection[]
+  cartLineItems  CartLineItem[]
+  wishlistItems  WishlistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("products")
+}
+
+model ProductColor {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Stable display order — Postgres doesn't guarantee row order, so reads always `orderBy: { position: "asc" }`.
+  position Int
+  name     String
+  hex      String
+  imageSrc String?
+  imageAlt String?
+
+  @@index([productId])
+  @@map("product_colors")
+}
+
+model ProductSize {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Stable display order — see ProductColor.position.
+  position Int
+  name     String
+  inStock  Boolean @default(true)
+  quantity Int     @default(0)
+  sku      String?
+  barcode  String?
+
+  @@index([productId])
+  @@map("product_sizes")
+}
+
+model Collection {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  title       String
+  subtitle    String?
+  description String?
+
+  /// Image. Zod-validated on read/write.
+  image Json
+
+  ctaLabel   String?
+  ctaHref    String?
+  ctaVariant String?
+
+  products ProductCollection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("collections")
+}
+
+/// Real many-to-many join table — replaces the JSON model's two independently
+/// maintained arrays (Product.collectionIds / Collection.productIds) so a
+/// delete on either side can't leave a dangling reference on the other.
+model ProductCollection {
+  productId    String
+  collectionId String
+  position     Int    @default(0)
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId])
+  @@index([collectionId])
+  @@map("product_collections")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+// ---------------------------------------------------------------------------
+// Real Backend Phase 2 — Customer accounts, Cart, Wishlist, Checkout, Orders
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  firstName        String
+  lastName         String
+  phone            String?
+  acceptsMarketing Boolean  @default(false)
+
+  /// Points at a CustomerAddress.id. Plain column, not a formal FK, to avoid a
+  /// circular two-way relation with CustomerAddress.customerId. App-level
+  /// integrity: removeCustomerAddress() clears this if it points at the
+  /// address being deleted.
+  defaultAddressId String?
+
+  /// Lazily generated on first visit to the Referrals section of /account (see
+  /// lib/referral.ts) — not every customer needs one, so it isn't generated at signup.
+  referralCode String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses            CustomerAddress[]
+  carts                Cart[]
+  wishlist             Wishlist?
+  orders               Order[]
+  returns              Return[]
+  passwordResetTokens  PasswordResetToken[]
+  conciergeRequests    ConciergeRequest[]
+  referralsMade        Referral[]            @relation("ReferralsMade")
+  referralReceived     Referral?             @relation("ReferralReceived")
+
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  /// Stable display order — see ProductColor.position.
+  position    Int
+  firstName   String
+  lastName    String
+  company     String?
+  address1    String
+  address2    String?
+  city        String
+  region      String?
+  postalCode  String
+  countryCode String
+  phone       String?
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+model Cart {
+  id           String    @id @default(cuid())
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  currencyCode String    @default("EUR")
+
+  lineItems CartLineItem[]
+  discounts CartDiscount[]
+  giftCards CartGiftCard[]
+  /// One-to-many, not one-to-one: the cart row is reused indefinitely after an order
+  /// completes (see the cart DELETE route), so a cart can accumulate multiple checkout
+  /// sessions over its lifetime — one per purchase. `services/checkout.ts`'s
+  /// `createCheckout` finds the latest non-completed row or opens a fresh one.
+  checkouts Checkout[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@map("carts")
+}
+
+/// Totals (subtotal/tax/shipping/total) are NEVER persisted — always recomputed
+/// from lineItems+discounts+giftCards at read time (lib/commerce/postgres/cart-totals.ts),
+/// exactly like the mock's computeTotals(). This avoids any stored/derived drift.
+model CartLineItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  slug            String
+  name            String
+  imageSrc        String
+  imageAlt        String
+  color           String
+  size            String
+  unitPriceAmount Decimal  @db.Decimal(10, 2)
+  quantity        Int
+  /// Snapshotted stock ceiling at add-time (see lib/product.ts's isSizePurchasable /
+  /// the mock's buildLineItem) — re-validated for real at checkout, not just here.
+  maxQuantity     Int
+  savedForLater   Boolean  @default(false)
+  addedAt         DateTime @default(now())
+
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_line_items")
+}
+
+model CartDiscount {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  code      String
+  /// "percentage" | "fixed"
+  type      String
+  value     Decimal  @db.Decimal(10, 2)
+  amount    Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+
+  @@unique([cartId, code])
+  @@map("cart_discounts")
+}
+
+model CartGiftCard {
+  id            String   @id @default(cuid())
+  cartId        String
+  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  code          String
+  /// Snapshot of the GiftCard's balance at apply-time (display only) — the live
+  /// balance lives on GiftCard.balanceAmount and is decremented at checkout.
+  balanceAmount Decimal  @db.Decimal(10, 2)
+  amountApplied Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+
+  @@unique([cartId, code])
+  @@map("cart_gift_cards")
+}
+
+model Checkout {
+  id     String @id @default(cuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  email  String?
+  /// "open" | "awaiting_payment" | "completed"
+  status String  @default("open")
+
+  /// Address | null — Zod-validated on read/write, reuses lib/validations/checkout.ts's addressSchema.
+  shippingAddress Json?
+  /// Address | null — Zod-validated, same schema.
+  billingAddress  Json?
+  /// ShippingRate | null — Zod-validated (lib/validation/commerce.ts).
+  shippingRate    Json?
+
+  giftWrap    Boolean @default(false)
+  giftMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([cartId])
+  @@map("checkouts")
+}
+
+model Order {
+  id            String    @id @default(cuid())
+  checkoutId    String    @unique
+  /// Nullable to support guest checkout.
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerEmail String
+
+  /// CartLineItem[] snapshot at purchase time — Zod-validated on read/write.
+  lineItems Json
+  /// CartTotals snapshot at purchase time — Zod-validated.
+  totals    Json
+  /// Address — Zod-validated.
+  shippingAddress Json
+  /// Address — Zod-validated.
+  billingAddress  Json
+  /// ShippingRate — Zod-validated.
+  shippingRate    Json
+
+  giftWrap    Boolean @default(false)
+  giftMessage String?
+
+  /// "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded"
+  /// Starts at "confirmed" — EXACT parity with the mock's completeCheckout, which sets
+  /// status: "confirmed" immediately (verified by reading the actual mock source, not
+  /// assumed) — no customer-facing regression. Admin fulfillment moves it forward from
+  /// there (processing -> shipped -> delivered), with cancelled/refunded as terminal
+  /// alternate states.
+  status String @default("confirmed")
+
+  /// Set by an admin (manual courier provider) or by lib/courier's ACS adapter
+  /// (ACS_Create_Voucher) once a real shipment exists — see lib/courier/.
+  trackingNumber String?
+  /// Carrier display name, e.g. "ACS Courier". Independent of which CourierProvider
+  /// created the shipment — a manually-entered ACS tracking number still says "ACS Courier".
+  carrier        String?
+  trackingUrl    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  returns Return[]
+
+  @@index([customerId])
+  @@map("orders")
+}
+
+/// A customer-initiated return request against one order. Items is a snapshot
+/// (productId/name/color/size/quantity), not a live relation, matching Order.lineItems'
+/// existing snapshot-Json convention — what was requested for return shouldn't change
+/// if the underlying product is later edited or deleted.
+model Return {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerEmail String
+
+  /// ReturnItem[] snapshot — Zod-validated on read/write.
+  items  Json
+  reason String
+
+  /// "requested" | "approved" | "rejected" | "received" | "refunded"
+  status String @default("requested")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([customerId])
+  @@map("returns")
+}
+
+/// Owned by EITHER a signed-in customer (customerId) OR a guest capability
+/// token (anonymousId) — never both. See app/api/wishlist's identity-resolution
+/// rule for which one a given request actually uses.
+model Wishlist {
+  id          String    @id @default(cuid())
+  customerId  String?   @unique
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  anonymousId String?   @unique
+  /// Set the first time the owner clicks "Share" — a public, read-only view at /wishlist/shared/[shareToken]. Never regenerated once set, so a shared link keeps working.
+  shareToken  String?   @unique
+
+  items WishlistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId])
+  @@map("wishlist_items")
+}
+
+model Discount {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  /// "percentage" | "fixed"
+  type      String
+  value     Decimal   @db.Decimal(10, 2)
+  active    Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("discounts")
+}
+
+model GiftCard {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  balanceAmount Decimal  @db.Decimal(10, 2)
+  currencyCode  String   @default("EUR")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@map("gift_cards")
+}
+
+/// One row per attempt against a rate-limited endpoint — `lib/rate-limit.ts` counts
+/// rows within a sliding window rather than maintaining a running counter, which
+/// keeps the check race-free under concurrent requests with no locking needed.
+/// `key` scopes the limit (e.g. "sign-in:{ip}", "sign-in:{email}", "sign-up:{ip}").
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@map("rate_limit_attempts")
+}
+
+/// Every email the app has ever "sent," through whichever `EmailProvider` was active
+/// at the time (see lib/email/) — the dev provider writes here instead of calling a
+/// real API, which makes "did the order-confirmation email actually fire" a real,
+/// checkable question (admin Emails page) instead of something only console logs know.
+model EmailLog {
+  id       String   @id @default(cuid())
+  to       String
+  subject  String
+  html     String
+  text     String
+  /// "order-confirmation" | "shipping-update" | "password-reset" | "return-status-update" | "welcome"
+  template String
+  sentAt   DateTime @default(now())
+
+  @@index([to])
+  @@index([sentAt])
+  @@map("email_log")
+}
+
+/// One row per named CMS document — homepage sections, navigation, SEO defaults, site
+/// settings. A generic key/Json store rather than one bespoke table per document: none
+/// of these are queried by field (always read/written whole), and it lets every admin
+/// CMS editor share one real persistence path instead of four near-identical tables.
+model SiteContent {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+
+  @@map("site_content")
+}
+
+model BlogPost {
+  id      String @id @default(cuid())
+  slug    String @unique
+  title   String
+  excerpt String
+  content String?
+
+  /// Image — Zod-validated on read/write, same convention as Product.images.
+  coverImage Json
+
+  author      String
+  tags        String[]
+  publishedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("blog_posts")
+}
+
+/// A real "Ask a Stylist" request (components/account/ or a public concierge form) —
+/// same real-persistence treatment as ContactMessage, a separate table since it's a
+/// distinct customer-facing feature with its own admin inbox and status workflow.
+model ConciergeRequest {
+  id         String    @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  name       String
+  email      String
+  topic      String
+  message    String
+  /// "open" | "responded" | "closed"
+  status     String    @default("open")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([createdAt])
+  @@map("concierge_requests")
+}
+
+/// One row per successful referral signup. `status` moves "pending" -> "rewarded"
+/// when the referred customer's first order completes (services/checkout.ts) — the
+/// reward is a real GiftCard row (this app's existing redeemable-by-code mechanism;
+/// gift cards aren't customer-owned here, so "reward the referrer" means minting a
+/// fresh code and emailing it to them, not crediting an account balance).
+model Referral {
+  id                 String    @id @default(cuid())
+  referrerCustomerId String
+  referrer           Customer  @relation("ReferralsMade", fields: [referrerCustomerId], references: [id], onDelete: Cascade)
+  referredCustomerId String    @unique
+  referred           Customer  @relation("ReferralReceived", fields: [referredCustomerId], references: [id], onDelete: Cascade)
+  rewardGiftCardCode String?
+  /// "pending" | "rewarded"
+  status             String    @default("pending")
+  createdAt          DateTime  @default(now())
+  rewardedAt          DateTime?
+
+  @@index([referrerCustomerId])
+  @@map("referrals")
+}
+
+/// A real submission from the public Contact page (components/shared/ContactForm.tsx).
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("contact_messages")
+}
+
+/// Short-lived, single-use token backing the password-reset flow. `tokenHash`, not
+/// the raw token, is stored — same principle as password hashing: a DB read (or leak)
+/// shouldn't hand out a usable credential. The raw token only ever exists in the
+/// generated reset link and the requester's inbox (or, in dev, the EmailLog body).
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([customerId])
+  @@map("password_reset_tokens")
+}

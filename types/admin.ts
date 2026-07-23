@@ -1,0 +1,29 @@
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "editor";
+  avatar?: string;
+}
+
+export interface DashboardStat {
+  id: string;
+  label: string;
+  value: string;
+  delta?: number;
+  trend?: "up" | "down" | "flat";
+}
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  subscribedAt: string;
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  actor: string;
+  action: string;
+  target: string;
+  createdAt: string;
+}

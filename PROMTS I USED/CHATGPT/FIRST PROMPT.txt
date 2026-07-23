@@ -1,0 +1,338 @@
+You are a senior full-stack engineer, UX designer, SEO expert, and frontend architect.
+Your task is to build the foundation of a modern luxury fashion ecommerce website inspired by Zara's design philosophy—not a copy, but the same minimal, premium feeling.
+The goal is NOT to build the complete ecommerce yet.
+The goal is to create an extremely scalable frontend that can later be connected to:
+
+* WooCommerce
+* Shopify
+* Medusa
+* Commerce Layer
+* Any Headless CMS
+* Custom API
+
+Everything should be built as if it will eventually power a large fashion brand.
+Tech Stack
+Use:
+
+* Next.js (latest App Router)
+* TypeScript
+* Tailwind CSS
+* shadcn/ui
+* Framer Motion
+* Lucide Icons
+* React Hook Form (future-ready)
+* Zod
+* next-seo or Next.js Metadata API
+* ESLint
+* Prettier
+
+Project structure should be clean and enterprise-grade.
+Design Direction
+Think:
+
+* Zara
+* COS
+* Arket
+* Massimo Dutti
+* Apple
+
+Design principles:
+
+* minimal
+* luxurious
+* editorial
+* white space
+* large photography
+* subtle animations
+* premium typography
+* effortless navigation
+
+Avoid:
+
+* gradients
+* flashy colors
+* rounded cartoon buttons
+* glassmorphism
+* cheap ecommerce templates
+
+Everything should feel like a €100M fashion company.
+Color Palette
+Primary:
+White (#FFFFFF)
+Black (#111111)
+Light Gray (#F5F5F5)
+Dark Gray (#555555)
+Very subtle accent colors only when needed.
+Typography
+Use modern elegant fonts.
+Suggested:
+Heading:
+Playfair Display
+Body:
+Inter
+Create a strong typography system.
+Frontpage Layout
+Build the following sections.
+1. Announcement Bar
+Minimal.
+Free Shipping
+Returns
+New Collection
+2. Header
+Transparent over hero.
+Contains:
+Logo
+Women
+Men
+New In
+Collections
+Sale
+Journal
+About
+Search
+Wishlist
+Account
+Cart
+Sticky while scrolling.
+Smooth transitions.
+3. Fullscreen Hero
+Huge fashion photography.
+Headline
+Minimal CTA
+Secondary CTA
+Slow fade animation.
+Parallax scrolling.
+4. Featured Collections
+Editorial grid.
+Examples:
+Summer Collection
+Essentials
+Linen
+New Arrivals
+Accessories
+Hover animations.
+5. Best Sellers
+Responsive product cards.
+Include:
+Image
+Hover image
+Product name
+Price
+Color variants
+Quick View button
+Wishlist icon
+Cards should be reusable components.
+6. Editorial Banner
+Large image.
+Magazine-style typography.
+Minimal CTA.
+7. New Arrivals
+Carousel.
+Animated.
+Responsive.
+8. Brand Story
+Minimal storytelling section.
+Large typography.
+Elegant layout.
+9. Instagram / Social Grid
+Beautiful image grid.
+Hover animations.
+10. Newsletter
+Elegant signup.
+Minimal.
+Luxury feel.
+11. Footer
+Multiple columns.
+Shop
+About
+Support
+Legal
+Social
+Newsletter
+Payment icons.
+Animations
+Use Framer Motion.
+Subtle only.
+Examples:
+Fade up
+Image zoom
+Parallax
+Page transitions
+Smooth hover
+Button micro interactions
+No excessive animations.
+Responsiveness
+Perfect on:
+Desktop
+Laptop
+Tablet
+Mobile
+Large screens
+Ultra-wide
+Mobile menu should be beautifully animated.
+SEO (Very Important)
+Implement enterprise-level SEO.
+Include:
+Perfect Metadata API
+OpenGraph
+Twitter Cards
+Canonical URLs
+JSON-LD structured data
+Organization schema
+Website schema
+Breadcrumb schema
+Product schema (ready)
+FAQ schema (ready)
+robots.txt
+dynamic sitemap.xml
+manifest.json
+favicon support
+clean semantic HTML
+heading hierarchy
+ARIA labels
+alt tags
+lazy loading
+image optimization
+core web vitals optimization
+Lighthouse score target:
+100 SEO
+95+ Performance
+100 Accessibility
+100 Best Practices
+Performance
+Optimize everything.
+Use:
+Image optimization
+Dynamic imports
+Code splitting
+Lazy loading
+Server Components where appropriate
+Prefetching
+Minimal bundle size
+Font optimization
+CMS Ready Architecture
+The website must NOT hardcode content.
+Instead, create a content layer so that every section can later receive data from:
+WooCommerce
+Shopify
+Strapi
+Sanity
+Contentful
+Prismic
+JSON
+REST API
+GraphQL
+Every component should accept props.
+Admin Dashboard (Preparation)
+Also create a hidden dashboard at:
+/admin
+Use mock authentication for now.
+Dashboard should be modular and ready for expansion.
+Include:
+Dashboard Home
+Analytics cards (placeholder)
+Products
+Collections
+Categories
+Hero Management
+Homepage Sections
+Media Library
+Orders (placeholder)
+Customers (placeholder)
+Discounts
+Navigation Menu
+SEO Settings
+Blog Posts
+Newsletter Subscribers
+Site Settings
+Appearance
+Users
+The dashboard should look modern.
+Think:
+Vercel Dashboard
+Stripe Dashboard
+Linear
+Not WordPress.
+Homepage Editor
+Inside the dashboard, create a visual homepage editor.
+Allow:
+Drag-and-drop section ordering (placeholder)
+Enable/disable sections
+Edit titles
+Edit descriptions
+Replace images
+Change CTA text
+Reorder collections
+Preview changes
+Save draft (mock)
+Publish (mock)
+Fake Backend
+Use mock JSON data.
+Organize it like a future API.
+Example:
+data/
+products.json
+collections.json
+homepage.json
+navigation.json
+settings.json
+seo.json
+blog.json
+Everything should be easy to replace with real APIs later.
+File Structure
+Organize professionally.
+Example:
+app/
+components/
+features/
+sections/
+layouts/
+hooks/
+lib/
+services/
+types/
+data/
+config/
+constants/
+styles/
+public/
+Do NOT create a messy project.
+Code Quality
+Everything must:
+Use TypeScript
+Be strongly typed
+Be reusable
+Be modular
+Be documented
+Follow best practices
+Avoid duplicated code
+Use composition
+Use custom hooks
+Use utility functions
+Future Compatibility
+The architecture should make it easy to later add:
+Shopping Cart
+Checkout
+Authentication
+Wishlist
+Reviews
+Product pages
+Category pages
+Filters
+Search
+Blog
+Multi-language
+Multi-currency
+Payment providers
+Inventory
+Shipping
+ERP
+CRM
+Email marketing
+Analytics
+Headless commerce
+PWA
+Native mobile apps
+Final Goal
+Create a frontend that feels like a premium luxury fashion brand with enterprise-grade architecture. The homepage should be visually stunning, lightning-fast, SEO-optimized, and fully prepared for future ecommerce integration and content management.
+Deliver production-ready code with clean folder structure, reusable components, mock data, and a modern admin dashboard foundation. As you build, explain your architectural decisions briefly and generate the project incrementally so each major section can be reviewed before moving to the next.

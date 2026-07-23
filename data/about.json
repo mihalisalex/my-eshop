@@ -1,0 +1,30 @@
+{
+  "title": "Our Story",
+  "heroImage": {
+    "src": "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1600&q=80",
+    "alt": "ALEXANDRIS atelier"
+  },
+  "intro": "ALEXANDRIS was founded on a simple idea: clothing built to be worn for years, not seasons.",
+  "sections": [
+    {
+      "heading": "Considered by Design",
+      "body": "Every piece starts with the fabric — natural fibres sourced from mills we've worked with for over a decade. We design in small batches, favouring longevity over trend cycles.",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Fabric detail"
+      }
+    },
+    {
+      "heading": "Made to Last",
+      "body": "Our ateliers use construction techniques more common in tailoring than fast fashion — French seams, horn buttons, fully lined outerwear. It costs more to make. It shows.",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Atelier craftsmanship"
+      }
+    },
+    {
+      "heading": "A Quieter Kind of Luxury",
+      "body": "No logos, no seasons that expire. Just clothes we'd wear ourselves, made the way we'd want them made."
+    }
+  ]
+}

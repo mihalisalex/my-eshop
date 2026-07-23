@@ -1,0 +1,11 @@
+[
+  { "id": "r1", "productId": "p1", "author": "Amelia N.", "rating": 5, "title": "Exactly as pictured", "body": "Heavier than I expected in the best way — the drape is gorgeous and it doesn't need a scarf underneath.", "verifiedPurchase": true, "createdAt": "2026-06-14" },
+  { "id": "r2", "productId": "p1", "author": "Sofia M.", "rating": 4, "title": "Runs slightly large", "body": "Beautiful coat, sized down and it's perfect. Would recommend checking the size guide first.", "verifiedPurchase": true, "createdAt": "2026-05-30" },
+  { "id": "r3", "productId": "p1", "author": "Julian B.", "rating": 5, "title": "Worth every euro", "body": "Fourth winter coat I've bought from LUXE-style brands and this is the one that finally feels investment-grade.", "verifiedPurchase": false, "createdAt": "2026-04-22" },
+  { "id": "r4", "productId": "p3", "author": "Elena R.", "rating": 4, "title": "Lovely fabric", "body": "The silk blend feels luxurious and doesn't wrinkle as much as I feared.", "verifiedPurchase": true, "createdAt": "2026-06-02" },
+  { "id": "r5", "productId": "p3", "author": "Marcus F.", "rating": 5, "title": "Gift for my partner", "body": "She wears it constantly. The ivory colourway photographs beautifully too.", "verifiedPurchase": true, "createdAt": "2026-05-11" },
+  { "id": "r6", "productId": "p4", "author": "Nina K.", "rating": 5, "title": "Soft and warm", "body": "No itch at all, and the charcoal colour goes with everything.", "verifiedPurchase": true, "createdAt": "2026-06-20" },
+  { "id": "r7", "productId": "p4", "author": "Leo M.", "rating": 4, "title": "Great everyday sweater", "body": "Fits true to size. Only wish it came in more colours.", "verifiedPurchase": true, "createdAt": "2026-05-04" },
+  { "id": "r8", "productId": "p10", "author": "Amelia N.", "rating": 5, "title": "Moves beautifully", "body": "The bias cut skirt really does move — got compliments all night.", "verifiedPurchase": true, "createdAt": "2026-06-28" },
+  { "id": "r9", "productId": "p10", "author": "Sofia M.", "rating": 3, "title": "Nice but delicate", "body": "Gorgeous dress, just be careful — the fabric snags easily.", "verifiedPurchase": true, "createdAt": "2026-05-19" }
+]

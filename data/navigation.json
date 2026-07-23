@@ -1,0 +1,80 @@
+{
+  "primary": [
+    {
+      "id": "women",
+      "label": "Women",
+      "href": "/women",
+      "children": [
+        { "id": "women-new-in", "label": "New In", "href": "/women?isNew=true" },
+        { "id": "women-outerwear", "label": "Outerwear", "href": "/women?tag=outerwear" },
+        { "id": "women-accessories", "label": "Accessories", "href": "/women?category=accessories" }
+      ],
+      "featured": [
+        { "title": "Summer Collection", "image": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=800&q=80", "href": "/collections/summer-collection" }
+      ]
+    },
+    {
+      "id": "men",
+      "label": "Men",
+      "href": "/men",
+      "children": [
+        { "id": "men-new-in", "label": "New In", "href": "/men?isNew=true" },
+        { "id": "men-outerwear", "label": "Outerwear", "href": "/men?tag=outerwear" },
+        { "id": "men-accessories", "label": "Accessories", "href": "/men?category=accessories" }
+      ],
+      "featured": [
+        { "title": "Essentials", "image": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=800&q=80", "href": "/collections/essentials" }
+      ]
+    },
+    { "id": "new-in", "label": "New In", "href": "/new-in" },
+    { "id": "collections", "label": "Collections", "href": "/collections" },
+    { "id": "sale", "label": "Sale", "href": "/sale" },
+    { "id": "journal", "label": "Journal", "href": "/journal" },
+    { "id": "about", "label": "About", "href": "/about" }
+  ],
+  "utility": [
+    { "id": "search", "label": "Search", "href": "/search" },
+    { "id": "wishlist", "label": "Wishlist", "href": "/wishlist" },
+    { "id": "account", "label": "Account", "href": "/account" },
+    { "id": "cart", "label": "Cart", "href": "/cart" }
+  ],
+  "footer": [
+    {
+      "title": "Shop",
+      "links": [
+        { "label": "Women", "href": "/women" },
+        { "label": "Men", "href": "/men" },
+        { "label": "New In", "href": "/new-in" },
+        { "label": "Sale", "href": "/sale" },
+        { "label": "Collections", "href": "/collections" }
+      ]
+    },
+    {
+      "title": "About",
+      "links": [
+        { "label": "Our Story", "href": "/about" },
+        { "label": "Sustainability", "href": "/sustainability" },
+        { "label": "Careers", "href": "/careers" },
+        { "label": "Journal", "href": "/journal" }
+      ]
+    },
+    {
+      "title": "Support",
+      "links": [
+        { "label": "Contact Us", "href": "/contact" },
+        { "label": "Ask a Stylist", "href": "/concierge" },
+        { "label": "Shipping & Returns", "href": "/shipping-returns" },
+        { "label": "Size Guide", "href": "/size-guide" },
+        { "label": "FAQ", "href": "/faq" }
+      ]
+    },
+    {
+      "title": "Legal",
+      "links": [
+        { "label": "Privacy Policy", "href": "/legal/privacy-policy" },
+        { "label": "Terms of Service", "href": "/legal/terms-of-service" },
+        { "label": "Cookie Policy", "href": "/legal/cookie-policy" }
+      ]
+    }
+  ]
+}
