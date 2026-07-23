@@ -7,7 +7,7 @@ import { getNavigation, getSiteSettings } from "@/services";
 
 export const metadata: Metadata = {
   title: "Women",
-  description: "Shop women's clothing, outerwear, and accessories.",
+  description: "Shop women's shoes — heels, boots, sandals, and flats.",
 };
 
 export default async function WomenPage() {

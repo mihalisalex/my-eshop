@@ -12,7 +12,7 @@
         "data": {
           "eyebrow": "Curated",
           "headline": "The Edit",
-          "subheadline": "A season's worth of considered dressing, gathered in one place.",
+          "subheadline": "A season's worth of considered footwear, gathered in one place.",
           "image": {
             "src": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1600&q=80",
             "alt": "The Edit campaign hero"
@@ -38,7 +38,7 @@
         "order": 2,
         "data": {
           "title": "New This Week",
-          "productIds": ["p1", "p2", "p3", "p10", "p11"]
+          "productIds": []
         }
       }
     ]

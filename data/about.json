@@ -1,30 +1,30 @@
 {
   "title": "Our Story",
   "heroImage": {
-    "src": "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=1600&q=80",
+    "src": "https://images.unsplash.com/photo-1699309325446-3561a7508d3c?auto=format&fit=crop&w=1600&q=80",
     "alt": "ALEXANDRIS atelier"
   },
-  "intro": "ALEXANDRIS was founded on a simple idea: clothing built to be worn for years, not seasons.",
+  "intro": "ALEXANDRIS was founded on a simple idea: shoes built to be resoled, not replaced.",
   "sections": [
     {
       "heading": "Considered by Design",
-      "body": "Every piece starts with the fabric — natural fibres sourced from mills we've worked with for over a decade. We design in small batches, favouring longevity over trend cycles.",
+      "body": "Every pair starts with the leather — full-grain hides sourced from tanneries we've worked with for over a decade. We design in small batches, favouring longevity over trend cycles.",
       "image": {
-        "src": "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=1200&q=80",
-        "alt": "Fabric detail"
+        "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=1200&q=80",
+        "alt": "Leather detail"
       }
     },
     {
       "heading": "Made to Last",
-      "body": "Our ateliers use construction techniques more common in tailoring than fast fashion — French seams, horn buttons, fully lined outerwear. It costs more to make. It shows.",
+      "body": "Our ateliers build with a hand-finished edge and a sole made to be resoled, not replaced — Goodyear-welt construction more common in bespoke shoemaking than mass production. It costs more to make. It shows.",
       "image": {
-        "src": "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1200&q=80",
+        "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=1200&q=80",
         "alt": "Atelier craftsmanship"
       }
     },
     {
       "heading": "A Quieter Kind of Luxury",
-      "body": "No logos, no seasons that expire. Just clothes we'd wear ourselves, made the way we'd want them made."
+      "body": "No logos, no seasons that expire. Just shoes we'd wear ourselves, made the way we'd want them made."
     }
   ]
 }
