@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductListingPage } from "@/components/plp/ProductListingPage";
 import { getAllCollections, getCollectionBySlug, getNavigation, getSiteSettings } from "@/services";
+import { localizeCollection } from "@/lib/localize";
+import type { Locale } from "@/i18n/config";
 
 interface CollectionPageProps {
   params: Promise<{ slug: string }>;
@@ -28,10 +31,11 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
 
 export default async function CollectionPage({ params }: CollectionPageProps) {
   const { slug } = await params;
-  const collection = await getCollectionBySlug(slug);
-  if (!collection) notFound();
+  const rawCollection = await getCollectionBySlug(slug);
+  if (!rawCollection) notFound();
 
-  const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);
+  const [navigation, settings, locale] = await Promise.all([getNavigation(), getSiteSettings(), getLocale()]);
+  const collection = localizeCollection(rawCollection, locale as Locale);
 
   return (
     <>

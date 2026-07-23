@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Minus, Plus, X } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { useCart } from "@/components/providers/CartProvider";
@@ -13,6 +14,7 @@ interface CartLineItemRowProps {
 }
 
 export function CartLineItemRow({ item, compact = false }: CartLineItemRowProps) {
+  const t = useTranslations("Cart");
   const { updateQuantity, removeItem, saveForLater, moveToCart, isMutating } = useCart();
 
   return (
@@ -31,7 +33,7 @@ export function CartLineItemRow({ item, compact = false }: CartLineItemRowProps)
               {item.color} · {item.size}
             </p>
           </div>
-          <button type="button" aria-label="Remove" onClick={() => removeItem(item.id)} className="shrink-0 text-luxe-gray-dark hover:text-luxe-black">
+          <button type="button" aria-label={t("remove")} onClick={() => removeItem(item.id)} className="shrink-0 text-luxe-gray-dark hover:text-luxe-black">
             <X className="size-4" strokeWidth={1.5} />
           </button>
         </div>
@@ -44,14 +46,14 @@ export function CartLineItemRow({ item, compact = false }: CartLineItemRowProps)
               onClick={() => moveToCart(item.id)}
               className="text-xs font-medium tracking-[0.05em] uppercase underline underline-offset-4"
             >
-              Move to Bag
+              {t("moveToBag")}
             </button>
           ) : (
             <div className="flex items-center gap-2">
               <div className="flex items-center border border-border">
                 <button
                   type="button"
-                  aria-label="Decrease quantity"
+                  aria-label={t("decreaseQuantity")}
                   disabled={isMutating || item.quantity <= 1}
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   className="flex size-7 items-center justify-center disabled:opacity-40"
@@ -61,7 +63,7 @@ export function CartLineItemRow({ item, compact = false }: CartLineItemRowProps)
                 <span className="w-6 text-center text-xs">{item.quantity}</span>
                 <button
                   type="button"
-                  aria-label="Increase quantity"
+                  aria-label={t("increaseQuantity")}
                   disabled={isMutating || item.quantity >= item.maxQuantity}
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   className="flex size-7 items-center justify-center disabled:opacity-40"
@@ -76,7 +78,7 @@ export function CartLineItemRow({ item, compact = false }: CartLineItemRowProps)
                   onClick={() => saveForLater(item.id)}
                   className="text-xs text-luxe-gray-dark underline underline-offset-4 hover:text-luxe-black"
                 >
-                  Save for later
+                  {t("saveForLater")}
                 </button>
               ) : null}
             </div>

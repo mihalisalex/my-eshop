@@ -2,11 +2,13 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import { contactSchema, type ContactFormValues } from "@/lib/validations/checkout";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 
 export function ContactStep() {
+  const t = useTranslations("Checkout");
   const { email, setEmail } = useCheckout();
   const {
     register,
@@ -24,13 +26,13 @@ export function ContactStep() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
       <div>
-        <h2 className="font-heading text-xl">Contact</h2>
-        <p className="mt-1 text-sm text-luxe-gray-dark">We&apos;ll send your order confirmation here.</p>
+        <h2 className="font-heading text-xl">{t("contactTitle")}</h2>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("contactSubtitle")}</p>
       </div>
 
       <div>
         <label htmlFor="checkout-email" className="mb-1.5 block text-eyebrow">
-          Email address
+          {t("emailAddress")}
         </label>
         <input
           id="checkout-email"
@@ -48,7 +50,7 @@ export function ContactStep() {
         disabled={isSubmitting}
         className="flex h-12 w-full items-center justify-center gap-2 bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        Continue to Shipping
+        {t("continueToShipping")}
         <ArrowRight className="size-4" strokeWidth={1.5} />
       </button>
     </form>

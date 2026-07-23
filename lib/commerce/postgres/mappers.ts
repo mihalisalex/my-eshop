@@ -55,6 +55,8 @@ export function toProduct(row: ProductRow): Product {
     slug: row.slug,
     name: row.name,
     description: row.description,
+    nameEl: row.nameEl ?? undefined,
+    descriptionEl: row.descriptionEl ?? undefined,
     price: { amount: toNumber(row.priceAmount), currencyCode: row.currencyCode },
     compareAtPrice:
       row.compareAtPriceAmount != null
@@ -115,6 +117,9 @@ export function toCollection(row: CollectionRow): Collection {
     title: row.title,
     subtitle: row.subtitle ?? undefined,
     description: row.description ?? undefined,
+    titleEl: row.titleEl ?? undefined,
+    subtitleEl: row.subtitleEl ?? undefined,
+    descriptionEl: row.descriptionEl ?? undefined,
     image: imageSchema.parse(row.image),
     productIds: row.products.map((link) => link.productId),
     cta:

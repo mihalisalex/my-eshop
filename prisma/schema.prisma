@@ -18,6 +18,9 @@ model Product {
   slug        String @unique
   name        String
   description String
+  /// Greek translation — optional, falls back to `name`/`description` (English) when absent. See lib/localize.ts.
+  nameEl        String?
+  descriptionEl String?
 
   priceAmount          Decimal @db.Decimal(10, 2)
   compareAtPriceAmount Decimal? @db.Decimal(10, 2)
@@ -111,6 +114,10 @@ model Collection {
   title       String
   subtitle    String?
   description String?
+  /// Greek translations — optional, fall back to English when absent. See lib/localize.ts.
+  titleEl       String?
+  subtitleEl    String?
+  descriptionEl String?
 
   /// Image. Zod-validated on read/write.
   image Json

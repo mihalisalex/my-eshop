@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { formatMoney } from "@/lib/format";
 import { computeShippingChargeForRate } from "@/lib/shipping";
 import { useCart } from "@/components/providers/CartProvider";
@@ -26,6 +27,7 @@ function formatAddress(address: { firstName: string; lastName: string; company?:
 }
 
 export function ReviewStep() {
+  const t = useTranslations("Checkout");
   const { email, shippingAddress, billingAddress, sameBillingAsShipping, shippingRates, selectedRateId, giftWrap, giftMessage, placeOrder, isPlacingOrder } = useCheckout();
   const { cart } = useCart();
   const router = useRouter();
@@ -47,29 +49,29 @@ export function ReviewStep() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-heading text-xl">Review Order</h2>
-        <p className="mt-1 text-sm text-luxe-gray-dark">Confirm everything looks right before you place your order.</p>
+        <h2 className="font-heading text-xl">{t("reviewTitle")}</h2>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("reviewSubtitle")}</p>
       </div>
 
       <div className="divide-y divide-border border-y border-border">
         <div className="py-4">
-          <p className="text-eyebrow mb-1.5">Contact</p>
+          <p className="text-eyebrow mb-1.5">{t("contact")}</p>
           <p className="text-sm text-luxe-gray-dark">{email}</p>
         </div>
         <div className="py-4">
-          <p className="text-eyebrow mb-1.5">Shipping address</p>
+          <p className="text-eyebrow mb-1.5">{t("shippingAddress")}</p>
           {formatAddress(shippingAddress)}
         </div>
         <div className="py-4">
-          <p className="text-eyebrow mb-1.5">Billing address</p>
+          <p className="text-eyebrow mb-1.5">{t("billingAddress")}</p>
           {sameBillingAsShipping ? (
-            <p className="text-sm text-luxe-gray-dark">Same as shipping address</p>
+            <p className="text-sm text-luxe-gray-dark">{t("sameAsShipping")}</p>
           ) : (
             formatAddress(billingAddress)
           )}
         </div>
         <div className="py-4">
-          <p className="text-eyebrow mb-1.5">Delivery method</p>
+          <p className="text-eyebrow mb-1.5">{t("deliveryMethod")}</p>
           {selectedRate ? (
             <p className="text-sm text-luxe-gray-dark">
               {selectedRate.label} · {shippingCharge === 0 ? "Free" : formatMoney({ amount: shippingCharge ?? selectedRate.price.amount, currencyCode: selectedRate.price.currencyCode })} ·{" "}
@@ -79,8 +81,8 @@ export function ReviewStep() {
         </div>
         {giftWrap ? (
           <div className="py-4">
-            <p className="text-eyebrow mb-1.5">Gift wrapping</p>
-            <p className="text-sm text-luxe-gray-dark">{giftMessage ? `"${giftMessage}"` : "No message added"}</p>
+            <p className="text-eyebrow mb-1.5">{t("giftWrapping")}</p>
+            <p className="text-sm text-luxe-gray-dark">{giftMessage ? `"${giftMessage}"` : t("noMessageAdded")}</p>
           </div>
         ) : null}
       </div>
@@ -91,9 +93,9 @@ export function ReviewStep() {
         disabled={isPlacingOrder}
         className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        {isPlacingOrder ? "Placing Order..." : "Place Order"}
+        {isPlacingOrder ? t("placingOrder") : t("placeOrder")}
       </button>
-      <p className="text-center text-[11px] text-luxe-gray-dark">Demo checkout — no payment is charged.</p>
+      <p className="text-center text-[11px] text-luxe-gray-dark">{t("demoDisclaimer")}</p>
     </div>
   );
 }

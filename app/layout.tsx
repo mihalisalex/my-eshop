@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { JsonLd } from "@/components/shared/JsonLd";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
 import { getSeoDefaults } from "@/services";
@@ -57,26 +59,30 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const seo = await getSeoDefaults();
+  const locale = await getLocale();
+  const messages = await getMessages();
 
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${inter.variable} ${playfairDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <JsonLd data={organizationSchema(seo)} />
         <JsonLd data={websiteSchema(seo)} />
-        <ToastProvider>
-          <CartProvider>
-            <WishlistProvider>
-              <AuthProvider>{children}</AuthProvider>
-            </WishlistProvider>
-            <CartDrawer />
-          </CartProvider>
-          <ToastViewport />
-        </ToastProvider>
-        <CookieConsentBanner />
-        <ReferralCapture />
+        <NextIntlClientProvider messages={messages}>
+          <ToastProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <AuthProvider>{children}</AuthProvider>
+              </WishlistProvider>
+              <CartDrawer />
+            </CartProvider>
+            <ToastViewport />
+          </ToastProvider>
+          <CookieConsentBanner />
+          <ReferralCapture />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

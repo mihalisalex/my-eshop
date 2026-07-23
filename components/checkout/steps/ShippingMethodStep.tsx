@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { GIFT_WRAP_FEE, GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
 
 export function ShippingMethodStep() {
+  const t = useTranslations("Checkout");
   const { shippingRates, selectedRateId, selectShippingRate, giftWrap, giftMessage, setGiftWrap } = useCheckout();
   const [selected, setSelected] = useState<string | null>(selectedRateId ?? shippingRates[0]?.id ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +33,7 @@ export function ShippingMethodStep() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="font-heading text-xl">Delivery Method</h2>
+          <h2 className="font-heading text-xl">{t("deliveryTitle")}</h2>
           <p className="mt-1 text-sm text-luxe-gray-dark">Enter a shipping address to see available rates.</p>
         </div>
       </div>
@@ -41,8 +43,8 @@ export function ShippingMethodStep() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-heading text-xl">Delivery Method</h2>
-        <p className="mt-1 text-sm text-luxe-gray-dark">Choose how you&apos;d like your order delivered.</p>
+        <h2 className="font-heading text-xl">{t("deliveryTitle")}</h2>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("deliverySubtitle")}</p>
       </div>
 
       <div role="radiogroup" aria-label="Shipping method" className="divide-y divide-border border-y border-border">
@@ -86,14 +88,14 @@ export function ShippingMethodStep() {
             className="mt-0.5 size-4 accent-luxe-black"
           />
           <span>
-            Add gift wrapping <span className="text-luxe-gray-dark">(+{formatMoney({ amount: GIFT_WRAP_FEE, currencyCode: shippingRates[0]?.price.currencyCode ?? "EUR" })})</span>
+            {t("addGiftWrapping")} <span className="text-luxe-gray-dark">(+{formatMoney({ amount: GIFT_WRAP_FEE, currencyCode: shippingRates[0]?.price.currencyCode ?? "EUR" })})</span>
           </span>
         </label>
         {wrapChecked ? (
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, GIFT_MESSAGE_MAX_LENGTH))}
-            placeholder="Add a gift message (optional)"
+            placeholder={t("giftMessagePlaceholder")}
             rows={2}
             maxLength={GIFT_MESSAGE_MAX_LENGTH}
             className="mt-3 w-full border border-border px-3 py-2 text-sm outline-none focus:border-luxe-black"
@@ -107,7 +109,7 @@ export function ShippingMethodStep() {
         disabled={!selected || isSubmitting}
         className="flex h-12 w-full items-center justify-center gap-2 bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        Continue to Payment
+        {t("continueToPayment")}
         <ArrowRight className="size-4" strokeWidth={1.5} />
       </button>
     </div>

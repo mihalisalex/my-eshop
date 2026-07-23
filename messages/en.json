@@ -1,0 +1,103 @@
+{
+  "Header": {
+    "search": "Search",
+    "wishlist": "Wishlist",
+    "account": "Account",
+    "cart": "Cart"
+  },
+  "MobileMenu": {
+    "siteNavigation": "Site navigation",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "account": "Account",
+    "wishlist": "Wishlist"
+  },
+  "Search": {
+    "title": "Search",
+    "closeSearch": "Close search",
+    "placeholder": "Search for products, collections, SKU...",
+    "recentSearches": "Recent Searches",
+    "clear": "Clear",
+    "trendingSearches": "Trending Searches",
+    "searching": "Searching...",
+    "noResults": "No results for \"{query}\". Try a different term, color, or SKU.",
+    "products": "Products",
+    "collections": "Collections"
+  },
+  "Cart": {
+    "remove": "Remove",
+    "moveToBag": "Move to Bag",
+    "saveForLater": "Save for later",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "giftCard": "Gift Card",
+    "shipping": "Shipping",
+    "giftWrapping": "Gift Wrapping",
+    "free": "Free",
+    "estimatedTax": "Estimated Tax (VAT)",
+    "total": "Total"
+  },
+  "Checkout": {
+    "contactTitle": "Contact",
+    "contactSubtitle": "We'll send your order confirmation here.",
+    "emailAddress": "Email address",
+    "continueToShipping": "Continue to Shipping",
+    "continueToDelivery": "Continue to Delivery",
+    "continueToPayment": "Continue to Payment",
+    "deliveryTitle": "Delivery Method",
+    "deliverySubtitle": "Choose how you'd like your order delivered.",
+    "addGiftWrapping": "Add gift wrapping",
+    "giftMessagePlaceholder": "Add a gift message (optional)",
+    "reviewTitle": "Review Order",
+    "reviewSubtitle": "Confirm everything looks right before you place your order.",
+    "contact": "Contact",
+    "shippingAddress": "Shipping address",
+    "billingAddress": "Billing address",
+    "sameAsShipping": "Same as shipping address",
+    "deliveryMethod": "Delivery method",
+    "giftWrapping": "Gift wrapping",
+    "noMessageAdded": "No message added",
+    "placeOrder": "Place Order",
+    "placingOrder": "Placing Order...",
+    "demoDisclaimer": "Demo checkout — no payment is charged."
+  },
+  "Plp": {
+    "filter": "Filter",
+    "closeFilters": "Close filters",
+    "clearAll": "Clear all",
+    "color": "Color",
+    "size": "Size",
+    "price": "Price",
+    "availability": "Availability",
+    "inStockOnly": "In stock only",
+    "itemsOne": "{count} item",
+    "itemsOther": "{count} items"
+  },
+  "Pdp": {
+    "quantity": "Quantity",
+    "decreaseQuantity": "Decrease quantity",
+    "increaseQuantity": "Increase quantity",
+    "selectSize": "Select a Size",
+    "unavailable": "Unavailable",
+    "preorder": "Preorder",
+    "addToBag": "Add to Bag",
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "sizeSuggestion": "Based on your past orders, you usually wear {size} — tap to select"
+  },
+  "Account": {
+    "overview": "Overview",
+    "orders": "Orders",
+    "addresses": "Addresses",
+    "wishlist": "Wishlist",
+    "returns": "Returns",
+    "referrals": "Refer a Friend",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "security": "Security",
+    "signOut": "Sign Out"
+  }
+}

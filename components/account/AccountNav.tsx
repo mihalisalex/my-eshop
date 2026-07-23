@@ -2,23 +2,25 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 const NAV_ITEMS = [
-  { href: "/account", label: "Overview" },
-  { href: "/account/orders", label: "Orders" },
-  { href: "/account/addresses", label: "Addresses" },
-  { href: "/wishlist", label: "Wishlist" },
-  { href: "/account/returns", label: "Returns" },
-  { href: "/account/referrals", label: "Refer a Friend" },
-  { href: "/account/profile", label: "Profile" },
-  { href: "/account/preferences", label: "Preferences" },
-  { href: "/account/security", label: "Security" },
-];
+  { href: "/account", key: "overview" },
+  { href: "/account/orders", key: "orders" },
+  { href: "/account/addresses", key: "addresses" },
+  { href: "/wishlist", key: "wishlist" },
+  { href: "/account/returns", key: "returns" },
+  { href: "/account/referrals", key: "referrals" },
+  { href: "/account/profile", key: "profile" },
+  { href: "/account/preferences", key: "preferences" },
+  { href: "/account/security", key: "security" },
+] as const;
 
 export function AccountNav() {
+  const t = useTranslations("Account");
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
@@ -37,7 +39,7 @@ export function AccountNav() {
               isActive ? "bg-luxe-black text-luxe-white" : "text-luxe-gray-dark hover:bg-luxe-gray-light hover:text-luxe-black"
             )}
           >
-            {item.label}
+            {t(item.key)}
           </Link>
         );
       })}
@@ -50,7 +52,7 @@ export function AccountNav() {
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-luxe-gray-dark hover:bg-luxe-gray-light hover:text-luxe-black"
       >
         <LogOut className="size-4" strokeWidth={1.5} />
-        Sign Out
+        {t("signOut")}
       </button>
     </nav>
   );

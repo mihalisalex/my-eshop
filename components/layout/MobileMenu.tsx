@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Menu, X } from "lucide-react";
 import {
   Sheet,
@@ -24,13 +25,14 @@ interface MobileMenuProps {
 }
 
 export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMenuProps) {
+  const t = useTranslations("MobileMenu");
   const close = () => onOpenChange(false);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <button
         type="button"
-        aria-label="Open menu"
+        aria-label={t("openMenu")}
         onClick={() => onOpenChange(true)}
         className={triggerLight ? "text-luxe-white lg:hidden" : "text-luxe-black lg:hidden"}
       >
@@ -41,10 +43,10 @@ export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMe
         showCloseButton={false}
         className="w-full border-none bg-luxe-white p-0 sm:max-w-sm"
       >
-        <SheetTitle className="sr-only">Site navigation</SheetTitle>
+        <SheetTitle className="sr-only">{t("siteNavigation")}</SheetTitle>
         <div className="flex h-16 items-center justify-between border-b border-border px-6">
-          <span className="font-heading text-lg tracking-[0.15em] uppercase">Menu</span>
-          <SheetClose aria-label="Close menu">
+          <span className="font-heading text-lg tracking-[0.15em] uppercase">{t("menu")}</span>
+          <SheetClose aria-label={t("closeMenu")}>
             <X className="size-5" strokeWidth={1.5} />
           </SheetClose>
         </div>
@@ -92,12 +94,12 @@ export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMe
           <ul className="flex flex-col gap-3 text-sm text-luxe-gray-dark">
             <li>
               <Link href="/account" onClick={close} className="no-underline">
-                Account
+                {t("account")}
               </Link>
             </li>
             <li>
               <Link href="/wishlist" onClick={close} className="no-underline">
-                Wishlist
+                {t("wishlist")}
               </Link>
             </li>
           </ul>

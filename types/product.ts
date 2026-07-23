@@ -44,6 +44,9 @@ export interface ProductBadge {
 export interface Product extends SlugEntity {
   name: string;
   description: string;
+  /** Greek translations — see lib/localize.ts, which picks these over name/description for el-locale storefront rendering. Undefined for anything not yet translated. */
+  nameEl?: string;
+  descriptionEl?: string;
   price: Money;
   compareAtPrice?: Money;
   /** Explicit promotional override. When set, this is the effective selling price instead of `price`. */

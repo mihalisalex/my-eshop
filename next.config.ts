@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Baseline, not hardened: unsafe-inline/unsafe-eval are here because Next.js dev/hydration
 // and Framer Motion's inline transform styles need them without a nonce-based CSP wired
@@ -38,4 +39,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+export default withNextIntl(nextConfig);

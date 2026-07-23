@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Flame, Heart, Minus, Plus, Ruler, Truck } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ const BADGE_STYLES: Record<string, string> = {
 };
 
 export function PurchasePanel({ product }: PurchasePanelProps) {
+  const t = useTranslations("Pdp");
   const { addItem, isMutating } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { customer } = useAuth();
@@ -113,17 +115,17 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
             className="mt-3 flex items-center gap-1.5 text-xs text-luxe-gray-dark hover:text-luxe-black"
           >
             <Ruler className="size-3.5" strokeWidth={1.5} />
-            Based on your past orders, you usually wear <span className="font-medium text-luxe-black">{sizeSuggestion}</span> — tap to select
+            {t("sizeSuggestion", { size: sizeSuggestion })}
           </button>
         ) : null}
       </div>
 
       <div className="mt-6">
-        <p className="text-eyebrow mb-2">Quantity</p>
+        <p className="text-eyebrow mb-2">{t("quantity")}</p>
         <div className="flex w-fit items-center border border-border">
           <button
             type="button"
-            aria-label="Decrease quantity"
+            aria-label={t("decreaseQuantity")}
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             className="flex size-11 items-center justify-center disabled:opacity-40"
             disabled={quantity <= 1}
@@ -133,7 +135,7 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
           <span className="w-10 text-center text-sm">{quantity}</span>
           <button
             type="button"
-            aria-label="Increase quantity"
+            aria-label={t("increaseQuantity")}
             onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))}
             className="flex size-11 items-center justify-center disabled:opacity-40"
             disabled={quantity >= maxQuantity}
@@ -150,11 +152,11 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
           onClick={() => selectedSize && addItem({ productId: product.id, color: selectedColor, size: selectedSize, quantity })}
           className="flex h-13 flex-1 items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-40"
         >
-          {!selectedSize ? "Select a Size" : !product.availableForSale ? "Unavailable" : product.isPreorder ? "Preorder" : "Add to Bag"}
+          {!selectedSize ? t("selectSize") : !product.availableForSale ? t("unavailable") : product.isPreorder ? t("preorder") : t("addToBag")}
         </button>
         <button
           type="button"
-          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={wishlisted ? t("removeFromWishlist") : t("addToWishlist")}
           onClick={() => toggle(product.id)}
           className="flex size-13 shrink-0 items-center justify-center border border-border transition-colors hover:border-luxe-black"
         >

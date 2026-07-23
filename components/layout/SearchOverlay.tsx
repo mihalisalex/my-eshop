@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "framer-motion";
 import { Clock3, Search, TrendingUp, X } from "lucide-react";
 import { useLockBodyScroll } from "@/hooks/use-lock-body-scroll";
@@ -28,6 +29,7 @@ type SearchEntry =
 const MIN_QUERY_LENGTH = 2;
 
 export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
+  const t = useTranslations("Search");
   const inputRef = useRef<HTMLInputElement>(null);
   const requestIdRef = useRef(0);
   const router = useRouter();
@@ -148,8 +150,8 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
           aria-label="Search"
         >
           <div className="container-luxe flex h-16 items-center justify-between border-b border-border">
-            <span className="font-heading text-lg tracking-[0.1em] uppercase">Search</span>
-            <button type="button" aria-label="Close search" onClick={close}>
+            <span className="font-heading text-lg tracking-[0.1em] uppercase">{t("title")}</span>
+            <button type="button" aria-label={t("closeSearch")} onClick={close}>
               <X className="size-5" strokeWidth={1.5} />
             </button>
           </div>
@@ -171,7 +173,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search for products, collections, SKU..."
+                placeholder={t("placeholder")}
                 className="font-heading w-full bg-transparent text-2xl outline-none placeholder:text-luxe-gray-dark md:text-4xl"
               />
             </motion.div>
@@ -184,14 +186,14 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                       <div className="mb-3 flex items-center justify-between">
                         <p className="text-eyebrow flex items-center gap-1.5">
                           <Clock3 className="size-3.5" strokeWidth={1.5} />
-                          Recent Searches
+                          {t("recentSearches")}
                         </p>
                         <button
                           type="button"
                           onClick={clearRecent}
                           className="text-xs text-luxe-gray-dark underline underline-offset-4 hover:text-luxe-black"
                         >
-                          Clear
+                          {t("clear")}
                         </button>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -219,7 +221,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                   <div>
                     <p className="text-eyebrow mb-3 flex items-center gap-1.5">
                       <TrendingUp className="size-3.5" strokeWidth={1.5} />
-                      Trending Searches
+                      {t("trendingSearches")}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {trending.map((term) => {
@@ -243,16 +245,14 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
                   </div>
                 </div>
               ) : isSearching ? (
-                <p className="py-8 text-sm text-luxe-gray-dark">Searching...</p>
+                <p className="py-8 text-sm text-luxe-gray-dark">{t("searching")}</p>
               ) : showNoResults ? (
-                <p className="py-8 text-sm text-luxe-gray-dark">
-                  No results for &quot;{debouncedQuery.trim()}&quot;. Try a different term, color, or SKU.
-                </p>
+                <p className="py-8 text-sm text-luxe-gray-dark">{t("noResults", { query: debouncedQuery.trim() })}</p>
               ) : (
                 <div className="space-y-6">
                   {products.length > 0 ? (
                     <div>
-                      <p className="text-eyebrow mb-2">Products</p>
+                      <p className="text-eyebrow mb-2">{t("products")}</p>
                       <div className="-mx-2">
                         {products.map((product) => {
                           const index = entries.findIndex((e) => e.type === "product" && e.product.id === product.id);
@@ -271,7 +271,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
 
                   {collections.length > 0 ? (
                     <div>
-                      <p className="text-eyebrow mb-2">Collections</p>
+                      <p className="text-eyebrow mb-2">{t("collections")}</p>
                       <div className="-mx-2">
                         {collections.map((collection) => {
                           const index = entries.findIndex((e) => e.type === "collection" && e.collection.id === collection.id);

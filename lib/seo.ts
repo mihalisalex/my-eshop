@@ -8,7 +8,11 @@ interface PageMetadataInput {
   path?: string;
   image?: string;
   noIndex?: boolean;
+  /** Defaults "en" — most call sites don't yet thread the request locale through; pass it explicitly where available (see app/products/[slug]/page.tsx). */
+  locale?: "en" | "el";
 }
+
+const OG_LOCALE: Record<"en" | "el", string> = { en: "en_US", el: "el_GR" };
 
 /** Builds a Next.js Metadata object from site-wide SEO defaults plus per-page overrides. */
 export function buildMetadata({
@@ -18,6 +22,7 @@ export function buildMetadata({
   path = "/",
   image,
   noIndex = false,
+  locale = "en",
 }: PageMetadataInput): Metadata {
   const url = new URL(path, seo.siteUrl).toString();
   const resolvedTitle = title ?? seo.defaultTitle;
@@ -35,7 +40,7 @@ export function buildMetadata({
       url,
       siteName: seo.organization.name,
       images: [{ url: resolvedImage, width: 1200, height: 630, alt: resolvedTitle }],
-      locale: "en_US",
+      locale: OG_LOCALE[locale],
       type: "website",
     },
     twitter: {

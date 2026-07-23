@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getLocale } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
+import { localizeProduct, localizeProducts } from "@/lib/localize";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Breadcrumbs } from "@/components/product/Breadcrumbs";
@@ -33,8 +36,9 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const [product, seo] = await Promise.all([getProductBySlug(slug), getSeoDefaults()]);
-  if (!product) return {};
+  const [rawProduct, seo, locale] = await Promise.all([getProductBySlug(slug), getSeoDefaults(), getLocale()]);
+  if (!rawProduct) return {};
+  const product = localizeProduct(rawProduct, locale as Locale);
 
   return buildMetadata({
     seo,
@@ -42,22 +46,26 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     description: product.seo?.description ?? product.description,
     path: `/products/${product.slug}`,
     image: product.seo?.ogImage ?? product.images[0]?.src,
+    locale: locale as "en" | "el",
   });
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
-  if (!product) notFound();
+  const rawProduct = await getProductBySlug(slug);
+  if (!rawProduct) notFound();
 
-  const [navigation, settings, seo, related, reviews, reviewSummary] = await Promise.all([
+  const [navigation, settings, seo, rawRelated, reviews, reviewSummary, locale] = await Promise.all([
     getNavigation(),
     getSiteSettings(),
     getSeoDefaults(),
-    getRelatedProducts(product.id, 4),
-    getReviewsForProduct(product.id),
-    getReviewSummary(product.id),
+    getRelatedProducts(rawProduct.id, 4),
+    getReviewsForProduct(rawProduct.id),
+    getReviewSummary(rawProduct.id),
+    getLocale(),
   ]);
+  const product = localizeProduct(rawProduct, locale as Locale);
+  const related = localizeProducts(rawRelated, locale as Locale);
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },

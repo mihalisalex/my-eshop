@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useScrolled } from "@/hooks/use-scrolled";
@@ -29,6 +30,7 @@ export function Header({
   announcementMessages,
   transparent = false,
 }: HeaderProps) {
+  const t = useTranslations("Header");
   const scrolled = useScrolled(40);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -62,10 +64,10 @@ export function Header({
             <DesktopNav items={navigation.primary} transparentText={isLight} />
 
             <div className={cn("flex items-center gap-5", isLight ? "text-luxe-white" : "text-luxe-black")}>
-              <IconButton label="Search" onClick={() => setSearchOpen(true)}>
+              <IconButton label={t("search")} onClick={() => setSearchOpen(true)}>
                 <Search className="size-5" strokeWidth={1.5} />
               </IconButton>
-              <Link href="/wishlist" aria-label="Wishlist" className="relative hidden sm:inline-flex">
+              <Link href="/wishlist" aria-label={t("wishlist")} className="relative hidden sm:inline-flex">
                 <Heart className="size-5" strokeWidth={1.5} />
                 {wishlistCount > 0 ? (
                   <span className="absolute -top-2 -right-2 flex size-4 items-center justify-center rounded-full bg-luxe-black text-[9px] text-luxe-white">
@@ -73,10 +75,10 @@ export function Header({
                   </span>
                 ) : null}
               </Link>
-              <Link href="/account" aria-label="Account" className="hidden sm:inline-flex">
+              <Link href="/account" aria-label={t("account")} className="hidden sm:inline-flex">
                 <User className="size-5" strokeWidth={1.5} />
               </Link>
-              <button type="button" aria-label="Cart" onClick={openDrawer} className="relative inline-flex">
+              <button type="button" aria-label={t("cart")} onClick={openDrawer} className="relative inline-flex">
                 <ShoppingBag className="size-5" strokeWidth={1.5} />
                 {cartCount > 0 ? (
                   <span className="absolute -top-2 -right-2 flex size-4 items-center justify-center rounded-full bg-luxe-black text-[9px] text-luxe-white">

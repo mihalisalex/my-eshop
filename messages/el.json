@@ -1,0 +1,103 @@
+{
+  "Header": {
+    "search": "Αναζήτηση",
+    "wishlist": "Λίστα επιθυμιών",
+    "account": "Λογαριασμός",
+    "cart": "Καλάθι"
+  },
+  "MobileMenu": {
+    "siteNavigation": "Πλοήγηση ιστότοπου",
+    "menu": "Μενού",
+    "openMenu": "Άνοιγμα μενού",
+    "closeMenu": "Κλείσιμο μενού",
+    "account": "Λογαριασμός",
+    "wishlist": "Λίστα επιθυμιών"
+  },
+  "Search": {
+    "title": "Αναζήτηση",
+    "closeSearch": "Κλείσιμο αναζήτησης",
+    "placeholder": "Αναζητήστε προϊόντα, συλλογές, SKU...",
+    "recentSearches": "Πρόσφατες αναζητήσεις",
+    "clear": "Καθαρισμός",
+    "trendingSearches": "Δημοφιλείς αναζητήσεις",
+    "searching": "Αναζήτηση...",
+    "noResults": "Δεν βρέθηκαν αποτελέσματα για «{query}». Δοκιμάστε διαφορετικό όρο, χρώμα ή SKU.",
+    "products": "Προϊόντα",
+    "collections": "Συλλογές"
+  },
+  "Cart": {
+    "remove": "Αφαίρεση",
+    "moveToBag": "Μετακίνηση στο καλάθι",
+    "saveForLater": "Αποθήκευση για αργότερα",
+    "decreaseQuantity": "Μείωση ποσότητας",
+    "increaseQuantity": "Αύξηση ποσότητας",
+    "subtotal": "Μερικό σύνολο",
+    "discount": "Έκπτωση",
+    "giftCard": "Δωροκάρτα",
+    "shipping": "Μεταφορικά",
+    "giftWrapping": "Δωροπεριτύλιξη",
+    "free": "Δωρεάν",
+    "estimatedTax": "Εκτιμώμενος ΦΠΑ",
+    "total": "Σύνολο"
+  },
+  "Checkout": {
+    "contactTitle": "Επικοινωνία",
+    "contactSubtitle": "Θα σας στείλουμε εδώ την επιβεβαίωση της παραγγελίας σας.",
+    "emailAddress": "Διεύθυνση email",
+    "continueToShipping": "Συνέχεια στην αποστολή",
+    "continueToDelivery": "Συνέχεια στην παράδοση",
+    "continueToPayment": "Συνέχεια στην πληρωμή",
+    "deliveryTitle": "Τρόπος παράδοσης",
+    "deliverySubtitle": "Επιλέξτε πώς θέλετε να παραδοθεί η παραγγελία σας.",
+    "addGiftWrapping": "Προσθήκη δωροπεριτύλιξης",
+    "giftMessagePlaceholder": "Προσθέστε μήνυμα δώρου (προαιρετικό)",
+    "reviewTitle": "Επισκόπηση παραγγελίας",
+    "reviewSubtitle": "Επιβεβαιώστε ότι όλα είναι σωστά πριν την ολοκλήρωση της παραγγελίας.",
+    "contact": "Επικοινωνία",
+    "shippingAddress": "Διεύθυνση αποστολής",
+    "billingAddress": "Διεύθυνση χρέωσης",
+    "sameAsShipping": "Ίδια με τη διεύθυνση αποστολής",
+    "deliveryMethod": "Τρόπος παράδοσης",
+    "giftWrapping": "Δωροπεριτύλιξη",
+    "noMessageAdded": "Δεν προστέθηκε μήνυμα",
+    "placeOrder": "Ολοκλήρωση παραγγελίας",
+    "placingOrder": "Επεξεργασία παραγγελίας...",
+    "demoDisclaimer": "Δοκιμαστική ολοκλήρωση αγοράς — δεν πραγματοποιείται καμία χρέωση."
+  },
+  "Plp": {
+    "filter": "Φίλτρο",
+    "closeFilters": "Κλείσιμο φίλτρων",
+    "clearAll": "Καθαρισμός όλων",
+    "color": "Χρώμα",
+    "size": "Μέγεθος",
+    "price": "Τιμή",
+    "availability": "Διαθεσιμότητα",
+    "inStockOnly": "Μόνο διαθέσιμα",
+    "itemsOne": "{count} προϊόν",
+    "itemsOther": "{count} προϊόντα"
+  },
+  "Pdp": {
+    "quantity": "Ποσότητα",
+    "decreaseQuantity": "Μείωση ποσότητας",
+    "increaseQuantity": "Αύξηση ποσότητας",
+    "selectSize": "Επιλέξτε μέγεθος",
+    "unavailable": "Μη διαθέσιμο",
+    "preorder": "Προπαραγγελία",
+    "addToBag": "Προσθήκη στο καλάθι",
+    "addToWishlist": "Προσθήκη στη λίστα επιθυμιών",
+    "removeFromWishlist": "Αφαίρεση από τη λίστα επιθυμιών",
+    "sizeSuggestion": "Με βάση τις προηγούμενες παραγγελίες σας, συνήθως φοράτε {size} — πατήστε για επιλογή"
+  },
+  "Account": {
+    "overview": "Επισκόπηση",
+    "orders": "Παραγγελίες",
+    "addresses": "Διευθύνσεις",
+    "wishlist": "Λίστα επιθυμιών",
+    "returns": "Επιστροφές",
+    "referrals": "Προτείνετε έναν φίλο",
+    "profile": "Προφίλ",
+    "preferences": "Προτιμήσεις",
+    "security": "Ασφάλεια",
+    "signOut": "Αποσύνδεση"
+  }
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PriceRangeSlider } from "@/components/plp/PriceRangeSlider";
 import type { SearchFacet } from "@/lib/commerce/types";
@@ -30,6 +31,7 @@ function toggle(list: string[], value: string): string[] {
 }
 
 export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onClearAll, showTitle = true }: PlpFilterSidebarProps) {
+  const t = useTranslations("Plp");
   const colorFacets = getFacetValues(facets, "color");
   const sizeFacets = getFacetValues(facets, "size");
   const hasActiveFilters =
@@ -42,17 +44,17 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        {showTitle ? <p className="text-eyebrow">Filter</p> : <span />}
+        {showTitle ? <p className="text-eyebrow">{t("filter")}</p> : <span />}
         {hasActiveFilters ? (
           <button type="button" onClick={onClearAll} className="text-xs underline underline-offset-4 hover:text-luxe-black">
-            Clear all
+            {t("clearAll")}
           </button>
         ) : null}
       </div>
 
       {colorFacets.length > 0 ? (
         <div>
-          <p className="mb-3 text-sm font-medium">Color</p>
+          <p className="mb-3 text-sm font-medium">{t("color")}</p>
           <div className="flex flex-wrap gap-2">
             {colorFacets.map(({ value, count }) => {
               const active = filters.colors.includes(value);
@@ -77,7 +79,7 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
 
       {sizeFacets.length > 0 ? (
         <div>
-          <p className="mb-3 text-sm font-medium">Size</p>
+          <p className="mb-3 text-sm font-medium">{t("size")}</p>
           <div className="flex flex-wrap gap-2">
             {sizeFacets.map(({ value }) => {
               const active = filters.sizes.includes(value);
@@ -101,7 +103,7 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
       ) : null}
 
       <div>
-        <p className="mb-3 text-sm font-medium">Price</p>
+        <p className="mb-3 text-sm font-medium">{t("price")}</p>
         <PriceRangeSlider
           min={priceBounds[0]}
           max={priceBounds[1]}
@@ -111,7 +113,7 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
       </div>
 
       <div>
-        <p className="mb-3 text-sm font-medium">Availability</p>
+        <p className="mb-3 text-sm font-medium">{t("availability")}</p>
         <label className="flex items-center gap-2.5 text-sm">
           <input
             type="checkbox"
@@ -119,7 +121,7 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
             onChange={(event) => onChange({ availability: event.target.checked ? "in-stock" : "all" })}
             className="size-4 border-border accent-luxe-black"
           />
-          In stock only
+          {t("inStockOnly")}
         </label>
       </div>
     </div>

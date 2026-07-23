@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { NavigationConfig, SiteSettings } from "@/types";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
 interface FooterProps {
   navigation: NavigationConfig;
@@ -58,9 +59,12 @@ export function Footer({ navigation, settings }: FooterProps) {
 
       <div className="border-t border-border">
         <div className="container-luxe flex flex-col-reverse items-center justify-between gap-4 py-6 md:flex-row">
-          <p className="text-xs text-luxe-gray-dark">
-            &copy; {year} {settings.siteName}. All rights reserved.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-xs text-luxe-gray-dark">
+              &copy; {year} {settings.siteName}. All rights reserved.
+            </p>
+            <LanguageSwitcher />
+          </div>
           <ul className="flex items-center gap-2">
             {PAYMENT_METHODS.map((method) => (
               <li
