@@ -7,11 +7,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { SocialSignInButtons } from "@/components/account/SocialSignInButtons";
 import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth";
+import type { OAuthProviderName } from "@/lib/oauth/types";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
-export function RegisterForm() {
+interface RegisterFormProps {
+  configuredOAuthProviders: Record<OAuthProviderName, boolean>;
+}
+
+export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
   const { signUp } = useAuth();
   const router = useRouter();
   const {
@@ -31,7 +36,7 @@ export function RegisterForm() {
       <p className="mt-2 text-sm text-luxe-gray-dark">Join ALEXANDRIS for faster checkout and order tracking.</p>
 
       <div className="mt-8">
-        <SocialSignInButtons />
+        <SocialSignInButtons configured={configuredOAuthProviders} />
       </div>
 
       <div className="my-8 flex items-center gap-3">

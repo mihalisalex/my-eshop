@@ -27,6 +27,7 @@ import {
   MessageSquare,
   Sparkles,
   Users2,
+  Upload,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -49,6 +50,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "Catalog",
     items: [
       { label: "Products", href: "/admin/products", icon: Package },
+      { label: "Import Products", href: "/admin/products/import", icon: Upload },
       { label: "Inventory", href: "/admin/inventory", icon: Boxes },
       { label: "Collections", href: "/admin/collections", icon: Layers },
       { label: "Categories", href: "/admin/categories", icon: Tags },

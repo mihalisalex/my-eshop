@@ -23,8 +23,23 @@ export async function POST(request: Request) {
     if (limit.limited) return rateLimitedResponse(limit.retryAfterSeconds);
 
     const row = await prisma.customer.findUnique({ where: { id: session.sub } });
-    const matches = row ? await bcrypt.compare(parsed.data.currentPassword, row.passwordHash) : false;
-    if (!row || !matches) {
+    if (!row?.passwordHash) {
+      // OAuth-only account (Google/Apple/Facebook), no password to change yet. Not a
+      // failed-attempt case for rate-limiting purposes — the account genuinely has no
+      // password, this isn't the customer guessing wrong.
+      return NextResponse.json(
+        {
+          error: {
+            code: "NO_PASSWORD_SET",
+            message: "This account signed in via Google, Apple, or Facebook and doesn't have a password yet. Use 'Forgot password' to set one.",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const matches = await bcrypt.compare(parsed.data.currentPassword, row.passwordHash);
+    if (!matches) {
       await recordAttempt(key);
       return NextResponse.json(
         { error: { code: "INVALID_CREDENTIALS", message: "Current password is incorrect." } },

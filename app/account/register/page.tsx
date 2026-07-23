@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { RegisterForm } from "@/components/account/RegisterForm";
 import { getNavigation, getSiteSettings } from "@/services";
+import { getConfiguredOAuthProviders } from "@/lib/oauth";
 
 export const metadata: Metadata = {
   title: "Create Account",
@@ -17,7 +18,7 @@ export default async function RegisterPage() {
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main className="flex-1 pt-header">
         <div className="container-luxe py-16 md:py-24">
-          <RegisterForm />
+          <RegisterForm configuredOAuthProviders={getConfiguredOAuthProviders()} />
         </div>
       </main>
       <Footer navigation={navigation} settings={settings} />

@@ -1,33 +1,36 @@
-"use client";
+import type { OAuthProviderName } from "@/lib/oauth/types";
 
-import { useToast } from "@/components/providers/ToastProvider";
-
-const SOCIAL_OPTIONS = [
+const SOCIAL_OPTIONS: { id: OAuthProviderName; label: string }[] = [
   { id: "google", label: "Continue with Google" },
   { id: "apple", label: "Continue with Apple" },
   { id: "facebook", label: "Continue with Facebook" },
-] as const;
+];
 
-export function SocialSignInButtons() {
-  const { toast } = useToast();
+interface SocialSignInButtonsProps {
+  configured: Record<OAuthProviderName, boolean>;
+  /** Relative path to return to after a successful sign-in. */
+  from?: string;
+}
+
+/** Real links to the OAuth start route — only rendered for providers with credentials configured server-side, so this never has to know or leak whether a provider is enabled beyond the boolean it's handed. */
+export function SocialSignInButtons({ configured, from }: SocialSignInButtonsProps) {
+  const options = SOCIAL_OPTIONS.filter((option) => configured[option.id]);
+  if (options.length === 0) return null;
 
   return (
     <div className="space-y-3">
-      {SOCIAL_OPTIONS.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          onClick={() =>
-            toast({
-              title: "Not connected in this demo",
-              description: `${option.label.replace("Continue with ", "")} sign-in would happen here in a live store.`,
-            })
-          }
-          className="flex h-12 w-full items-center justify-center border border-border text-sm font-medium transition-colors hover:border-luxe-black"
-        >
-          {option.label}
-        </button>
-      ))}
+      {options.map((option) => {
+        const href = `/api/auth/oauth/${option.id}/start${from ? `?from=${encodeURIComponent(from)}` : ""}`;
+        return (
+          <a
+            key={option.id}
+            href={href}
+            className="flex h-12 w-full items-center justify-center border border-border text-sm font-medium transition-colors hover:border-luxe-black"
+          >
+            {option.label}
+          </a>
+        );
+      })}
     </div>
   );
 }

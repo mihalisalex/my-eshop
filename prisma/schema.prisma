@@ -168,7 +168,9 @@ model AdminUser {
 model Customer {
   id               String   @id @default(cuid())
   email            String   @unique
-  passwordHash     String
+  /// Null for an OAuth-only account (Google/Apple/Facebook, no password ever set).
+  /// See lib/oauth/ and CustomerOAuthAccount below.
+  passwordHash     String?
   firstName        String
   lastName         String
   phone            String?
@@ -196,8 +198,35 @@ model Customer {
   conciergeRequests    ConciergeRequest[]
   referralsMade        Referral[]            @relation("ReferralsMade")
   referralReceived     Referral?             @relation("ReferralReceived")
+  oauthAccounts        CustomerOAuthAccount[]
 
   @@map("customers")
+}
+
+/// A linked Google/Apple/Facebook identity for a Customer. One customer can
+/// link multiple providers; one provider identity belongs to exactly one
+/// customer (enforced by the unique constraint below). See lib/oauth/.
+model CustomerOAuthAccount {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  /// "google" | "apple" | "facebook"
+  provider String
+  /// The provider's stable subject identifier (Google/Apple `sub`, Facebook `id`) — never the email, which can change.
+  providerUserId String
+
+  /// Captured once at link time as a display fallback only — Customer.firstName/lastName
+  /// remain the source of truth everywhere else. Notably, Apple only ever sends
+  /// name/email on the FIRST authorization for a given account; this is where it's
+  /// preserved for that account, not re-fetched on later logins.
+  email String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, providerUserId])
+  @@index([customerId])
+  @@map("customer_oauth_accounts")
 }
 
 model CustomerAddress {

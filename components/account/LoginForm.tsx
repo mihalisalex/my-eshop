@@ -10,11 +10,18 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { SocialSignInButtons } from "@/components/account/SocialSignInButtons";
 import { loginSchema, magicLinkSchema, type LoginFormValues, type MagicLinkFormValues } from "@/lib/validations/auth";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import type { OAuthProviderName } from "@/lib/oauth/types";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
-export function LoginForm() {
+interface LoginFormProps {
+  configuredOAuthProviders: Record<OAuthProviderName, boolean>;
+  from?: string;
+  oauthError?: boolean;
+}
+
+export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginFormProps) {
   const { signIn, requestPasswordReset } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<"password" | "magic-link">("password");
@@ -25,7 +32,7 @@ export function LoginForm() {
 
   const onPasswordSubmit = async (values: LoginFormValues) => {
     const ok = await signIn(values);
-    if (ok) router.push("/account");
+    if (ok) router.push(from ?? "/account");
   };
 
   const onMagicLinkSubmit = async (values: MagicLinkFormValues) => {
@@ -38,8 +45,14 @@ export function LoginForm() {
       <h1 className="font-heading text-3xl">Sign In</h1>
       <p className="mt-2 text-sm text-luxe-gray-dark">Welcome back to ALEXANDRIS.</p>
 
+      {oauthError ? (
+        <p className="mt-4 text-sm text-destructive">
+          That sign-in didn&apos;t go through. Please try again, or sign in with your email and password.
+        </p>
+      ) : null}
+
       <div className="mt-8">
-        <SocialSignInButtons />
+        <SocialSignInButtons configured={configuredOAuthProviders} from={from} />
       </div>
 
       <div className="my-8 flex items-center gap-3">

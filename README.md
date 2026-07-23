@@ -15,7 +15,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) for the storefront, or [http://localhost:3000/admin](http://localhost:3000/admin) for the dashboard.
 
-**Admin demo login:** `admin@alexandris-demo.example` / `admin123` (pre-filled on the login form). This is mock authentication (a signed cookie set by a Server Action, checked by `proxy.ts`) — swap `lib/auth.ts` for a real provider before shipping.
+**Admin demo login:** `admin@alexandris-demo.example` / `admin123` (pre-filled on the login form). This is real authentication (a Postgres-backed `AdminUser` row, bcrypt-hashed password, a signed JWT session cookie checked by `proxy.ts`) — the demo account is just seeded data, not a mocked auth mechanism.
 
 ## Architecture
 
@@ -88,4 +88,4 @@ Metadata API (per-page `generateMetadata`), JSON-LD (Organization + WebSite site
 
 ## Not Yet Built
 
-By design, and only these: **real payment processing** (checkout UI exists, gateway is cosmetic — this is the one deliberately-deferred piece), real OAuth (Google/Apple/Facebook buttons are visual placeholders), and real multi-currency conversion (totals are currency-aware but only ever computed in EUR today). Everything else the storefront needs — transactional email, courier/tracking, returns, cookie consent, a working Contact form, loyalty, gift wrapping, wishlist sharing, referrals, an "Ask a Stylist" flow, an A/B-test seam, and English+Greek — is real, not mocked. See `PROGRESS.md` for the full build log, including two real external integrations (Resend email, ACS Courier) that are code-complete but need the account owner's own credentials in `.env` before they do anything beyond their safe local-only defaults.
+By design, and only these: **real payment processing** (checkout UI exists, gateway is cosmetic — this is the one deliberately-deferred piece) and real multi-currency conversion (totals are currency-aware but only ever computed in EUR today). Everything else the storefront needs — transactional email, courier/tracking, returns, cookie consent, a working Contact form, loyalty, gift wrapping, wishlist sharing, referrals, an "Ask a Stylist" flow, an A/B-test seam, English+Greek, real Google/Apple/Facebook OAuth login, and an admin CSV bulk product-import tool — is real, not mocked. See `PROGRESS.md` for the full build log, including real external integrations (Resend email, ACS Courier, Google/Facebook/Apple OAuth, Vercel Blob image storage) that are code-complete but need the account owner's own credentials/store connections before they do anything beyond their safe defaults (a provider's login button simply doesn't render until its credentials are set).

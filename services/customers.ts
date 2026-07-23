@@ -17,20 +17,65 @@ export async function getCustomerByEmail(email: string): Promise<Customer | null
 
 export async function createCustomer(input: {
   email: string;
-  passwordHash: string;
+  /** Omitted for an OAuth-only signup — see findOrCreateCustomerForOAuth below. */
+  passwordHash?: string;
   firstName: string;
   lastName: string;
 }): Promise<Customer> {
   const row = await prisma.customer.create({
     data: {
       email: input.email.toLowerCase(),
-      passwordHash: input.passwordHash,
+      passwordHash: input.passwordHash ?? null,
       firstName: input.firstName,
       lastName: input.lastName,
     },
     include: customerInclude,
   });
   return toCustomer(row);
+}
+
+/**
+ * Resolves an OAuth login to a Customer row: an existing linked account wins outright;
+ * failing that, a verified-email match on an existing password-based Customer is
+ * auto-linked (Google/Apple/Facebook all verify email ownership before issuing a token,
+ * so this matches the trust level this app already extends to plain email/password
+ * sign-up, which has no separate email-verification step either); failing that, a new
+ * Customer + CustomerOAuthAccount are created together.
+ */
+export async function findOrCreateCustomerForOAuth(input: {
+  provider: string;
+  providerUserId: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}): Promise<Customer> {
+  const existingAccount = await prisma.customerOAuthAccount.findUnique({
+    where: { provider_providerUserId: { provider: input.provider, providerUserId: input.providerUserId } },
+    include: { customer: { include: customerInclude } },
+  });
+  if (existingAccount) return toCustomer(existingAccount.customer);
+
+  const email = input.email?.toLowerCase();
+  const existingCustomer = email ? await prisma.customer.findUnique({ where: { email } }) : null;
+
+  if (existingCustomer) {
+    await prisma.customerOAuthAccount.create({
+      data: { customerId: existingCustomer.id, provider: input.provider, providerUserId: input.providerUserId, email: input.email },
+    });
+    return (await getCustomerById(existingCustomer.id))!;
+  }
+
+  const created = await prisma.customer.create({
+    data: {
+      email: email ?? `${input.provider}-${input.providerUserId}@oauth.alexandris.invalid`,
+      passwordHash: null,
+      firstName: input.firstName ?? "Customer",
+      lastName: input.lastName ?? "",
+      oauthAccounts: { create: { provider: input.provider, providerUserId: input.providerUserId, email: input.email } },
+    },
+    include: customerInclude,
+  });
+  return toCustomer(created);
 }
 
 export async function updateCustomerProfile(

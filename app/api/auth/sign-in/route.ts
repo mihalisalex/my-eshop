@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     const row = await prisma.customer.findUnique({ where: { email } });
-    const passwordMatches = row ? await bcrypt.compare(parsed.data.password, row.passwordHash) : false;
+    const passwordMatches = row?.passwordHash ? await bcrypt.compare(parsed.data.password, row.passwordHash) : false;
     if (!row || !passwordMatches) {
       await Promise.all([recordAttempt(IP_KEY(ip)), recordAttempt(EMAIL_KEY(email))]);
       return NextResponse.json(
