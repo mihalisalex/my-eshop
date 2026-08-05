@@ -6,11 +6,12 @@
       "href": "/women",
       "children": [
         { "id": "women-new-in", "label": "New In", "href": "/women?isNew=true" },
-        { "id": "women-outerwear", "label": "Outerwear", "href": "/women?tag=outerwear" },
-        { "id": "women-accessories", "label": "Accessories", "href": "/women?category=accessories" }
+        { "id": "women-heels", "label": "Heels", "href": "/women?category=heels" },
+        { "id": "women-boots", "label": "Boots", "href": "/women?category=boots" },
+        { "id": "women-sandals", "label": "Sandals", "href": "/women?category=sandals" }
       ],
       "featured": [
-        { "title": "Summer Collection", "image": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=800&q=80", "href": "/collections/summer-collection" }
+        { "title": "Evening Heels", "image": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80", "href": "/collections/evening-heels" }
       ]
     },
     {
@@ -19,11 +20,12 @@
       "href": "/men",
       "children": [
         { "id": "men-new-in", "label": "New In", "href": "/men?isNew=true" },
-        { "id": "men-outerwear", "label": "Outerwear", "href": "/men?tag=outerwear" },
-        { "id": "men-accessories", "label": "Accessories", "href": "/men?category=accessories" }
+        { "id": "men-oxfords", "label": "Oxfords & Derbies", "href": "/men?category=oxfords" },
+        { "id": "men-sneakers", "label": "Sneakers", "href": "/men?category=sneakers" },
+        { "id": "men-boots", "label": "Boots", "href": "/men?category=boots" }
       ],
       "featured": [
-        { "title": "Essentials", "image": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=800&q=80", "href": "/collections/essentials" }
+        { "title": "The Sneaker Edit", "image": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=800&q=80", "href": "/collections/sneaker-edit" }
       ]
     },
     { "id": "new-in", "label": "New In", "href": "/new-in" },

@@ -7,9 +7,9 @@
       "order": 0,
       "data": {
         "eyebrow": "Autumn / Winter 2026",
-        "headline": "Considered Design.\nQuiet Luxury.",
-        "subheadline": "New season pieces built on precise tailoring and honest materials.",
-        "image": { "src": "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=2400&q=80", "alt": "Model wearing new season outerwear" },
+        "headline": "Considered Craft.\nQuiet Luxury.",
+        "subheadline": "New season shoes built on full-grain leather and honest construction.",
+        "image": { "src": "https://images.unsplash.com/photo-1575553088237-0ddd7b66109f?auto=format&fit=crop&w=2400&q=80", "alt": "Close-up of a pewter stiletto heel against a dark charcoal backdrop, editorial styling" },
         "primaryCta": { "label": "Shop Women", "href": "/women", "variant": "primary" },
         "secondaryCta": { "label": "Shop Men", "href": "/men", "variant": "secondary" }
       }
@@ -20,9 +20,9 @@
       "enabled": true,
       "order": 1,
       "data": {
-        "title": "Shop by Collection",
+        "title": "Shop by Category",
         "subtitle": "Curated edits for the season ahead",
-        "collectionIds": ["c1", "c2", "c3", "c5"]
+        "collectionIds": ["c1", "c2", "c3", "c4", "c5"]
       }
     },
     {
@@ -32,9 +32,9 @@
       "order": 2,
       "data": {
         "title": "Best Sellers",
-        "subtitle": "The pieces everyone is wearing",
-        "productIds": ["p1", "p3", "p4", "p7", "p10", "p11", "p9", "p12"],
-        "viewAllCta": { "label": "View All", "href": "/best-sellers" }
+        "subtitle": "The pairs everyone is wearing",
+        "productIds": ["p1", "p5", "p9", "p7", "p10", "p3"],
+        "viewAllCta": { "label": "View All", "href": "/new-in" }
       }
     },
     {
@@ -44,10 +44,10 @@
       "order": 3,
       "data": {
         "eyebrow": "The Journal",
-        "headline": "Tailoring, Reimagined",
-        "body": "Our tailoring line is built on soft shoulders, natural fibres and a considered palette — designed to move seamlessly from desk to dinner.",
-        "image": { "src": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=2000&q=80", "alt": "Editorial tailoring feature" },
-        "cta": { "label": "Read the Story", "href": "/journal/tailoring-reimagined" },
+        "headline": "Built to Be Resoled, Not Replaced",
+        "body": "Every pair starts with full-grain leather and a hand-finished edge — constructed to be resoled for years rather than replaced each season.",
+        "image": { "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=2000&q=80", "alt": "Close-up of a leather oxford shoe" },
+        "cta": { "label": "Read the Story", "href": "/journal/the-art-of-the-oxford" },
         "imagePosition": "right"
       }
     },
@@ -59,7 +59,7 @@
       "data": {
         "title": "New Arrivals",
         "subtitle": "Just landed this week",
-        "productIds": ["p1", "p2", "p5", "p6", "p10", "p12"]
+        "productIds": ["p1", "p2", "p5", "p7", "p9", "p12"]
       }
     },
     {
@@ -69,8 +69,8 @@
       "order": 5,
       "data": {
         "eyebrow": "Our Philosophy",
-        "headline": "Fewer, better things.",
-        "body": "ALEXANDRIS was founded on a simple idea: clothing should be made well, last long, and say nothing it doesn't mean. Every piece is developed in small batches with mills we've worked with for years — because quiet luxury isn't a trend, it's a discipline.",
+        "headline": "Fewer, better pairs.",
+        "body": "ALEXANDRIS was founded on a simple idea: shoes should be made well, resoled instead of replaced, and say nothing they don't mean. Every pair is developed in small batches with tanneries we've worked with for years — because quiet luxury isn't a trend, it's a discipline.",
         "cta": { "label": "About Us", "href": "/about" }
       }
     },
@@ -83,12 +83,12 @@
         "title": "Follow Along",
         "handle": "@alexandris",
         "images": [
-          { "src": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
-          { "src": "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },
-          { "src": "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 3" },
-          { "src": "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 4" },
-          { "src": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 5" },
-          { "src": "https://images.unsplash.com/photo-1560243563-062bfc001d68?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 6" }
+          { "src": "https://images.unsplash.com/photo-1553835584-c3eab150319e?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
+          { "src": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },
+          { "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 3" },
+          { "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 4" },
+          { "src": "https://images.unsplash.com/photo-1618718315344-7cbffaa60b6b?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 5" },
+          { "src": "https://images.unsplash.com/photo-1603487742131-4160ec999306?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 6" }
         ]
       }
     },
@@ -99,7 +99,7 @@
       "order": 7,
       "data": {
         "headline": "Be the First to Know",
-        "subheadline": "Sign up for early access to new collections, private sales and journal stories.",
+        "subheadline": "Sign up for early access to new arrivals, private sales and journal stories.",
         "ctaLabel": "Subscribe"
       }
     }

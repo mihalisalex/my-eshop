@@ -1,42 +1,46 @@
 [
   {
     "id": "b1",
-    "slug": "tailoring-reimagined",
-    "title": "Tailoring, Reimagined",
-    "excerpt": "Soft shoulders, natural fibres and a considered palette — how our tailoring line moves from desk to dinner.",
-    "coverImage": { "src": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=1600&q=80", "alt": "Tailoring editorial cover" },
-    "author": "ALEXANDRIS Editorial",
-    "publishedAt": "2026-06-02",
-    "tags": ["tailoring", "editorial"]
+    "slug": "the-art-of-the-oxford",
+    "title": "The Art of the Oxford",
+    "excerpt": "Inside the hand-stitching and finishing that separates a real oxford from an imitation.",
+    "content": "A great oxford starts with a single hide of full-grain leather, cut by hand around a wooden last. What follows — the closed lacing, the hand-finished edge, the leather sole built to be resoled rather than replaced — is the difference between a shoe you wear for a season and one you wear for a decade.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=1600&q=80", "alt": "Close-up of a leather oxford shoe" },
+    "author": "ALEXANDRIS Journal",
+    "publishedAt": "2026-07-01",
+    "tags": ["craftsmanship", "oxfords"]
   },
   {
     "id": "b2",
-    "slug": "the-case-for-natural-fibres",
-    "title": "The Case for Natural Fibres",
-    "excerpt": "Why we build every collection around linen, wool and cotton — and what that means for how a garment ages.",
-    "coverImage": { "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1600&q=80", "alt": "Natural fibres editorial cover" },
-    "author": "ALEXANDRIS Editorial",
-    "publishedAt": "2026-05-18",
-    "tags": ["materials", "sustainability"]
+    "slug": "caring-for-leather",
+    "title": "Caring for Leather, Season After Season",
+    "excerpt": "A simple routine that keeps full-grain leather looking new for years.",
+    "content": "Wipe every pair clean after wear, condition the leather every few months, and always let a wet shoe dry away from direct heat. A little care, repeated often, does more for a shoe's lifespan than any single treatment.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=1600&q=80", "alt": "Brown suede penny loafer" },
+    "author": "ALEXANDRIS Journal",
+    "publishedAt": "2026-06-15",
+    "tags": ["care", "leather"]
   },
   {
     "id": "b3",
-    "slug": "a-guide-to-capsule-dressing",
-    "title": "A Guide to Capsule Dressing",
-    "excerpt": "Fewer, better things: how to build a wardrobe around a dozen pieces that all work together.",
-    "coverImage": { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1600&q=80", "alt": "Capsule dressing editorial cover" },
-    "author": "ALEXANDRIS Editorial",
-    "publishedAt": "2026-04-27",
-    "tags": ["style-guide"]
+    "slug": "how-to-style-ankle-boots",
+    "title": "How to Style Ankle Boots, Three Ways",
+    "excerpt": "From tailored trousers to a slip dress, the ankle boot's quiet versatility.",
+    "content": "A black leather ankle boot is one of the few pairs that moves convincingly between a desk, a dinner, and a weekend away. Cropped trousers keep the silhouette clean; a slip dress plays the boot's structure against something softer.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=1600&q=80", "alt": "Black leather ankle boot" },
+    "author": "ALEXANDRIS Journal",
+    "publishedAt": "2026-06-01",
+    "tags": ["style", "boots"]
   },
   {
     "id": "b4",
-    "slug": "inside-our-ateliers",
-    "title": "Inside Our Ateliers",
-    "excerpt": "A look at the small-batch workshops and long-standing mill relationships behind every ALEXANDRIS collection.",
-    "coverImage": { "src": "https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?auto=format&fit=crop&w=1600&q=80", "alt": "Atelier editorial cover" },
-    "author": "ALEXANDRIS Editorial",
-    "publishedAt": "2026-03-14",
-    "tags": ["craftsmanship"]
+    "slug": "inside-the-atelier",
+    "title": "Inside the Atelier",
+    "excerpt": "A look at the small workshop where every ALEXANDRIS pair begins.",
+    "content": "Every pair passes through the same small team, from the first cut of leather to the final polish. It is slower than a factory line, and that is the point.",
+    "coverImage": { "src": "https://images.unsplash.com/photo-1699309325446-3561a7508d3c?auto=format&fit=crop&w=1600&q=80", "alt": "Shoe display, editorial" },
+    "author": "ALEXANDRIS Journal",
+    "publishedAt": "2026-05-15",
+    "tags": ["craftsmanship", "atelier"]
   }
 ]

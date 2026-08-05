@@ -1,47 +1,62 @@
 [
   {
     "id": "c1",
-    "slug": "summer-collection",
-    "title": "Summer Collection",
-    "subtitle": "Light layers, considered",
-    "image": { "src": "https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?auto=format&fit=crop&w=1200&q=80", "alt": "Summer collection editorial" },
-    "productIds": ["p1", "p10", "p11"],
-    "cta": { "label": "Shop the Edit", "href": "/collections/summer-collection" }
+    "slug": "sneaker-edit",
+    "title": "The Sneaker Edit",
+    "subtitle": "Everyday icons, elevated",
+    "description": "Clean-lined leather and canvas sneakers built for daily wear.",
+    "titleEl": "Καλοκαιρινή Συλλογή",
+    "subtitleEl": "Ελαφριές στρώσεις, με προσοχή στη λεπτομέρεια",
+    "image": { "src": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=1600&q=80", "alt": "Wall of sneakers on display" },
+    "productIds": ["p5", "p6"],
+    "cta": { "label": "Shop Sneakers", "href": "/collections/sneaker-edit", "variant": "primary" }
   },
   {
     "id": "c2",
-    "slug": "essentials",
-    "title": "Essentials",
-    "subtitle": "The everyday wardrobe",
-    "image": { "src": "https://images.unsplash.com/photo-1520975954732-35dd22299614?auto=format&fit=crop&w=1200&q=80", "alt": "Essentials collection editorial" },
-    "productIds": ["p3", "p4", "p6"],
-    "cta": { "label": "Shop Essentials", "href": "/collections/essentials" }
+    "slug": "everyday-essentials",
+    "title": "Everyday Essentials",
+    "subtitle": "Loafers and slides for daily wear",
+    "description": "The pairs you reach for without thinking twice.",
+    "titleEl": "Βασικά",
+    "subtitleEl": "Η καθημερινή γκαρνταρόμπα",
+    "image": { "src": "https://images.unsplash.com/photo-1576792741377-eb0f4f6d1a47?auto=format&fit=crop&w=1600&q=80", "alt": "Brown suede penny loafer" },
+    "productIds": ["p3", "p4", "p11"],
+    "cta": { "label": "Shop Essentials", "href": "/collections/everyday-essentials", "variant": "primary" }
   },
   {
     "id": "c3",
-    "slug": "linen",
-    "title": "Linen",
-    "subtitle": "Breathable, natural fibres",
-    "image": { "src": "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=80", "alt": "Linen collection editorial" },
-    "productIds": ["p2"],
-    "cta": { "label": "Shop Linen", "href": "/collections/linen" }
+    "slug": "evening-heels",
+    "title": "Evening Heels",
+    "subtitle": "Elevated silhouettes for after dark",
+    "description": "Pumps and heeled sandals built to go the distance.",
+    "titleEl": "Λινό",
+    "subtitleEl": "Αναπνέουσες, φυσικές ίνες",
+    "image": { "src": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=1600&q=80", "alt": "Black velvet heel with gold trim" },
+    "productIds": ["p7", "p8"],
+    "cta": { "label": "Shop Heels", "href": "/collections/evening-heels", "variant": "primary" }
   },
   {
     "id": "c4",
     "slug": "new-arrivals",
     "title": "New Arrivals",
     "subtitle": "Just landed",
-    "image": { "src": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=1200&q=80", "alt": "New arrivals collection editorial" },
-    "productIds": ["p1", "p2", "p5", "p10", "p12"],
-    "cta": { "label": "Shop New In", "href": "/collections/new-arrivals" }
+    "description": "The latest additions to the ALEXANDRIS shoe wardrobe.",
+    "titleEl": "Νέες Αφίξεις",
+    "subtitleEl": "Μόλις έφτασαν",
+    "image": { "src": "https://images.unsplash.com/photo-1563433337461-5b65f0834f3a?auto=format&fit=crop&w=1600&q=80", "alt": "Close-up of a brown leather oxford shoe" },
+    "productIds": ["p1", "p2", "p12"],
+    "cta": { "label": "Shop New In", "href": "/collections/new-arrivals", "variant": "primary" }
   },
   {
     "id": "c5",
-    "slug": "accessories",
-    "title": "Accessories",
-    "subtitle": "The finishing details",
-    "image": { "src": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=1200&q=80", "alt": "Accessories collection editorial" },
-    "productIds": ["p7", "p8", "p9", "p12"],
-    "cta": { "label": "Shop Accessories", "href": "/collections/accessories" }
+    "slug": "boots-booties",
+    "title": "Boots & Booties",
+    "subtitle": "Built for cooler days",
+    "description": "Leather ankle boots and combat boots with real weather resistance.",
+    "titleEl": "Αξεσουάρ",
+    "subtitleEl": "Οι πινελιές που ολοκληρώνουν",
+    "image": { "src": "https://images.unsplash.com/photo-1556121017-bc6f100e2b4a?auto=format&fit=crop&w=1600&q=80", "alt": "Black leather ankle boot" },
+    "productIds": ["p9", "p10"],
+    "cta": { "label": "Shop Boots", "href": "/collections/boots-booties", "variant": "primary" }
   }
 ]
