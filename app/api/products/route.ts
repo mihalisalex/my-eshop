@@ -34,15 +34,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ products });
   }
 
-  let products = await getAllProducts();
-  const category = searchParams.get("category");
-  const gender = searchParams.get("gender");
-  const collectionId = searchParams.get("collectionId");
-  const tag = searchParams.get("tag");
-  if (category) products = products.filter((p) => p.category === category);
-  if (gender) products = products.filter((p) => p.gender === gender);
-  if (collectionId) products = products.filter((p) => p.collectionIds.includes(collectionId));
-  if (tag) products = products.filter((p) => p.tags.includes(tag));
+  const products = await getAllProducts({
+    category: searchParams.get("category") ?? undefined,
+    gender: searchParams.get("gender") ?? undefined,
+    includeUnisex: searchParams.get("includeUnisex") === "true",
+    collectionId: searchParams.get("collectionId") ?? undefined,
+    tag: searchParams.get("tag") ?? undefined,
+    isNew: searchParams.get("isNew") === "true",
+    isSale: searchParams.get("isSale") === "true",
+  });
 
   return NextResponse.json({ products });
 }

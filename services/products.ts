@@ -11,8 +11,38 @@ import { productInclude, toProduct } from "@/lib/commerce/postgres/mappers";
  * CommerceProvider) keeps working without changes.
  */
 
-export async function getAllProducts(): Promise<Product[]> {
-  const rows = await prisma.product.findMany({ include: productInclude, orderBy: { createdAt: "asc" } });
+export interface ProductListFilter {
+  category?: string;
+  gender?: string;
+  /** When true and `gender` is set, also include unisex products — mirrors the storefront's "unisex items show on both gendered sections" rule. */
+  includeUnisex?: boolean;
+  collectionId?: string;
+  tag?: string;
+  isNew?: boolean;
+  isSale?: boolean;
+}
+
+/**
+ * Filters are applied in the query itself, not fetched-then-filtered in JS —
+ * category/gender pages used to pull every product in the store on every
+ * request just to throw most of it away client-side. Omit `filter` (or any
+ * field on it) to keep the old "everything" behavior.
+ */
+export async function getAllProducts(filter?: ProductListFilter): Promise<Product[]> {
+  const rows = await prisma.product.findMany({
+    where: {
+      ...(filter?.category ? { category: filter.category } : {}),
+      ...(filter?.gender
+        ? { gender: filter.includeUnisex ? { in: [filter.gender, "unisex"] } : filter.gender }
+        : {}),
+      ...(filter?.collectionId ? { collections: { some: { collectionId: filter.collectionId } } } : {}),
+      ...(filter?.tag ? { tags: { has: filter.tag } } : {}),
+      ...(filter?.isNew ? { isNew: true } : {}),
+      ...(filter?.isSale ? { isSale: true } : {}),
+    },
+    include: productInclude,
+    orderBy: { createdAt: "asc" },
+  });
   return rows.map(toProduct);
 }
 
