@@ -31,7 +31,7 @@ export interface ProductListFilter {
 export async function getAllProducts(filter?: ProductListFilter): Promise<Product[]> {
   const rows = await prisma.product.findMany({
     where: {
-      ...(filter?.category ? { category: filter.category } : {}),
+      ...(filter?.category ? { category: { slug: filter.category } } : {}),
       ...(filter?.gender
         ? { gender: filter.includeUnisex ? { in: [filter.gender, "unisex"] } : filter.gender }
         : {}),
@@ -74,7 +74,7 @@ export async function getRelatedProducts(productId: string, limit = 4): Promise<
   }
 
   const rows = await prisma.product.findMany({
-    where: { category: product.category, id: { not: productId } },
+    where: { categoryId: product.categoryId, id: { not: productId } },
     include: productInclude,
     take: limit,
   });

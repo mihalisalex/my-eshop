@@ -18,6 +18,9 @@ const sectionTitleClass = "mb-1 text-sm font-medium tracking-[0.05em] uppercase"
 interface ProductFormProps {
   defaultValues: ProductFormValues;
   collections: { id: string; title: string }[];
+  /** Flattened, depth-annotated (services/categories.ts's getCategoryOptions) so the
+   * `<select>` below can show the real hierarchy via indentation. */
+  categories: { id: string; slug: string; name: string; depth: number }[];
   onSubmit: (values: ProductFormValues) => Promise<ProductActionState>;
   submitLabel?: string;
 }
@@ -74,7 +77,7 @@ function NumberField({
   );
 }
 
-export function ProductForm({ defaultValues, collections, onSubmit, submitLabel = "Save Product" }: ProductFormProps) {
+export function ProductForm({ defaultValues, collections, categories, onSubmit, submitLabel = "Save Product" }: ProductFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -174,8 +177,21 @@ export function ProductForm({ defaultValues, collections, onSubmit, submitLabel 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass} htmlFor="pf-category">Category</label>
-            <input id="pf-category" className={inputClass} aria-invalid={Boolean(errors.category)} {...register("category")} />
+            <select id="pf-category" className={inputClass} aria-invalid={Boolean(errors.category)} {...register("category")}>
+              <option value="">— Select a category —</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {"    ".repeat(category.depth)}
+                  {category.name}
+                </option>
+              ))}
+            </select>
             {errors.category ? <p className={errorClass}>{errors.category.message}</p> : null}
+            {categories.length === 0 ? (
+              <p className="mt-1 text-xs text-luxe-gray-dark">
+                No categories yet — create one under Categories first.
+              </p>
+            ) : null}
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-gender">Gender</label>

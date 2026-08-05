@@ -1,5 +1,6 @@
 import type { Product } from "@/types/product";
 import type { Collection } from "@/types/collection";
+import type { Category } from "@/types/category";
 import type { Locale } from "@/i18n/config";
 
 /**
@@ -35,4 +36,17 @@ export function localizeCollection(collection: Collection, locale: Locale): Coll
 
 export function localizeCollections(collections: Collection[], locale: Locale): Collection[] {
   return collections.map((collection) => localizeCollection(collection, locale));
+}
+
+export function localizeCategory(category: Category, locale: Locale): Category {
+  if (locale !== "el") return category;
+  return {
+    ...category,
+    name: category.nameEl ?? category.name,
+    description: category.descriptionEl ?? category.description,
+  };
+}
+
+export function localizeCategories(categories: Category[], locale: Locale): Category[] {
+  return categories.map((category) => localizeCategory(category, locale));
 }

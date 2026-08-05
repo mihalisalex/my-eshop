@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { ROUTES } from "@/constants/routes";
-import { getAllCollections, getAllPosts, getAllProducts, getLegalPages, getSeoDefaults } from "@/services";
+import { getAllCategories, getAllCollections, getAllPosts, getAllProducts, getLegalPages, getSeoDefaults } from "@/services";
 
 const STATIC_ROUTES: { path: string; priority: number }[] = [
   { path: ROUTES.home, priority: 1 },
@@ -21,9 +21,10 @@ const STATIC_ROUTES: { path: string; priority: number }[] = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getSeoDefaults();
-  const [products, collections, posts, legalPages] = await Promise.all([
+  const [products, collections, categories, posts, legalPages] = await Promise.all([
     getAllProducts(),
     getAllCollections(),
+    getAllCategories(),
     getAllPosts(),
     getLegalPages(),
   ]);
@@ -44,6 +45,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
+    ...categories
+      .filter((category) => category.isVisible)
+      .map((category) => ({
+        url: toUrl(ROUTES.category(category.slug)),
+        lastModified: now,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      })),
     ...products.map((product) => ({
       url: toUrl(ROUTES.product(product.slug)),
       lastModified: now,

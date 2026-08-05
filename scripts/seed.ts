@@ -40,8 +40,34 @@ interface SeedGiftCard {
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-async function seedProducts(products: Product[]) {
+/** The JSON fixture predates the Category table (see prisma/schema.prisma's Category
+ * model) — it still carries the old flat `category` slug string, never a real `categoryId`.
+ * seedCategories() resolves each into a real row before seedProducts() runs. */
+type SeedProduct = Omit<Product, "categoryId">;
+
+/** Deterministic ids (not @default(cuid())) so re-running the seed against the same DB
+ * upserts instead of duplicating — same convention as every id below in this file. */
+async function seedCategories(products: SeedProduct[]): Promise<Map<string, string>> {
+  const slugs = [...new Set(products.map((p) => p.category))];
+  const idBySlug = new Map<string, string>();
+  for (const slug of slugs) {
+    const name = slug.charAt(0).toUpperCase() + slug.slice(1);
+    const category = await prisma.category.upsert({
+      where: { slug },
+      create: { id: `cat-${slug}`, slug, name },
+      update: {},
+    });
+    idBySlug.set(slug, category.id);
+  }
+  console.log(`Seeded ${idBySlug.size} categories.`);
+  return idBySlug;
+}
+
+async function seedProducts(products: SeedProduct[], categoryIdBySlug: Map<string, string>) {
   for (const product of products) {
+    const categoryId = categoryIdBySlug.get(product.category);
+    if (!categoryId) throw new Error(`seedCategories didn't resolve a category for "${product.category}" (product ${product.slug})`);
+
     const images = productImagesSchema.parse(product.images);
     const videos = product.videos ? productVideosSchema.parse(product.videos) : undefined;
     const seo = product.seo ? productSeoOverrideSchema.parse(product.seo) : undefined;
@@ -59,7 +85,7 @@ async function seedProducts(products: Product[]) {
         currencyCode: product.price.currencyCode,
         images,
         videos,
-        category: product.category,
+        categoryId,
         tags: product.tags,
         gender: product.gender,
         season: product.season,
@@ -109,7 +135,7 @@ async function seedProducts(products: Product[]) {
         currencyCode: product.price.currencyCode,
         images,
         videos,
-        category: product.category,
+        categoryId,
         tags: product.tags,
         gender: product.gender,
         season: product.season,
@@ -279,10 +305,11 @@ async function seedBlogPosts(posts: BlogPost[]) {
 }
 
 async function main() {
-  const products = productsData as Product[];
+  const products = productsData as SeedProduct[];
   const collections = collectionsData as Collection[];
 
-  await seedProducts(products);
+  const categoryIdBySlug = await seedCategories(products);
+  await seedProducts(products, categoryIdBySlug);
   await seedCollections(collections);
   await seedProductCollections(collections);
   await seedDiscounts(discountsData as SeedDiscount[]);

@@ -32,10 +32,14 @@ model Product {
   /// ProductVideo[] | null. Zod-validated on read/write.
   videos Json?
 
-  category String
-  tags     String[]
-  gender   String
-  season   String?
+  categoryId String
+  /// onDelete: Restrict — a category with products assigned can't be deleted at the DB
+  /// level even if the admin-side guard (app/admin/(dashboard)/categories/actions.ts)
+  /// is ever bypassed; the admin flow is "reassign or delete the products first."
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  tags       String[]
+  gender     String
+  season      String?
 
   materials        String[]
   careInstructions String[]
@@ -76,13 +80,59 @@ model Product {
   /// The storefront's hottest read path: every PLP (/women, /men, /collections/[slug],
   /// category pages) filters on gender and/or category. Those filters are applied in the
   /// query itself rather than in JS, so without these the listing pages sequential-scan
-  /// the whole catalog on every request. [gender, category] also serves gender-only
+  /// the whole catalog on every request. [gender, categoryId] also serves gender-only
   /// lookups via its leftmost prefix, so no separate single-column gender index is needed.
   /// isNew/isSale are deliberately left unindexed — booleans that split the catalog
   /// roughly in half aren't selective enough for an index to beat a scan.
-  @@index([gender, category])
-  @@index([category])
+  @@index([gender, categoryId])
+  @@index([categoryId])
   @@map("products")
+}
+
+/// Real taxonomy, replacing the flat string that used to live on Product.category —
+/// supports unlimited nesting (self-relation), admin-managed images/SEO, and stable
+/// display order. See services/categories.ts and app/admin/(dashboard)/categories/.
+model Category {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  /// Greek translation — optional, falls back to `name` when absent. See lib/localize.ts.
+  nameEl        String?
+  description   String?
+  descriptionEl String?
+
+  parentId String?
+  /// onDelete: SetNull — deleting a parent promotes its children to top-level rather than
+  /// cascading the delete, which would silently destroy an entire subtree. The admin delete
+  /// action additionally blocks deleting a category that still has children or assigned
+  /// products, so SetNull is a safety net for direct DB operations, not the normal path.
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+
+  /// Stable display order among siblings — same convention as ProductColor.position.
+  /// Drag-and-drop reordering in the admin only ever reorders within one parent; moving a
+  /// category to a different parent is a deliberate field edit (parentId), not a cross-tree
+  /// drag, so position never needs to be unique/compacted across the whole table.
+  position Int @default(0)
+
+  /// Image | null — card image for nav menus / category grids. Zod-validated on read/write.
+  image Json?
+  /// Image | null — wide banner shown on the category's own storefront page.
+  bannerImage Json?
+
+  isFeatured Boolean @default(false)
+  isVisible  Boolean @default(true)
+
+  /// ProductSeoOverride | null — same shape/convention as Product.seo.
+  seo Json?
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@map("categories")
 }
 
 model ProductColor {

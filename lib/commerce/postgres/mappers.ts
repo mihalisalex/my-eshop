@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { Product, ProductGender, ProductSeason, InventoryPolicy } from "@/types/product";
+import type { Category } from "@/types/category";
 import type { Collection } from "@/types/collection";
 import type { Discount, GiftCard } from "@/types/commerce";
 import {
@@ -45,6 +46,7 @@ export const productInclude = {
   colors: { orderBy: { position: "asc" } },
   sizes: { orderBy: { position: "asc" } },
   collections: { orderBy: { position: "asc" } },
+  category: true,
 } satisfies Prisma.ProductInclude;
 
 export type ProductRow = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
@@ -80,7 +82,10 @@ export function toProduct(row: ProductRow): Product {
       sku: size.sku ?? undefined,
       barcode: size.barcode ?? undefined,
     })),
-    category: row.category,
+    // `category` stays a plain slug string here (not the joined Category object) so every
+    // existing consumer keeps working unchanged — see the Product.category doc comment.
+    category: row.category.slug,
+    categoryId: row.categoryId,
     collectionIds: row.collections.map((link) => link.collectionId),
     tags: row.tags,
     gender: row.gender as ProductGender,
@@ -101,6 +106,31 @@ export function toProduct(row: ProductRow): Product {
     shippingWeightGrams: row.shippingWeightGrams ?? undefined,
     availableForSale: row.availableForSale,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+  };
+}
+
+export const categoryInclude = {
+  _count: { select: { products: true } },
+} satisfies Prisma.CategoryInclude;
+
+export type CategoryRow = Prisma.CategoryGetPayload<{ include: typeof categoryInclude }>;
+
+export function toCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    nameEl: row.nameEl ?? undefined,
+    description: row.description ?? undefined,
+    descriptionEl: row.descriptionEl ?? undefined,
+    parentId: row.parentId ?? undefined,
+    position: row.position,
+    image: row.image ? imageSchema.parse(row.image) : undefined,
+    bannerImage: row.bannerImage ? imageSchema.parse(row.bannerImage) : undefined,
+    isFeatured: row.isFeatured,
+    isVisible: row.isVisible,
+    seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+    productCount: row._count.products,
   };
 }
 

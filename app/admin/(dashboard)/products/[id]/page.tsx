@@ -5,6 +5,7 @@ import { updateProduct, deleteProduct } from "@/app/admin/(dashboard)/products/a
 import { productToFormValues } from "@/lib/validation/product";
 import { getProductById } from "@/services/products";
 import { getAllCollections } from "@/services/collections";
+import { getCategoryOptions } from "@/services/categories";
 
 interface AdminProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -12,7 +13,11 @@ interface AdminProductDetailPageProps {
 
 export default async function AdminProductDetailPage({ params }: AdminProductDetailPageProps) {
   const { id } = await params;
-  const [product, collections] = await Promise.all([getProductById(id), getAllCollections()]);
+  const [product, collections, categories] = await Promise.all([
+    getProductById(id),
+    getAllCollections(),
+    getCategoryOptions(),
+  ]);
   if (!product) notFound();
 
   const boundUpdate = updateProduct.bind(null, id);
@@ -37,6 +42,7 @@ export default async function AdminProductDetailPage({ params }: AdminProductDet
       <ProductForm
         defaultValues={productToFormValues(product)}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
+        categories={categories}
         onSubmit={boundUpdate}
         submitLabel="Save Changes"
       />

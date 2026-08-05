@@ -1,9 +1,17 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { notifyBackInStockIfNeeded } from "@/lib/products-import/back-in-stock";
+import { findOrCreateCategoryBySlug } from "@/services/categories";
 import type { ProductFormValues } from "@/lib/validation/product";
 
-function toProductWriteData(data: ProductFormValues) {
+/**
+ * `categoryId` is resolved once, outside `toProductWriteData`, and threaded in — the
+ * single-product admin form only ever submits a slug from a real `<select>` (so this
+ * always just finds), while CSV import rows may reference a category that doesn't exist
+ * yet (so this creates it, same auto-mapping precedent as the WooCommerce import
+ * documented in NOTES.md). Either way there's exactly one resolution path.
+ */
+function toProductWriteData(data: ProductFormValues, categoryId: string) {
   return {
     slug: data.slug,
     name: data.name,
@@ -14,7 +22,7 @@ function toProductWriteData(data: ProductFormValues) {
     currencyCode: data.currencyCode,
     images: data.images,
     videos: data.videos ?? undefined,
-    category: data.category,
+    categoryId,
     tags: data.tags,
     gender: data.gender,
     season: data.season ?? null,
@@ -43,6 +51,8 @@ function toProductWriteData(data: ProductFormValues) {
  * bulk-import tool's commit route, so there's exactly one place this logic can drift.
  */
 export async function writeProductRow(data: ProductFormValues, existingId?: string): Promise<{ id: string }> {
+  const { id: categoryId } = await findOrCreateCategoryBySlug(data.category);
+
   const nestedWrites = {
     colors: {
       create: data.colors.map((color, position) => ({
@@ -82,7 +92,7 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
       prisma.productCollection.deleteMany({ where: { productId: existingId } }),
       prisma.product.update({
         where: { id: existingId },
-        data: { ...toProductWriteData(data), ...nestedWrites },
+        data: { ...toProductWriteData(data, categoryId), ...nestedWrites },
       }),
     ]);
 
@@ -98,7 +108,7 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
   }
 
   const product = await prisma.product.create({
-    data: { ...toProductWriteData(data), ...nestedWrites },
+    data: { ...toProductWriteData(data, categoryId), ...nestedWrites },
   });
   return { id: product.id };
 }

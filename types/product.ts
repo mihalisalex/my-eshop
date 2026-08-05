@@ -56,7 +56,13 @@ export interface Product extends SlugEntity {
   videos?: ProductVideo[];
   colors: ColorVariant[];
   sizes: SizeVariant[];
+  /** The assigned category's slug — kept as a plain string here (not the full Category
+   * object) so every existing consumer (PLP `?category=` scoping, search facets, the
+   * breadcrumb, `lib/fit-recommendation.ts`) keeps working unchanged now that the
+   * underlying source of truth is a real relational Category. Use `categoryId` for
+   * anything that needs the real row (the admin product form's category picker, writes). */
   category: string;
+  categoryId: string;
   collectionIds: string[];
   tags: string[];
   gender: ProductGender;
