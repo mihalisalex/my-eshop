@@ -61,6 +61,15 @@ export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMe
                   </AccordionTrigger>
                   <AccordionContent className="[&_a]:no-underline [&_a]:hover:text-luxe-black">
                     <ul className="space-y-3 pl-1">
+                      <li>
+                        <Link
+                          href={item.href}
+                          onClick={close}
+                          className="block text-sm font-medium text-luxe-black"
+                        >
+                          {t("viewAll", { label: item.label })}
+                        </Link>
+                      </li>
                       {item.children.map((child) => (
                         <li key={child.id}>
                           <Link
