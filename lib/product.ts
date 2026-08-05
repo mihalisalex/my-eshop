@@ -9,7 +9,7 @@ export function isOnSale(product: Product): boolean {
   return Boolean(product.salePrice || product.isSale) && Boolean(product.compareAtPrice);
 }
 
-export function getTotalStock(product: Product): number {
+function getTotalStock(product: Product): number {
   return product.sizes.reduce((sum, size) => sum + size.quantity, 0);
 }
 
@@ -41,10 +41,6 @@ export function getProductBadges(product: Product): ProductBadge[] {
   }
 
   return badges;
-}
-
-export function formatMaterials(product: Product): string {
-  return product.materials.join(", ");
 }
 
 /**

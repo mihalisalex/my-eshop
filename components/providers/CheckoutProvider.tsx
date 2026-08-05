@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -64,9 +65,26 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
+  // `checkout` alone can't guard this: CartProvider hands back a brand-new cart object
+  // on every mutation, so a quantity change while the first createCheckout is still in
+  // flight re-runs this effect with `checkout` still null and creates a second, orphaned
+  // checkout row for the same cart. The ref closes that window; the catch stops a failed
+  // create from silently leaving the checkout flow inert with no way to retry.
+  const checkoutRequestedForCartRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!cart || checkout) return;
-    commerce.checkout.createCheckout(cart.id).then(setCheckout);
+    if (checkoutRequestedForCartRef.current === cart.id) return;
+    checkoutRequestedForCartRef.current = cart.id;
+
+    commerce.checkout
+      .createCheckout(cart.id)
+      .then(setCheckout)
+      .catch((error) => {
+        console.error("Failed to create checkout", error);
+        // Let a later render retry rather than wedging the flow permanently.
+        checkoutRequestedForCartRef.current = null;
+      });
   }, [cart, checkout, commerce]);
 
   const advanceTo = useCallback((next: CheckoutStep) => {

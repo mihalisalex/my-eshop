@@ -10,15 +10,6 @@ export const ORDER_STATUS_LABEL: Record<Order["status"], string> = {
   refunded: "Refunded",
 };
 
-export const ORDER_STATUS_COLOR: Record<Order["status"], string> = {
-  confirmed: "text-luxe-gray-dark",
-  processing: "text-blue-700",
-  shipped: "text-amber-700",
-  delivered: "text-green-700",
-  cancelled: "text-destructive",
-  refunded: "text-destructive",
-};
-
 export const ORDER_STATUS_OPTIONS: Order["status"][] = [
   "confirmed",
   "processing",

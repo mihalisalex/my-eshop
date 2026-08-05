@@ -75,16 +75,20 @@ export function createMockSearchService(productService: ProductService): SearchS
 
       const facets = buildFacets(scoped);
 
-      // Refinement filters — the user's adjustable facet selections.
+      // Refinement filters — the user's adjustable facet selections. Each is bound to a
+      // local first so the narrowing survives into the filter closure (TypeScript can't
+      // carry `options.x?.length` through one), which is what the `!` assertions were
+      // papering over.
       let results = scoped;
-      if (options.colors?.length) {
-        results = results.filter((p) => p.colors.some((c) => options.colors!.includes(c.name)));
+      const { colors, sizes, tags } = options;
+      if (colors?.length) {
+        results = results.filter((p) => p.colors.some((c) => colors.includes(c.name)));
       }
-      if (options.sizes?.length) {
-        results = results.filter((p) => p.sizes.some((s) => options.sizes!.includes(s.name)));
+      if (sizes?.length) {
+        results = results.filter((p) => p.sizes.some((s) => sizes.includes(s.name)));
       }
-      if (options.tags?.length) {
-        results = results.filter((p) => p.tags.some((t) => options.tags!.includes(t)));
+      if (tags?.length) {
+        results = results.filter((p) => p.tags.some((t) => tags.includes(t)));
       }
       if (options.availability === "in-stock") {
         results = results.filter((p) => isAvailable(p));

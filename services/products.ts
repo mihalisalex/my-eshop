@@ -63,21 +63,6 @@ export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
 }
 
-export async function getProductsByCategory(category: string): Promise<Product[]> {
-  const rows = await prisma.product.findMany({ where: { category }, include: productInclude });
-  return rows.map(toProduct);
-}
-
-export async function getSaleProducts(): Promise<Product[]> {
-  const rows = await prisma.product.findMany({ where: { isSale: true }, include: productInclude });
-  return rows.map(toProduct);
-}
-
-export async function getNewProducts(): Promise<Product[]> {
-  const rows = await prisma.product.findMany({ where: { isNew: true }, include: productInclude });
-  return rows.map(toProduct);
-}
-
 /** Explicit `relatedProductIds` win; falls back to same-category products otherwise. */
 export async function getRelatedProducts(productId: string, limit = 4): Promise<Product[]> {
   const product = await prisma.product.findUnique({ where: { id: productId } });

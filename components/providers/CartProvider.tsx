@@ -58,18 +58,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Postgres needs an id to look up a cart — the mock's "whole cart object lives in
     // localStorage" shortcut is gone, so only the id itself is persisted client-side now.
     const storedCartId = readStorage<string | null>(CART_ID_KEY, null);
-    commerce.cart.getOrCreateCart(linkedCartId ?? storedCartId).then((initial) => {
-      if (!cancelled) {
+    commerce.cart
+      .getOrCreateCart(linkedCartId ?? storedCartId)
+      .then((initial) => {
+        if (cancelled) return;
         writeStorage(CART_ID_KEY, initial.id);
         setCart(initial);
-        setIsLoading(false);
         if (linkedCartId) {
           const url = new URL(window.location.href);
           url.searchParams.delete("cart");
           window.history.replaceState({}, "", url);
         }
-      }
-    });
+      })
+      // Cart creation failing must not pin the header/drawer in a permanent loading
+      // state — consumers already treat a null cart as "empty" via optional chaining.
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load cart", error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
     return () => {
       cancelled = true;
     };

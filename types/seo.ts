@@ -1,12 +1,3 @@
-export interface SeoMeta {
-  title: string;
-  description: string;
-  canonical?: string;
-  ogImage?: string;
-  noIndex?: boolean;
-  keywords?: string[];
-}
-
 export interface BreadcrumbItem {
   name: string;
   href: string;

@@ -30,11 +30,3 @@ export interface SlugEntity {
   id: string;
   slug: string;
 }
-
-/** Generic wrapper mirroring a future paginated API response. */
-export interface Paginated<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
