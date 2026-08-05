@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "alexandrisstores.gr",
       },
+      {
+        // Vercel Blob (Media Library uploads, CSV-import image uploads, and the
+        // WooCommerce-import re-host) — each store gets its own subdomain.
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
     ],
   },
   async headers() {
