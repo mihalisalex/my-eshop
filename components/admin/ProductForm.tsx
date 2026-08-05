@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, type InputHTMLAttributes } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, Controller, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { formatMoney } from "@/lib/format";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import type { ProductActionState } from "@/app/admin/(dashboard)/products/actions";
 
@@ -23,6 +24,42 @@ interface ProductFormProps {
   categories: { id: string; slug: string; name: string; depth: number }[];
   onSubmit: (values: ProductFormValues) => Promise<ProductActionState>;
   submitLabel?: string;
+}
+
+/**
+ * Live margin against the price actually charged (sale price wins over list price), so the
+ * number reflects what the business really makes rather than an optimistic list-price
+ * figure. Recomputes as the merchandiser types instead of only after save — pricing is a
+ * decision made *while* filling this in.
+ */
+function MarginReadout({ control, currencyCode }: { control: Control<ProductFormValues>; currencyCode: string }) {
+  const [price, salePrice, costPrice] = useWatch({ control, name: ["price", "salePrice", "costPrice"] });
+
+  const effective = salePrice ?? price;
+  const hasInputs = typeof costPrice === "number" && typeof effective === "number";
+  const profit = hasInputs ? effective - costPrice : null;
+  const marginPercent = hasInputs && effective !== 0 ? ((effective - costPrice) / effective) * 100 : null;
+
+  return (
+    <div>
+      <span className={labelClass}>Margin</span>
+      <div className="flex h-10 items-center border border-dashed border-border px-3 text-sm">
+        {profit === null || marginPercent === null ? (
+          <span className="text-luxe-gray-dark">Set a cost price</span>
+        ) : (
+          <span className={profit < 0 ? "text-destructive" : "text-green-700"}>
+            {marginPercent.toFixed(1)}%
+            <span className="ml-2 text-xs text-luxe-gray-dark">
+              {formatMoney({ amount: profit, currencyCode })} per unit
+            </span>
+          </span>
+        )}
+      </div>
+      {profit !== null && profit < 0 ? (
+        <p className="mt-1 text-xs text-destructive">Selling below cost.</p>
+      ) : null}
+    </div>
+  );
 }
 
 /** Comma-separated text field bound to a string[] form value. */
@@ -169,12 +206,49 @@ export function ProductForm({ defaultValues, collections, categories, onSubmit, 
               )}
             />
           </div>
+          <div>
+            <label className={labelClass} htmlFor="pf-costPrice">Cost price (optional)</label>
+            <Controller
+              name="costPrice"
+              control={control}
+              render={({ field }) => (
+                <NumberField id="pf-costPrice" step="0.01" min={0} className={inputClass} value={field.value} onChange={field.onChange} />
+              )}
+            />
+            <p className="mt-1 text-xs text-luxe-gray-dark">Internal only — never shown to customers.</p>
+          </div>
+          <MarginReadout control={control} currencyCode={defaultValues.currencyCode} />
+        </div>
+      </div>
+
+      <div className={sectionClass}>
+        <h3 className={sectionTitleClass}>Publication</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass} htmlFor="pf-status">Status</label>
+            <select id="pf-status" className={inputClass} {...register("status")}>
+              <option value="draft">Draft — not visible to customers</option>
+              <option value="active">Active — live on the storefront</option>
+              <option value="archived">Archived — retired, hidden from the storefront</option>
+            </select>
+            <p className="mt-1 text-xs text-luxe-gray-dark">
+              Separate from &ldquo;Available for sale&rdquo; below, which controls whether a live product can be bought.
+            </p>
+          </div>
         </div>
       </div>
 
       <div className={sectionClass}>
         <h3 className={sectionTitleClass}>Organization</h3>
         <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass} htmlFor="pf-brand">Brand (optional)</label>
+            <input id="pf-brand" className={inputClass} {...register("brand")} />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="pf-vendor">Vendor / supplier (optional)</label>
+            <input id="pf-vendor" className={inputClass} {...register("vendor")} />
+          </div>
           <div>
             <label className={labelClass} htmlFor="pf-category">Category</label>
             <select id="pf-category" className={inputClass} aria-invalid={Boolean(errors.category)} {...register("category")}>

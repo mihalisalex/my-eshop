@@ -38,6 +38,14 @@ function parseNumber(value: string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** Unrecognized/blank values fall back to "active" rather than failing the row — see the
+ * `status` note in mapCsvRowToProductForm. An invalid value is a typo, not a reason to
+ * reject an otherwise-good product. */
+function normalizeStatus(value: string | undefined): "draft" | "active" | "archived" {
+  const normalized = value?.trim().toLowerCase();
+  return normalized === "draft" || normalized === "archived" ? normalized : "active";
+}
+
 export interface MappedRow {
   /** A plain object shaped like ProductFormValues — not yet validated. Feed to productFormSchema.safeParse. */
   values: Record<string, unknown>;
@@ -89,6 +97,7 @@ export function mapCsvRowToProductForm(row: RawCsvRow, resolvedImageUrls: Map<st
     price: parseNumber(row.price),
     compareAtPrice: parseNumber(row.compareAtPrice),
     salePrice: parseNumber(row.salePrice),
+    costPrice: parseNumber(row.costPrice),
     currencyCode: row.currencyCode?.trim() || "EUR",
     images,
     colors,
@@ -111,6 +120,12 @@ export function mapCsvRowToProductForm(row: RawCsvRow, resolvedImageUrls: Map<st
     inventoryPolicy: row.inventoryPolicy?.trim() || "deny",
     shippingWeightGrams: parseNumber(row.shippingWeightGrams),
     availableForSale: parseBool(row.availableForSale, true),
+    // Imports default to "active" (not "draft" like the manual form): a bulk import is an
+    // explicit act of publishing a prepared catalog, and defaulting hundreds of rows to
+    // draft would mean hand-publishing every one. An explicit `status` column still wins.
+    brand: row.brand?.trim() || undefined,
+    vendor: row.vendor?.trim() || undefined,
+    status: normalizeStatus(row.status),
   };
 
   return { values, errors };

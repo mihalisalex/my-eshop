@@ -16,7 +16,7 @@ interface InventoryRow {
 const LOW_STOCK_THRESHOLD = 3;
 
 export default async function AdminInventoryPage() {
-  const products = await getAllProducts();
+  const products = await getAllProducts({ includeUnpublished: true });
 
   const rows: InventoryRow[] = products.flatMap((product) =>
     product.sizes.map((size) => ({

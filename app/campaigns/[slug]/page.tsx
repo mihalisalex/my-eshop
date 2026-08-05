@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/product/ProductCard";
-import { getAllCampaigns, getCampaignBySlug, getNavigation, getProductsByIds, getSiteSettings } from "@/services";
+import { getAllCampaigns, getCampaignBySlug, getNavigation, getPublishedProductsByIds, getSiteSettings } from "@/services";
 
 interface CampaignPageProps {
   params: Promise<{ slug: string }>;
@@ -31,7 +31,7 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
   const [navigation, settings, products] = await Promise.all([
     getNavigation(),
     getSiteSettings(),
-    campaign.productIds ? getProductsByIds(campaign.productIds) : Promise.resolve([]),
+    campaign.productIds ? getPublishedProductsByIds(campaign.productIds) : Promise.resolve([]),
   ]);
 
   return (

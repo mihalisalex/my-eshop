@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import type { Product, ProductGender, ProductSeason, InventoryPolicy } from "@/types/product";
+import type { Product, ProductGender, ProductSeason, InventoryPolicy, ProductStatus } from "@/types/product";
 import type { Category } from "@/types/category";
 import type { Collection } from "@/types/collection";
 import type { Discount, GiftCard } from "@/types/commerce";
@@ -68,6 +68,10 @@ export function toProduct(row: ProductRow): Product {
       row.salePriceAmount != null
         ? { amount: toNumber(row.salePriceAmount), currencyCode: row.currencyCode }
         : undefined,
+    costPrice:
+      row.costPriceAmount != null
+        ? { amount: toNumber(row.costPriceAmount), currencyCode: row.currencyCode }
+        : undefined,
     images: productImagesSchema.parse(row.images),
     videos: row.videos ? productVideosSchema.parse(row.videos) : undefined,
     colors: row.colors.map((color) => ({
@@ -105,6 +109,10 @@ export function toProduct(row: ProductRow): Product {
     inventoryPolicy: row.inventoryPolicy as InventoryPolicy,
     shippingWeightGrams: row.shippingWeightGrams ?? undefined,
     availableForSale: row.availableForSale,
+    status: row.status as ProductStatus,
+    archivedAt: row.archivedAt?.toISOString(),
+    brand: row.brand ?? undefined,
+    vendor: row.vendor ?? undefined,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
   };
 }

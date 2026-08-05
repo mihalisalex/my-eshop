@@ -1,20 +1,26 @@
-import Image from "next/image";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { DataTable } from "@/components/admin/DataTable";
-import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
-import { formatMoney } from "@/lib/format";
+import { ProductsTable } from "@/components/admin/ProductsTable";
 import { getAllProducts } from "@/services";
-import type { Product } from "@/types";
+import { getAllCategories } from "@/services/categories";
 
 export default async function AdminProductsPage() {
-  const products = await getAllProducts();
+  const [products, categories] = await Promise.all([
+    // Admin sees every lifecycle state — this is the one surface that must.
+    getAllProducts({ includeUnpublished: true }),
+    getAllCategories(),
+  ]);
+
+  const counts = products.reduce<Record<string, number>>((acc, product) => {
+    acc[product.status] = (acc[product.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div>
       <AdminPageHeader
         title="Products"
-        description={`${products.length} products in the catalog.`}
+        description={`${products.length} products · ${counts.active ?? 0} active · ${counts.draft ?? 0} draft · ${counts.archived ?? 0} archived`}
         actions={
           <Link
             href="/admin/products/new"
@@ -25,49 +31,9 @@ export default async function AdminProductsPage() {
         }
       />
 
-      <DataTable<Product>
-        columns={[
-          {
-            header: "Product",
-            cell: (row) => (
-              <Link href={`/admin/products/${row.id}`} className="flex items-center gap-3 hover:underline">
-                <div className="relative size-12 shrink-0 overflow-hidden bg-luxe-gray-light">
-                  <Image src={row.images[0].src} alt={row.images[0].alt} fill className="object-cover" />
-                </div>
-                <div>
-                  <p>{row.name}</p>
-                  <p className="text-xs text-luxe-gray-dark">{row.sku}</p>
-                </div>
-              </Link>
-            ),
-          },
-          { header: "Category", cell: (row) => <span className="capitalize">{row.category}</span> },
-          { header: "Price", cell: (row) => formatMoney(row.price) },
-          {
-            header: "Status",
-            cell: (row) => (
-              <span
-                className={
-                  row.availableForSale ? "text-green-700" : "text-luxe-gray-dark"
-                }
-              >
-                {row.availableForSale ? "Active" : "Draft"}
-              </span>
-            ),
-          },
-          {
-            header: "Tags",
-            cell: (row) => row.tags.join(", "),
-            className: "text-luxe-gray-dark",
-          },
-          {
-            header: "",
-            cell: (row) => <DeleteProductButton productId={row.id} productName={row.name} />,
-            className: "w-10",
-          },
-        ]}
-        rows={products}
-        getRowKey={(row) => row.id}
+      <ProductsTable
+        products={products}
+        categories={categories.map((c) => ({ slug: c.slug, name: c.name }))}
       />
     </div>
   );

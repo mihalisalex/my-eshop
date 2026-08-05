@@ -25,6 +25,10 @@ model Product {
   priceAmount          Decimal @db.Decimal(10, 2)
   compareAtPriceAmount Decimal? @db.Decimal(10, 2)
   salePriceAmount      Decimal? @db.Decimal(10, 2)
+  /// What the item costs the business — the basis for margin. Optional because it's
+  /// commercially sensitive and often unknown at import time; margin is computed on read
+  /// (lib/product.ts), never stored, so it can't drift from price/cost.
+  costPriceAmount      Decimal? @db.Decimal(10, 2)
   currencyCode         String  @default("EUR")
 
   /// Image[] — order matters (images[0] = card image, images[1] = hover-swap). Zod-validated on read/write.
@@ -62,7 +66,25 @@ model Product {
   /// "deny" | "continue" — mirrors the Shopify-style convention used across the app.
   inventoryPolicy     String  @default("deny")
   shippingWeightGrams Int?
+  /// Purchasability, NOT publication — whether a published product can currently be bought.
+  /// Deliberately separate from `status`: a live product can be temporarily unbuyable
+  /// (supplier issue) without being unpublished, and the admin list previously conflated
+  /// the two by labelling this "Active"/"Draft".
   availableForSale    Boolean @default(true)
+
+  /// Publication lifecycle: "draft" | "active" | "archived". Only "active" products are
+  /// ever visible to customers (see services/products.ts — storefront reads filter on this
+  /// by default and admin must explicitly opt out). Archived is a soft delete: it retires a
+  /// product from the storefront while keeping it resolvable for the orders, carts and
+  /// wishlists that already reference it, which a hard delete would break.
+  status     String    @default("active")
+  archivedAt DateTime?
+
+  /// Merchandising/sourcing attributes. Free text rather than relations — these are
+  /// filter/report dimensions today, not entities with their own pages or behaviour;
+  /// promoting them to tables is a later step if they ever need one.
+  brand  String?
+  vendor String?
 
   /// ProductSeoOverride | null. Zod-validated on read/write.
   seo Json?

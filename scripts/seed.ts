@@ -40,10 +40,11 @@ interface SeedGiftCard {
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-/** The JSON fixture predates the Category table (see prisma/schema.prisma's Category
- * model) — it still carries the old flat `category` slug string, never a real `categoryId`.
- * seedCategories() resolves each into a real row before seedProducts() runs. */
-type SeedProduct = Omit<Product, "categoryId">;
+/** The JSON fixture predates both the Category table and the product lifecycle fields
+ * (see prisma/schema.prisma) — it still carries the old flat `category` slug string and no
+ * `status`. seedCategories() resolves the category before seedProducts() runs; `status`
+ * falls back to "active" below, since the fixture represents a live demo catalog. */
+type SeedProduct = Omit<Product, "categoryId" | "status"> & { status?: Product["status"] };
 
 /** Deterministic ids (not @default(cuid())) so re-running the seed against the same DB
  * upserts instead of duplicating — same convention as every id below in this file. */
@@ -104,6 +105,7 @@ async function seedProducts(products: SeedProduct[], categoryIdBySlug: Map<strin
         inventoryPolicy: product.inventoryPolicy,
         shippingWeightGrams: product.shippingWeightGrams,
         availableForSale: product.availableForSale,
+        status: product.status ?? "active",
         seo,
         colors: {
           create: product.colors.map((color, position) => ({
@@ -154,6 +156,7 @@ async function seedProducts(products: SeedProduct[], categoryIdBySlug: Map<strin
         inventoryPolicy: product.inventoryPolicy,
         shippingWeightGrams: product.shippingWeightGrams,
         availableForSale: product.availableForSale,
+        status: product.status ?? "active",
         seo,
       },
     });

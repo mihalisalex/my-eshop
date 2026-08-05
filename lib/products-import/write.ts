@@ -11,7 +11,21 @@ import type { ProductFormValues } from "@/lib/validation/product";
  * yet (so this creates it, same auto-mapping precedent as the WooCommerce import
  * documented in NOTES.md). Either way there's exactly one resolution path.
  */
-function toProductWriteData(data: ProductFormValues, categoryId: string) {
+/**
+ * Stamped only on the actual transition into "archived", never on a save of an
+ * already-archived product — otherwise every subsequent edit would reset the archive date
+ * and destroy the record of when the product was really retired. Cleared on the way out.
+ * `undefined` is Prisma's "leave this column alone", which is exactly the no-op we want.
+ */
+function resolveArchivedAt(
+  nextStatus: ProductFormValues["status"],
+  previousStatus?: string
+): Date | null | undefined {
+  if (nextStatus !== "archived") return null;
+  return previousStatus === "archived" ? undefined : new Date();
+}
+
+function toProductWriteData(data: ProductFormValues, categoryId: string, previousStatus?: string) {
   return {
     slug: data.slug,
     name: data.name,
@@ -19,6 +33,7 @@ function toProductWriteData(data: ProductFormValues, categoryId: string) {
     priceAmount: data.price,
     compareAtPriceAmount: data.compareAtPrice ?? null,
     salePriceAmount: data.salePrice ?? null,
+    costPriceAmount: data.costPrice ?? null,
     currencyCode: data.currencyCode,
     images: data.images,
     videos: data.videos ?? undefined,
@@ -39,6 +54,10 @@ function toProductWriteData(data: ProductFormValues, categoryId: string) {
     inventoryPolicy: data.inventoryPolicy,
     shippingWeightGrams: data.shippingWeightGrams ?? null,
     availableForSale: data.availableForSale,
+    status: data.status,
+    archivedAt: resolveArchivedAt(data.status, previousStatus),
+    brand: data.brand ?? null,
+    vendor: data.vendor ?? null,
     seo: data.seo ?? undefined,
   };
 }
@@ -80,10 +99,11 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
 
   if (existingId) {
     // Read before the transaction — needed to diff old vs. new per-size purchasability
-    // for back-in-stock notifications, since the delete-then-recreate below discards it.
+    // for back-in-stock notifications (the delete-then-recreate below discards it), and
+    // to tell a real archive transition from a save of an already-archived product.
     const oldState = await prisma.product.findUnique({
       where: { id: existingId },
-      select: { inventoryPolicy: true, sizes: { select: { name: true, quantity: true } } },
+      select: { inventoryPolicy: true, status: true, sizes: { select: { name: true, quantity: true } } },
     });
 
     await prisma.$transaction([
@@ -92,7 +112,7 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
       prisma.productCollection.deleteMany({ where: { productId: existingId } }),
       prisma.product.update({
         where: { id: existingId },
-        data: { ...toProductWriteData(data, categoryId), ...nestedWrites },
+        data: { ...toProductWriteData(data, categoryId, oldState?.status), ...nestedWrites },
       }),
     ]);
 
