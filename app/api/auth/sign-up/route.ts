@@ -6,7 +6,7 @@ import { createCustomer, getCustomerByEmail } from "@/services/customers";
 import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
-import { getEmailProvider, welcomeEmail } from "@/lib/email";
+import { getEmailProvider, welcomeEmail, accountAlreadyExistsEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
 import { recordReferralSignup } from "@/services/referrals";
 
@@ -30,17 +30,27 @@ export async function POST(request: Request) {
     const email = parsed.data.email.trim().toLowerCase();
     const existing = await getCustomerByEmail(email);
     if (existing) {
-      // Rate limiting is the primary defense against scraping this endpoint for
-      // registered emails (5/hour/IP, above) — this still tells a legitimate user
-      // to sign in instead rather than hiding it behind a generic error, which
-      // would be a worse trade for a consumer storefront. To at least remove the
-      // response-timing side channel, spend the same bcrypt cost here that the
-      // real account-creation path below would have spent.
+      // Mirrors request-password-reset's anti-enumeration shape: same 200 status and a
+      // session-free body regardless of whether the email is registered, with rate
+      // limiting (5/hour/IP, above) as the primary defense. Unlike password reset, sign-up
+      // can't return a byte-for-byte identical body on both branches — the "new account"
+      // branch below returns real customer data + a session cookie, and doing the same
+      // here (for someone else's account) would be account takeover. So this branch stays
+      // distinguishable at the body-shape level (no `customer`/session) but not at the
+      // status-code level, and never signs the requester in. Spend the same bcrypt cost
+      // the real account-creation path would have, removing the timing side channel.
       await bcrypt.hash(parsed.data.password, BCRYPT_COST);
-      return NextResponse.json(
-        { error: { code: "EMAIL_IN_USE", message: "An account with that email already exists." } },
-        { status: 409 }
-      );
+      try {
+        const settings = await getSiteSettings();
+        const message = accountAlreadyExistsEmail({
+          siteName: settings.siteName,
+          loginUrl: new URL("/account/login", request.url).toString(),
+        });
+        await getEmailProvider().send({ to: email, template: "account-already-exists", ...message });
+      } catch (emailError) {
+        console.error("Failed to send account-already-exists email", emailError);
+      }
+      return NextResponse.json({ ok: true, requiresLogin: true });
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.password, BCRYPT_COST);

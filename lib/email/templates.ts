@@ -300,6 +300,29 @@ export function passwordResetEmail(input: { siteName: string; resetUrl: string; 
   return { subject, html, text };
 }
 
+/**
+ * Sent instead of creating a session when someone signs up with an already-registered
+ * email — see app/api/auth/sign-up/route.ts. Deliberately does not confirm anything to
+ * the *submitter* beyond the generic success response; this is what actually gets read,
+ * by the real account owner, if it wasn't them.
+ */
+export function accountAlreadyExistsEmail(input: { siteName: string; loginUrl: string }): RenderedEmail {
+  const { siteName, loginUrl } = input;
+  const subject = "Someone tried to create an account with your email";
+  const html = layout(
+    siteName,
+    "A sign-up attempt used your email address.",
+    `
+    ${eyebrow("Account Security")}
+    ${heading("You already have an account")}
+    ${bodyText(`Someone just tried to create a new ${siteName} account using this email address. If that was you, sign in instead — your existing account is unaffected.`)}
+    ${ctaButton("Sign In", loginUrl)}
+    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">If you didn't try this, you can safely ignore this email — no account was created.</p>`
+  );
+  const text = `You already have an account\n\nSomeone just tried to create a new ${siteName} account using this email address. If that was you, sign in instead.\n\n${loginUrl}\n\nIf you didn't try this, you can safely ignore this email — no account was created.`;
+  return { subject, html, text };
+}
+
 /** Sent to the store's own contact address (CONTACT_EMAIL, or settings.contactEmail) — an internal notification, not a customer-facing email, so it stays plain/functional rather than getting the customer-facing editorial treatment. */
 export function contactMessageNotificationEmail(input: {
   siteName: string;

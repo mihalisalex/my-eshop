@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { setGiftWrap, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { addressSchema, contactSchema } from "@/lib/validations/checkout";
 import type { Checkout } from "@/lib/commerce/types";
 
 /**
@@ -24,6 +25,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { checkoutId } = await params;
     const body = await request.json();
+
+    // Validate every provided field up front, before applying any of them — otherwise
+    // a bad billingAddress could leave an already-applied, good email update in place,
+    // an inconsistent partial-write the caller has no way to detect from the response.
+    if (body.email !== undefined) {
+      const result = contactSchema.shape.email.safeParse(body.email);
+      if (!result.success) return invalidInputResponse(result.error.issues[0]?.message ?? "Invalid email.");
+    }
+    if (body.shippingAddress !== undefined) {
+      const result = addressSchema.safeParse(body.shippingAddress);
+      if (!result.success) return invalidInputResponse(result.error.issues[0]?.message ?? "Invalid shipping address.");
+    }
+    if (body.billingAddress !== undefined) {
+      const result = addressSchema.safeParse(body.billingAddress);
+      if (!result.success) return invalidInputResponse(result.error.issues[0]?.message ?? "Invalid billing address.");
+    }
+
     let checkout: Checkout | undefined;
 
     if (typeof body.email === "string") checkout = await updateEmail(checkoutId, body.email);

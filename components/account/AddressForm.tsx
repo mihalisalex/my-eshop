@@ -47,15 +47,35 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
           <label htmlFor="af-firstName" className="mb-1.5 block text-eyebrow">
             First name
           </label>
-          <input id="af-firstName" aria-invalid={Boolean(errors.firstName)} className={inputClass} {...register("firstName")} />
-          {errors.firstName ? <p className="mt-1.5 text-xs text-destructive">{errors.firstName.message}</p> : null}
+          <input
+            id="af-firstName"
+            aria-invalid={Boolean(errors.firstName)}
+            aria-describedby={errors.firstName ? "af-firstName-error" : undefined}
+            className={inputClass}
+            {...register("firstName")}
+          />
+          {errors.firstName ? (
+            <p id="af-firstName-error" className="mt-1.5 text-xs text-destructive">
+              {errors.firstName.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="af-lastName" className="mb-1.5 block text-eyebrow">
             Last name
           </label>
-          <input id="af-lastName" aria-invalid={Boolean(errors.lastName)} className={inputClass} {...register("lastName")} />
-          {errors.lastName ? <p className="mt-1.5 text-xs text-destructive">{errors.lastName.message}</p> : null}
+          <input
+            id="af-lastName"
+            aria-invalid={Boolean(errors.lastName)}
+            aria-describedby={errors.lastName ? "af-lastName-error" : undefined}
+            className={inputClass}
+            {...register("lastName")}
+          />
+          {errors.lastName ? (
+            <p id="af-lastName-error" className="mt-1.5 text-xs text-destructive">
+              {errors.lastName.message}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -99,8 +119,18 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
           <label htmlFor="af-city" className="mb-1.5 block text-eyebrow">
             City
           </label>
-          <input id="af-city" aria-invalid={Boolean(errors.city)} className={inputClass} {...register("city")} />
-          {errors.city ? <p className="mt-1.5 text-xs text-destructive">{errors.city.message}</p> : null}
+          <input
+            id="af-city"
+            aria-invalid={Boolean(errors.city)}
+            aria-describedby={errors.city ? "af-city-error" : undefined}
+            className={inputClass}
+            {...register("city")}
+          />
+          {errors.city ? (
+            <p id="af-city-error" className="mt-1.5 text-xs text-destructive">
+              {errors.city.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="af-region" className="mb-1.5 block text-eyebrow">
@@ -115,8 +145,18 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
           <label htmlFor="af-postalCode" className="mb-1.5 block text-eyebrow">
             Postal code
           </label>
-          <input id="af-postalCode" aria-invalid={Boolean(errors.postalCode)} className={inputClass} {...register("postalCode")} />
-          {errors.postalCode ? <p className="mt-1.5 text-xs text-destructive">{errors.postalCode.message}</p> : null}
+          <input
+            id="af-postalCode"
+            aria-invalid={Boolean(errors.postalCode)}
+            aria-describedby={errors.postalCode ? "af-postalCode-error" : undefined}
+            className={inputClass}
+            {...register("postalCode")}
+          />
+          {errors.postalCode ? (
+            <p id="af-postalCode-error" className="mt-1.5 text-xs text-destructive">
+              {errors.postalCode.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="af-countryCode" className="mb-1.5 block text-eyebrow">

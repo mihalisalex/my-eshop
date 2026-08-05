@@ -65,15 +65,37 @@ export function ShippingAddressStep() {
           <label htmlFor="firstName" className="mb-1.5 block text-eyebrow">
             First name
           </label>
-          <input id="firstName" autoComplete="given-name" aria-invalid={Boolean(errors.firstName)} className={inputClass} {...register("firstName")} />
-          {errors.firstName ? <p className="mt-1.5 text-xs text-destructive">{errors.firstName.message}</p> : null}
+          <input
+            id="firstName"
+            autoComplete="given-name"
+            aria-invalid={Boolean(errors.firstName)}
+            aria-describedby={errors.firstName ? "firstName-error" : undefined}
+            className={inputClass}
+            {...register("firstName")}
+          />
+          {errors.firstName ? (
+            <p id="firstName-error" className="mt-1.5 text-xs text-destructive">
+              {errors.firstName.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="lastName" className="mb-1.5 block text-eyebrow">
             Last name
           </label>
-          <input id="lastName" autoComplete="family-name" aria-invalid={Boolean(errors.lastName)} className={inputClass} {...register("lastName")} />
-          {errors.lastName ? <p className="mt-1.5 text-xs text-destructive">{errors.lastName.message}</p> : null}
+          <input
+            id="lastName"
+            autoComplete="family-name"
+            aria-invalid={Boolean(errors.lastName)}
+            aria-describedby={errors.lastName ? "lastName-error" : undefined}
+            className={inputClass}
+            {...register("lastName")}
+          />
+          {errors.lastName ? (
+            <p id="lastName-error" className="mt-1.5 text-xs text-destructive">
+              {errors.lastName.message}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -117,8 +139,19 @@ export function ShippingAddressStep() {
           <label htmlFor="city" className="mb-1.5 block text-eyebrow">
             City
           </label>
-          <input id="city" autoComplete="address-level2" aria-invalid={Boolean(errors.city)} className={inputClass} {...register("city")} />
-          {errors.city ? <p className="mt-1.5 text-xs text-destructive">{errors.city.message}</p> : null}
+          <input
+            id="city"
+            autoComplete="address-level2"
+            aria-invalid={Boolean(errors.city)}
+            aria-describedby={errors.city ? "city-error" : undefined}
+            className={inputClass}
+            {...register("city")}
+          />
+          {errors.city ? (
+            <p id="city-error" className="mt-1.5 text-xs text-destructive">
+              {errors.city.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="region" className="mb-1.5 block text-eyebrow">
@@ -137,10 +170,15 @@ export function ShippingAddressStep() {
             id="postalCode"
             autoComplete="postal-code"
             aria-invalid={Boolean(errors.postalCode)}
+            aria-describedby={errors.postalCode ? "postalCode-error" : undefined}
             className={inputClass}
             {...register("postalCode")}
           />
-          {errors.postalCode ? <p className="mt-1.5 text-xs text-destructive">{errors.postalCode.message}</p> : null}
+          {errors.postalCode ? (
+            <p id="postalCode-error" className="mt-1.5 text-xs text-destructive">
+              {errors.postalCode.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="countryCode" className="mb-1.5 block text-eyebrow">

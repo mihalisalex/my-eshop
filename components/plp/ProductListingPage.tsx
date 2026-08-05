@@ -71,18 +71,30 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     maxPriceParam ? Number(maxPriceParam) : (priceBounds?.[1] ?? 0),
   ];
 
+  // Keyed by every filter/sort dimension below (everything except urlPage/priceBounds/
+  // commerce) — a signature change means a genuinely different result set, so it gets
+  // a fresh cache entry; the same signature reuses whatever pages were already fetched.
+  // This is what turns "Load More" from a full 1..urlPage refetch into a single new
+  // request per click, without changing any of the state this component exposes.
+  const pageCacheRef = useRef(new Map<string, { pages: Map<number, Product[]>; facets: SearchFacet[]; total: number }>());
+
   useEffect(() => {
     if (!priceBounds) return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
     setIsLoading(true);
 
-    (async () => {
-      const collected: Product[] = [];
-      let latestFacets: SearchFacet[] = [];
-      let latestTotal = 0;
+    const signature = JSON.stringify({ baseFiltersKey, colors, sizes, tags, availability, sort, priceRange });
+    let entry = pageCacheRef.current.get(signature);
+    if (!entry) {
+      entry = { pages: new Map<number, Product[]>(), facets: [], total: 0 };
+      pageCacheRef.current.set(signature, entry);
+    }
+    const cacheEntry = entry;
 
+    (async () => {
       for (let page = 1; page <= urlPage; page += 1) {
+        if (cacheEntry.pages.has(page)) continue;
         const result = await commerce.search.search("", {
           ...scopeFilters,
           colors: colors.length ? colors : undefined,
@@ -96,15 +108,17 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
           pageSize: PAGE_SIZE,
         });
         if (cancelled) return;
-        collected.push(...result.products);
-        latestFacets = result.facets;
-        latestTotal = result.total;
+        cacheEntry.pages.set(page, result.products);
+        cacheEntry.facets = result.facets;
+        cacheEntry.total = result.total;
       }
 
       if (cancelled) return;
+      const collected: Product[] = [];
+      for (let page = 1; page <= urlPage; page += 1) collected.push(...(cacheEntry.pages.get(page) ?? []));
       setProducts(collected);
-      setFacets(latestFacets);
-      setTotal(latestTotal);
+      setFacets(cacheEntry.facets);
+      setTotal(cacheEntry.total);
       setIsLoading(false);
     })();
 

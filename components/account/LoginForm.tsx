@@ -72,11 +72,14 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
               type="email"
               autoComplete="email"
               aria-invalid={Boolean(passwordForm.formState.errors.email)}
+              aria-describedby={passwordForm.formState.errors.email ? "login-email-error" : undefined}
               className={inputClass}
               {...passwordForm.register("email")}
             />
             {passwordForm.formState.errors.email ? (
-              <p className="mt-1.5 text-xs text-destructive">{passwordForm.formState.errors.email.message}</p>
+              <p id="login-email-error" className="mt-1.5 text-xs text-destructive">
+                {passwordForm.formState.errors.email.message}
+              </p>
             ) : null}
           </div>
           <div>
@@ -88,11 +91,14 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
               type="password"
               autoComplete="current-password"
               aria-invalid={Boolean(passwordForm.formState.errors.password)}
+              aria-describedby={passwordForm.formState.errors.password ? "login-password-error" : undefined}
               className={inputClass}
               {...passwordForm.register("password")}
             />
             {passwordForm.formState.errors.password ? (
-              <p className="mt-1.5 text-xs text-destructive">{passwordForm.formState.errors.password.message}</p>
+              <p id="login-password-error" className="mt-1.5 text-xs text-destructive">
+                {passwordForm.formState.errors.password.message}
+              </p>
             ) : null}
           </div>
           <button
@@ -128,11 +134,14 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
               type="email"
               autoComplete="email"
               aria-invalid={Boolean(magicLinkForm.formState.errors.email)}
+              aria-describedby={magicLinkForm.formState.errors.email ? "magic-link-email-error" : undefined}
               className={inputClass}
               {...magicLinkForm.register("email")}
             />
             {magicLinkForm.formState.errors.email ? (
-              <p className="mt-1.5 text-xs text-destructive">{magicLinkForm.formState.errors.email.message}</p>
+              <p id="magic-link-email-error" className="mt-1.5 text-xs text-destructive">
+                {magicLinkForm.formState.errors.email.message}
+              </p>
             ) : null}
           </div>
           <button

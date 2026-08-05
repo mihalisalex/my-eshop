@@ -56,8 +56,18 @@ export function ContactForm() {
           <label htmlFor="contact-name" className="text-xs font-medium tracking-[0.05em] uppercase">
             Name
           </label>
-          <input id="contact-name" className={cn(inputClass, "mt-2")} aria-invalid={Boolean(errors.name)} {...register("name")} />
-          {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
+          <input
+            id="contact-name"
+            className={cn(inputClass, "mt-2")}
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "contact-name-error" : undefined}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <p id="contact-name-error" className="mt-1 text-xs text-destructive">
+              {errors.name.message}
+            </p>
+          ) : null}
         </div>
         <div>
           <label htmlFor="contact-email" className="text-xs font-medium tracking-[0.05em] uppercase">
@@ -68,9 +78,14 @@ export function ContactForm() {
             type="email"
             className={cn(inputClass, "mt-2")}
             aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "contact-email-error" : undefined}
             {...register("email")}
           />
-          {errors.email ? <p className="mt-1 text-xs text-destructive">{errors.email.message}</p> : null}
+          {errors.email ? (
+            <p id="contact-email-error" className="mt-1 text-xs text-destructive">
+              {errors.email.message}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -83,6 +98,7 @@ export function ContactForm() {
           defaultValue=""
           className={cn(inputClass, "mt-2 appearance-none")}
           aria-invalid={Boolean(errors.subject)}
+          aria-describedby={errors.subject ? "contact-subject-error" : undefined}
           {...register("subject")}
         >
           <option value="" disabled>
@@ -94,7 +110,11 @@ export function ContactForm() {
             </option>
           ))}
         </select>
-        {errors.subject ? <p className="mt-1 text-xs text-destructive">{errors.subject.message}</p> : null}
+        {errors.subject ? (
+          <p id="contact-subject-error" className="mt-1 text-xs text-destructive">
+            {errors.subject.message}
+          </p>
+        ) : null}
       </div>
 
       <div>
@@ -106,9 +126,14 @@ export function ContactForm() {
           rows={5}
           className={cn(inputClass, "mt-2 h-auto py-3")}
           aria-invalid={Boolean(errors.message)}
+          aria-describedby={errors.message ? "contact-message-error" : undefined}
           {...register("message")}
         />
-        {errors.message ? <p className="mt-1 text-xs text-destructive">{errors.message.message}</p> : null}
+        {errors.message ? (
+          <p id="contact-message-error" className="mt-1 text-xs text-destructive">
+            {errors.message.message}
+          </p>
+        ) : null}
       </div>
 
       <button

@@ -55,10 +55,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
               id="register-firstName"
               autoComplete="given-name"
               aria-invalid={Boolean(errors.firstName)}
+              aria-describedby={errors.firstName ? "register-firstName-error" : undefined}
               className={inputClass}
               {...register("firstName")}
             />
-            {errors.firstName ? <p className="mt-1.5 text-xs text-destructive">{errors.firstName.message}</p> : null}
+            {errors.firstName ? (
+              <p id="register-firstName-error" className="mt-1.5 text-xs text-destructive">
+                {errors.firstName.message}
+              </p>
+            ) : null}
           </div>
           <div>
             <label htmlFor="register-lastName" className="mb-1.5 block text-eyebrow">
@@ -68,10 +73,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
               id="register-lastName"
               autoComplete="family-name"
               aria-invalid={Boolean(errors.lastName)}
+              aria-describedby={errors.lastName ? "register-lastName-error" : undefined}
               className={inputClass}
               {...register("lastName")}
             />
-            {errors.lastName ? <p className="mt-1.5 text-xs text-destructive">{errors.lastName.message}</p> : null}
+            {errors.lastName ? (
+              <p id="register-lastName-error" className="mt-1.5 text-xs text-destructive">
+                {errors.lastName.message}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -84,10 +94,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
             type="email"
             autoComplete="email"
             aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "register-email-error" : undefined}
             className={inputClass}
             {...register("email")}
           />
-          {errors.email ? <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p> : null}
+          {errors.email ? (
+            <p id="register-email-error" className="mt-1.5 text-xs text-destructive">
+              {errors.email.message}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -99,10 +114,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
             type="password"
             autoComplete="new-password"
             aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? "register-password-error" : undefined}
             className={inputClass}
             {...register("password")}
           />
-          {errors.password ? <p className="mt-1.5 text-xs text-destructive">{errors.password.message}</p> : null}
+          {errors.password ? (
+            <p id="register-password-error" className="mt-1.5 text-xs text-destructive">
+              {errors.password.message}
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -114,10 +134,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
             type="password"
             autoComplete="new-password"
             aria-invalid={Boolean(errors.confirmPassword)}
+            aria-describedby={errors.confirmPassword ? "register-confirmPassword-error" : undefined}
             className={inputClass}
             {...register("confirmPassword")}
           />
-          {errors.confirmPassword ? <p className="mt-1.5 text-xs text-destructive">{errors.confirmPassword.message}</p> : null}
+          {errors.confirmPassword ? (
+            <p id="register-confirmPassword-error" className="mt-1.5 text-xs text-destructive">
+              {errors.confirmPassword.message}
+            </p>
+          ) : null}
         </div>
 
         <button

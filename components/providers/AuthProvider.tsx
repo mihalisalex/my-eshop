@@ -74,8 +74,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (input: AuthSignUpInput) => {
       try {
         const referralCode = getStoredReferralCode();
-        const session = await commerce.auth.signUp(referralCode ? { ...input, referralCode } : input);
-        setCustomer(session.customer);
+        const result = await commerce.auth.signUp(referralCode ? { ...input, referralCode } : input);
+        if ("requiresLogin" in result) {
+          // Email was already registered — no session was created (see AuthSignUpRequiresLogin's
+          // doc comment for why). Deliberately the same neutral message either way, so this
+          // can't be used to tell "new account" from "already registered" by the toast alone.
+          toast({
+            title: "Check your email",
+            description: "If that's a new address, check your inbox. Already have an account? Sign in instead.",
+          });
+          return false;
+        }
+        setCustomer(result.customer);
         await linkGuestState();
         commerce.analytics.track({ name: "sign_up" });
         if (referralCode) clearStoredReferralCode();

@@ -97,11 +97,14 @@ export function PaymentStep() {
             id="cardName"
             autoComplete="cc-name"
             aria-invalid={Boolean(cardForm.formState.errors.cardName)}
+            aria-describedby={cardForm.formState.errors.cardName ? "cardName-error" : undefined}
             className={inputClass}
             {...cardForm.register("cardName")}
           />
           {cardForm.formState.errors.cardName ? (
-            <p className="mt-1.5 text-xs text-destructive">{cardForm.formState.errors.cardName.message}</p>
+            <p id="cardName-error" className="mt-1.5 text-xs text-destructive">
+              {cardForm.formState.errors.cardName.message}
+            </p>
           ) : null}
         </div>
 
@@ -115,11 +118,14 @@ export function PaymentStep() {
             autoComplete="cc-number"
             placeholder="1234 1234 1234 1234"
             aria-invalid={Boolean(cardForm.formState.errors.cardNumber)}
+            aria-describedby={cardForm.formState.errors.cardNumber ? "cardNumber-error" : undefined}
             className={inputClass}
             {...cardForm.register("cardNumber")}
           />
           {cardForm.formState.errors.cardNumber ? (
-            <p className="mt-1.5 text-xs text-destructive">{cardForm.formState.errors.cardNumber.message}</p>
+            <p id="cardNumber-error" className="mt-1.5 text-xs text-destructive">
+              {cardForm.formState.errors.cardNumber.message}
+            </p>
           ) : null}
         </div>
 
@@ -133,11 +139,14 @@ export function PaymentStep() {
               autoComplete="cc-exp"
               placeholder="MM/YY"
               aria-invalid={Boolean(cardForm.formState.errors.expiry)}
+              aria-describedby={cardForm.formState.errors.expiry ? "expiry-error" : undefined}
               className={inputClass}
               {...cardForm.register("expiry")}
             />
             {cardForm.formState.errors.expiry ? (
-              <p className="mt-1.5 text-xs text-destructive">{cardForm.formState.errors.expiry.message}</p>
+              <p id="expiry-error" className="mt-1.5 text-xs text-destructive">
+                {cardForm.formState.errors.expiry.message}
+              </p>
             ) : null}
           </div>
           <div>
@@ -150,11 +159,14 @@ export function PaymentStep() {
               autoComplete="cc-csc"
               placeholder="123"
               aria-invalid={Boolean(cardForm.formState.errors.cvc)}
+              aria-describedby={cardForm.formState.errors.cvc ? "cvc-error" : undefined}
               className={inputClass}
               {...cardForm.register("cvc")}
             />
             {cardForm.formState.errors.cvc ? (
-              <p className="mt-1.5 text-xs text-destructive">{cardForm.formState.errors.cvc.message}</p>
+              <p id="cvc-error" className="mt-1.5 text-xs text-destructive">
+                {cardForm.formState.errors.cvc.message}
+              </p>
             ) : null}
           </div>
         </div>
@@ -178,18 +190,34 @@ export function PaymentStep() {
               <label htmlFor="billingFirstName" className="mb-1.5 block text-eyebrow">
                 First name
               </label>
-              <input id="billingFirstName" className={inputClass} {...billingForm.register("firstName")} />
+              <input
+                id="billingFirstName"
+                aria-invalid={Boolean(billingForm.formState.errors.firstName)}
+                aria-describedby={billingForm.formState.errors.firstName ? "billingFirstName-error" : undefined}
+                className={inputClass}
+                {...billingForm.register("firstName")}
+              />
               {billingForm.formState.errors.firstName ? (
-                <p className="mt-1.5 text-xs text-destructive">{billingForm.formState.errors.firstName.message}</p>
+                <p id="billingFirstName-error" className="mt-1.5 text-xs text-destructive">
+                  {billingForm.formState.errors.firstName.message}
+                </p>
               ) : null}
             </div>
             <div>
               <label htmlFor="billingLastName" className="mb-1.5 block text-eyebrow">
                 Last name
               </label>
-              <input id="billingLastName" className={inputClass} {...billingForm.register("lastName")} />
+              <input
+                id="billingLastName"
+                aria-invalid={Boolean(billingForm.formState.errors.lastName)}
+                aria-describedby={billingForm.formState.errors.lastName ? "billingLastName-error" : undefined}
+                className={inputClass}
+                {...billingForm.register("lastName")}
+              />
               {billingForm.formState.errors.lastName ? (
-                <p className="mt-1.5 text-xs text-destructive">{billingForm.formState.errors.lastName.message}</p>
+                <p id="billingLastName-error" className="mt-1.5 text-xs text-destructive">
+                  {billingForm.formState.errors.lastName.message}
+                </p>
               ) : null}
             </div>
           </div>
@@ -197,9 +225,17 @@ export function PaymentStep() {
             <label htmlFor="billingAddress1" className="mb-1.5 block text-eyebrow">
               Street address
             </label>
-            <input id="billingAddress1" className={inputClass} {...billingForm.register("address1")} />
+            <input
+              id="billingAddress1"
+              aria-invalid={Boolean(billingForm.formState.errors.address1)}
+              aria-describedby={billingForm.formState.errors.address1 ? "billingAddress1-error" : undefined}
+              className={inputClass}
+              {...billingForm.register("address1")}
+            />
             {billingForm.formState.errors.address1 ? (
-              <p className="mt-1.5 text-xs text-destructive">{billingForm.formState.errors.address1.message}</p>
+              <p id="billingAddress1-error" className="mt-1.5 text-xs text-destructive">
+                {billingForm.formState.errors.address1.message}
+              </p>
             ) : null}
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -207,18 +243,34 @@ export function PaymentStep() {
               <label htmlFor="billingCity" className="mb-1.5 block text-eyebrow">
                 City
               </label>
-              <input id="billingCity" className={inputClass} {...billingForm.register("city")} />
+              <input
+                id="billingCity"
+                aria-invalid={Boolean(billingForm.formState.errors.city)}
+                aria-describedby={billingForm.formState.errors.city ? "billingCity-error" : undefined}
+                className={inputClass}
+                {...billingForm.register("city")}
+              />
               {billingForm.formState.errors.city ? (
-                <p className="mt-1.5 text-xs text-destructive">{billingForm.formState.errors.city.message}</p>
+                <p id="billingCity-error" className="mt-1.5 text-xs text-destructive">
+                  {billingForm.formState.errors.city.message}
+                </p>
               ) : null}
             </div>
             <div>
               <label htmlFor="billingPostalCode" className="mb-1.5 block text-eyebrow">
                 Postal code
               </label>
-              <input id="billingPostalCode" className={inputClass} {...billingForm.register("postalCode")} />
+              <input
+                id="billingPostalCode"
+                aria-invalid={Boolean(billingForm.formState.errors.postalCode)}
+                aria-describedby={billingForm.formState.errors.postalCode ? "billingPostalCode-error" : undefined}
+                className={inputClass}
+                {...billingForm.register("postalCode")}
+              />
               {billingForm.formState.errors.postalCode ? (
-                <p className="mt-1.5 text-xs text-destructive">{billingForm.formState.errors.postalCode.message}</p>
+                <p id="billingPostalCode-error" className="mt-1.5 text-xs text-destructive">
+                  {billingForm.formState.errors.postalCode.message}
+                </p>
               ) : null}
             </div>
           </div>

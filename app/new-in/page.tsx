@@ -3,12 +3,18 @@ import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductListingPage } from "@/components/plp/ProductListingPage";
-import { getNavigation, getSiteSettings } from "@/services";
+import { getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "New In",
-  description: "The latest arrivals.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = await getSeoDefaults();
+  return buildMetadata({
+    seo,
+    title: "New In",
+    description: "The latest arrivals.",
+    path: "/new-in",
+  });
+}
 
 export default async function NewInPage() {
   const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);

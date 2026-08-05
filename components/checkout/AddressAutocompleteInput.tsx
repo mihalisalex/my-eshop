@@ -55,6 +55,7 @@ export function AddressAutocompleteInput({
         }}
         onFocus={() => setIsOpen(true)}
         aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
         aria-expanded={isOpen && suggestions.length > 0}
         role="combobox"
         aria-autocomplete="list"
@@ -87,7 +88,11 @@ export function AddressAutocompleteInput({
           ))}
         </ul>
       ) : null}
-      {error ? <p className="mt-1.5 text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p id={`${id}-error`} className="mt-1.5 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

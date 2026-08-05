@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { RequireAuthShell } from "@/components/account/RequireAuthShell";
 import { getNavigation, getSiteSettings } from "@/services";
 import { requireCustomerSessionOrRedirect } from "@/lib/customer-session";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function ProtectedAccountLayout({ children }: { children: React.ReactNode }) {
   // Belt-and-suspenders alongside proxy.ts (which now also gates /account/*) and the

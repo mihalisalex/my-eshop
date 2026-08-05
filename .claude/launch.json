@@ -5,7 +5,8 @@
       "name": "luxe-dev",
       "runtimeExecutable": "C:\\Users\\Michael Alexandris\\Desktop\\Claude Works 1.0\\.claude\\dev.cmd",
       "runtimeArgs": [],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

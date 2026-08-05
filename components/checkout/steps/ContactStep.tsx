@@ -39,10 +39,15 @@ export function ContactStep() {
           type="email"
           autoComplete="email"
           aria-invalid={Boolean(errors.email)}
+          aria-describedby={errors.email ? "checkout-email-error" : undefined}
           className="h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive"
           {...register("email")}
         />
-        {errors.email ? <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p> : null}
+        {errors.email ? (
+          <p id="checkout-email-error" className="mt-1.5 text-xs text-destructive">
+            {errors.email.message}
+          </p>
+        ) : null}
       </div>
 
       <button

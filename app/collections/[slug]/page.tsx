@@ -6,8 +6,9 @@ import { getLocale } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductListingPage } from "@/components/plp/ProductListingPage";
-import { getAllCollections, getCollectionBySlug, getNavigation, getSiteSettings } from "@/services";
+import { getAllCollections, getCollectionBySlug, getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
 import { localizeCollection } from "@/lib/localize";
+import { buildMetadata } from "@/lib/seo";
 import type { Locale } from "@/i18n/config";
 
 interface CollectionPageProps {
@@ -21,12 +22,14 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const collection = await getCollectionBySlug(slug);
+  const [collection, seo] = await Promise.all([getCollectionBySlug(slug), getSeoDefaults()]);
   if (!collection) return {};
-  return {
+  return buildMetadata({
+    seo,
     title: collection.title,
     description: collection.description ?? collection.subtitle,
-  };
+    path: `/collections/${collection.slug}`,
+  });
 }
 
 export default async function CollectionPage({ params }: CollectionPageProps) {

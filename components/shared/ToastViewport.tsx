@@ -10,7 +10,12 @@ export function ToastViewport() {
   const { toasts, dismiss } = useToast();
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-200 flex flex-col items-center gap-2 p-4 sm:items-end">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-200 flex flex-col items-center gap-2 p-4 sm:items-end"
+    >
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div

@@ -285,6 +285,19 @@ export interface AuthSession {
   expiresAt: string;
 }
 
+/**
+ * Returned by signUp instead of a real AuthSession when the email is already
+ * registered — deliberately session-free (see app/api/auth/sign-up/route.ts).
+ * Returning the real existing customer's session here would be account
+ * takeover; returning fabricated customer data would make the frontend
+ * believe it's signed in when it isn't. This shape lets the caller show a
+ * neutral "check your email or sign in" message instead of either.
+ */
+export interface AuthSignUpRequiresLogin {
+  ok: true;
+  requiresLogin: true;
+}
+
 // ---------------------------------------------------------------------------
 // Analytics
 // ---------------------------------------------------------------------------
@@ -416,7 +429,7 @@ export interface ChangePasswordInput {
 
 export interface AuthenticationService {
   signIn(credentials: AuthCredentials): Promise<AuthSession>;
-  signUp(input: AuthSignUpInput): Promise<AuthSession>;
+  signUp(input: AuthSignUpInput): Promise<AuthSession | AuthSignUpRequiresLogin>;
   signOut(): Promise<void>;
   getSession(): Promise<AuthSession | null>;
   requestPasswordReset(email: string): Promise<void>;
