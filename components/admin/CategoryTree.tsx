@@ -1,10 +1,24 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronRight, ChevronDown, GripVertical, Eye, EyeOff, Star } from "lucide-react";
 import { deleteCategory, reorderCategories } from "@/app/admin/(dashboard)/categories/actions";
@@ -32,10 +46,22 @@ export function CategoryTree({ nodes }: CategoryTreeProps) {
 }
 
 function CategoryGroup({ parentId, nodes, depth }: { parentId: string | null; nodes: CategoryWithChildren[]; depth: number }) {
-  const [items, setItems] = useState(nodes);
+  // useOptimistic, not useState(nodes): plain state initialized from props never re-syncs
+  // when the server sends new data, so the tree could keep rendering a stale order after a
+  // revalidation (e.g. another admin reordered, or a failed write left the server
+  // unchanged). Here the server data stays the source of truth — the reordered list shows
+  // instantly while the action is in flight, then is discarded in favour of whatever the
+  // server actually persisted, so a rejected reorder self-corrects with no manual rollback.
+  const [items, setOptimisticItems] = useOptimistic(nodes, (_, next: CategoryWithChildren[]) => next);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // Without this, reordering is mouse-only — a WCAG 2.1.1 (Keyboard) failure. The drag
+    // handle is already a real <button>, so this makes it focusable-and-operable:
+    // space to pick up, arrows to move, space to drop, escape to cancel.
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -43,16 +69,10 @@ function CategoryGroup({ parentId, nodes, depth }: { parentId: string | null; no
     const oldIndex = items.findIndex((i) => i.id === active.id);
     const newIndex = items.findIndex((i) => i.id === over.id);
     const reordered = arrayMove(items, oldIndex, newIndex);
-    const previous = items;
-    setItems(reordered);
     startTransition(async () => {
+      setOptimisticItems(reordered);
       const result = await reorderCategories(parentId, reordered.map((i) => i.id));
-      if (result?.error) {
-        setError(result.error);
-        setItems(previous);
-      } else {
-        setError(null);
-      }
+      setError(result?.error ?? null);
     });
   }
 

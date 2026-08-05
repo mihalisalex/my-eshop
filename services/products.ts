@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Product } from "@/types";
 import { productInclude, toProduct } from "@/lib/commerce/postgres/mappers";
+import { getCategorySubtreeIds } from "@/services/categories";
 
 /**
  * This module is the seam between components and the data source — now
@@ -27,11 +28,20 @@ export interface ProductListFilter {
  * category/gender pages used to pull every product in the store on every
  * request just to throw most of it away client-side. Omit `filter` (or any
  * field on it) to keep the old "everything" behavior.
+ *
+ * `category` matches the whole subtree, not just an exact slug: with a real hierarchy,
+ * browsing "Sneakers" has to include everything filed under "Sneakers > Running", the way
+ * every other commerce platform behaves. An exact match meant that nesting a category —
+ * the entire point of the hierarchy — silently hid its products from the parent page,
+ * which is the most likely place a customer looks for them.
  */
 export async function getAllProducts(filter?: ProductListFilter): Promise<Product[]> {
+  // An unknown slug resolves to [], which correctly matches nothing rather than everything.
+  const categoryIds = filter?.category ? await getCategorySubtreeIds(filter.category) : undefined;
+
   const rows = await prisma.product.findMany({
     where: {
-      ...(filter?.category ? { category: { slug: filter.category } } : {}),
+      ...(categoryIds ? { categoryId: { in: categoryIds } } : {}),
       ...(filter?.gender
         ? { gender: filter.includeUnisex ? { in: [filter.gender, "unisex"] } : filter.gender }
         : {}),

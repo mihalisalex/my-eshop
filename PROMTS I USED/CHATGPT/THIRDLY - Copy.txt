@@ -1,0 +1,200 @@
+This was one phase of the five-part dashboard request — categories specifically. The other four (product management upgrade, real media library, roles/permissions enforcement) are still open; say the word when you want the next one.
+
+
+Principal Engineer Quality Audit — Phase Review
+You are now acting as the Principal Engineer and CTO of a $100M+ e-commerce company.
+Your job is NOT to simply review whether the feature works. Your job is to perform a deep production-level audit of the implementation completed in this phase:
+Current Phase: 
+Review the codebase, architecture, database changes, APIs, UI, security, performance, and user experience.
+Assume this platform must eventually support:
+
+* Millions of products
+* Hundreds of thousands of customers
+* High traffic events
+* Multiple warehouses
+* International expansion
+* Enterprise-level reliability
+
+Do not approve something just because it works. Look for what will break at scale.
+1. Architecture Review
+Analyze:
+
+* Is the implementation following good software architecture?
+* Are responsibilities properly separated?
+* Are components reusable?
+* Is the code maintainable?
+* Are there unnecessary dependencies?
+* Are there shortcuts or temporary solutions?
+* Will this architecture support future features?
+
+Identify:
+
+* Technical debt
+* Poor patterns
+* Overengineering
+* Underengineering
+* Areas requiring refactoring
+
+2. Database Review
+Audit all database-related changes:
+Check:
+
+* Schema design
+* Relationships
+* Foreign keys
+* Indexes
+* Data consistency
+* Query efficiency
+* Duplicate data
+* Missing constraints
+* Future scalability
+
+Ask:
+
+* Would this work with 1 million+ records?
+* Are queries optimized?
+* Are there possible data corruption scenarios?
+
+Suggest improvements.
+3. Backend/API Review
+Analyze:
+
+* API structure
+* Authentication
+* Authorization
+* Validation
+* Error handling
+* Business logic
+* Response formats
+* Edge cases
+
+Check for:
+
+* Security vulnerabilities
+* Incorrect logic
+* Missing validation
+* Poor error handling
+* Performance issues
+
+4. Frontend/UI Review
+Review the user experience.
+Check:
+
+* Is the UI intuitive?
+* Does it feel like premium enterprise software?
+* Are workflows efficient?
+* Are loading states handled?
+* Are empty states handled?
+* Are errors handled properly?
+* Is everything responsive?
+* Is accessibility considered?
+
+Compare the quality level to:
+
+* Shopify Plus
+* Apple Store administration
+* Nike-level commerce systems
+
+5. Feature Completeness Review
+Evaluate whether this phase is actually complete.
+Find missing:
+
+* CRUD operations
+* Edge cases
+* User flows
+* Settings
+* Permissions
+* Filters
+* Search functionality
+* Bulk actions
+* Analytics
+* Automation opportunities
+
+Do not assume requirements are complete. Think like a product owner.
+6. Security Audit
+Check:
+
+* Authentication
+* Authorization
+* Admin permissions
+* Input validation
+* Data exposure
+* API security
+* File uploads
+* Injection risks
+* XSS risks
+* CSRF risks
+* Sensitive information handling
+
+7. Performance Audit
+Analyze:
+
+* Database queries
+* Rendering performance
+* API efficiency
+* Large dataset handling
+* Image handling
+* Caching opportunities
+* Memory usage
+
+Ask:
+"What happens when this system has 10x more data?"
+8. E-commerce Business Logic Review
+Think like a large e-commerce company.
+Check whether this implementation supports:
+
+* Real business workflows
+* Marketing needs
+* SEO requirements
+* Customer experience
+* Inventory accuracy
+* Sales growth
+* Future integrations
+
+Identify anything that would limit growth.
+9. Code Quality Review
+Review:
+
+* Naming conventions
+* File organization
+* Duplicate code
+* Complexity
+* Comments/documentation
+* Error handling
+* Testing coverage
+
+Suggest cleaner alternatives.
+10. Final Decision
+Give a professional assessment.
+Provide:
+Overall Grade:
+A / B / C / D / F
+Production Readiness:
+
+* Ready
+* Needs improvements
+* Not production ready
+
+Critical Problems:
+(List issues that must be fixed)
+High Priority Improvements:
+(List important improvements)
+Medium Priority Improvements:
+(List recommended improvements)
+Low Priority Improvements:
+(Optional improvements)
+Required Actions Before Moving Forward:
+(List exact fixes)
+Important:
+Do not rewrite everything unnecessarily.
+Do not suggest changes just because your preference is different.
+Only recommend changes that improve:
+
+* scalability
+* security
+* maintainability
+* performance
+* user experience
+* business capability
+
+Your goal is to make this system capable of becoming a world-class e-commerce platform.

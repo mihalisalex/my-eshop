@@ -8,8 +8,17 @@ import type { Category, CategoryOption, CategoryWithChildren } from "@/types";
  * the old "categories are just Product.category strings grouped in JS" placeholder.
  */
 
+/**
+ * `name` is a deliberate tiebreaker, not decoration: `position` is only unique by
+ * convention (concurrent creates can hand two siblings the same value, and the original
+ * Category backfill left every row at the default 0), and Postgres gives no ordering
+ * guarantee for tied rows — it returns heap order, which it rewrites on UPDATE and
+ * reshuffles on vacuum. Without this, merchandising order silently changes on its own.
+ */
+const CATEGORY_ORDER = [{ position: "asc" as const }, { name: "asc" as const }];
+
 export async function getAllCategories(): Promise<Category[]> {
-  const rows = await prisma.category.findMany({ include: categoryInclude, orderBy: { position: "asc" } });
+  const rows = await prisma.category.findMany({ include: categoryInclude, orderBy: CATEGORY_ORDER });
   return rows.map(toCategory);
 }
 
@@ -28,7 +37,7 @@ export async function getChildCategories(parentId: string): Promise<Category[]> 
   const rows = await prisma.category.findMany({
     where: { parentId },
     include: categoryInclude,
-    orderBy: { position: "asc" },
+    orderBy: CATEGORY_ORDER,
   });
   return rows.map(toCategory);
 }
@@ -85,24 +94,55 @@ export async function findOrCreateCategoryBySlug(rawSlug: string): Promise<{ id:
     .replace(/^-+|-+$/g, "");
   if (!slug) throw new Error(`"${rawSlug}" doesn't contain any usable category name.`);
 
-  const existing = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
-  if (existing) return existing;
-
   const name = slug
     .split("-")
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-  const created = await prisma.category.create({ data: { slug, name }, select: { id: true } });
-  return created;
+
+  // Upsert, not find-then-create: the read and the write aren't atomic, so two imports (or
+  // an import racing a product save) referencing the same new category both saw "missing"
+  // and both inserted — one then died on the slug unique constraint, failing that row with
+  // a confusing error. `upsert` pushes the check into the same statement as the write.
+  return prisma.category.upsert({
+    where: { slug },
+    create: { slug, name },
+    update: {},
+    select: { id: true },
+  });
 }
 
-/** True if `candidateId` is `ancestorId` itself or a descendant of it — used to stop a category being re-parented into its own subtree, which would create a cycle. */
+/**
+ * Every id in the subtree rooted at `slug`, including the root itself. Resolved with one
+ * recursive CTE rather than a query per level — depth is unbounded (the schema allows
+ * unlimited nesting) and this runs on every category page load.
+ */
+export async function getCategorySubtreeIds(slug: string): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    WITH RECURSIVE subtree AS (
+      SELECT id FROM categories WHERE slug = ${slug}
+      UNION ALL
+      SELECT c.id FROM categories c JOIN subtree s ON c."parentId" = s.id
+    )
+    SELECT id FROM subtree
+  `;
+  return rows.map((row) => row.id);
+}
+
+/**
+ * True if `candidateId` is `ancestorId` itself or a descendant of it — stops a category
+ * being re-parented into its own subtree, which would orphan that subtree into an
+ * unreachable cycle. One recursive CTE; this previously issued a query per node per level.
+ */
 export async function isSameOrDescendant(candidateId: string, ancestorId: string): Promise<boolean> {
   if (candidateId === ancestorId) return true;
-  const children = await prisma.category.findMany({ where: { parentId: ancestorId }, select: { id: true } });
-  for (const child of children) {
-    if (await isSameOrDescendant(candidateId, child.id)) return true;
-  }
-  return false;
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    WITH RECURSIVE subtree AS (
+      SELECT id FROM categories WHERE id = ${ancestorId}
+      UNION ALL
+      SELECT c.id FROM categories c JOIN subtree s ON c."parentId" = s.id
+    )
+    SELECT id FROM subtree WHERE id = ${candidateId} LIMIT 1
+  `;
+  return rows.length > 0;
 }
