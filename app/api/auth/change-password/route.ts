@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireCustomerSession } from "@/lib/customer-session";
-import { changePasswordInputSchema } from "@/lib/validations/auth";
+import { changePasswordInputSchema } from "@/lib/validation/auth";
 import { updateCustomerPasswordHash } from "@/services/customers";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { isRateLimited, recordAttempt } from "@/lib/rate-limit";

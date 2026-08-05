@@ -11,7 +11,7 @@ export default async function AdminNewsletterPage() {
     <div>
       <AdminPageHeader
         title="Newsletter Subscribers"
-        description={`${subscribers.length} subscribers. Wire this up to your ESP (Klaviyo, Mailchimp, etc.) later.`}
+        description={`${subscribers.length} subscribers, captured from the site's signup forms.`}
         actions={
           <button
             type="button"
@@ -25,6 +25,7 @@ export default async function AdminNewsletterPage() {
       <DataTable<NewsletterSubscriber>
         columns={[
           { header: "Email", cell: (row) => row.email },
+          { header: "Source", cell: (row) => row.source ?? "—" },
           { header: "Subscribed", cell: (row) => formatDate(row.subscribedAt) },
         ]}
         rows={subscribers}

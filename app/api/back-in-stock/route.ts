@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCustomerSession } from "@/lib/customer-session";
-import { backInStockRequestSchema } from "@/lib/validations/back-in-stock";
+import { backInStockRequestSchema } from "@/lib/validation/back-in-stock";
 import { invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 

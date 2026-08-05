@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { newsletterSchema, type NewsletterFormValues } from "@/lib/validations/newsletter";
+import { newsletterSchema, type NewsletterFormValues } from "@/lib/validation/newsletter";
 
 interface NewsletterFormProps {
   ctaLabel?: string;
@@ -13,7 +13,9 @@ interface NewsletterFormProps {
   /** Set when the form sits on a dark section background (e.g. the homepage Newsletter section). */
   onDark?: boolean;
   className?: string;
-  /** Swappable for a real subscribe endpoint (Klaviyo, Shopify, custom API) later. */
+  /** Which surface this instance sits on — recorded with the signup. */
+  source?: string;
+  /** Escape hatch for pointing a given instance at a different destination (e.g. an ESP). */
   onSubscribe?: (values: NewsletterFormValues) => Promise<void>;
 }
 
@@ -22,9 +24,11 @@ export function NewsletterForm({
   compact = false,
   onDark = false,
   className,
+  source,
   onSubscribe,
 }: NewsletterFormProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -32,14 +36,31 @@ export function NewsletterForm({
     formState: { errors, isSubmitting },
   } = useForm<NewsletterFormValues>({ resolver: zodResolver(newsletterSchema) });
 
+  // Previously this awaited a 500ms timer and then reported success unconditionally,
+  // discarding the address — so the confirmation below was a lie on every submission.
   const onSubmit = async (values: NewsletterFormValues) => {
-    if (onSubscribe) {
-      await onSubscribe(values);
-    } else {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    setSubmitError(null);
+    try {
+      if (onSubscribe) {
+        await onSubscribe(values);
+      } else {
+        const response = await fetch("/api/newsletter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...values, source }),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error?.message ?? "Something went wrong. Please try again.");
+        }
+      }
+      setSubmitted(true);
+      reset();
+    } catch (error) {
+      // Staying on the form with the address intact is the point — showing the success
+      // state here would repeat the original bug in a subtler form.
+      setSubmitError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
     }
-    setSubmitted(true);
-    reset();
   };
 
   if (submitted) {
@@ -82,8 +103,10 @@ export function NewsletterForm({
           <ArrowRight className="size-4" strokeWidth={1.5} />
         </button>
       </div>
-      {errors.email ? (
-        <p className="mt-2 text-xs text-destructive">{errors.email.message}</p>
+      {errors.email || submitError ? (
+        <p role="alert" className="mt-2 text-xs text-destructive">
+          {errors.email?.message ?? submitError}
+        </p>
       ) : null}
     </form>
   );

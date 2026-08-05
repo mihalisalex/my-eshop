@@ -1,5 +1,0 @@
-[
-  { "id": "sub-1", "email": "amelia.novak@example.com", "subscribedAt": "2025-02-11" },
-  { "id": "sub-2", "email": "marcus.feld@example.com", "subscribedAt": "2025-06-30" },
-  { "id": "sub-3", "email": "guest.reader@example.com", "subscribedAt": "2026-07-01" }
-]

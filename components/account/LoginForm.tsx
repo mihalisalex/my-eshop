@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { SocialSignInButtons } from "@/components/account/SocialSignInButtons";
-import { loginSchema, magicLinkSchema, type LoginFormValues, type MagicLinkFormValues } from "@/lib/validations/auth";
+import { loginSchema, magicLinkSchema, type LoginFormValues, type MagicLinkFormValues } from "@/lib/validation/auth";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import type { OAuthProviderName } from "@/lib/oauth/types";
 

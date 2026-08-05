@@ -22,7 +22,7 @@ export function Newsletter({ data }: NewsletterProps) {
         <h2 className="font-heading text-3xl md:text-4xl">{data.headline}</h2>
         {data.subheadline ? <p className="mt-4 text-luxe-white/70">{data.subheadline}</p> : null}
         <div className="mt-8 mx-auto max-w-sm text-left">
-          <NewsletterForm ctaLabel={data.ctaLabel} onDark />
+          <NewsletterForm ctaLabel={data.ctaLabel} onDark source="homepage" />
         </div>
       </motion.div>
     </section>

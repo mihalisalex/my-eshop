@@ -17,6 +17,8 @@ export interface DashboardStat {
 export interface NewsletterSubscriber {
   id: string;
   email: string;
+  /** Which surface the signup came from, e.g. "footer" | "homepage". */
+  source?: string;
   subscribedAt: string;
 }
 

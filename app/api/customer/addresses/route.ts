@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { addCustomerAddress } from "@/services/customers";
 import { requireCustomerSession } from "@/lib/customer-session";
-import { addressSchema } from "@/lib/validations/checkout";
+import { addressSchema } from "@/lib/validation/checkout";
 import { commerceErrorResponse, invalidInputResponse } from "@/lib/commerce/http-errors";
 
 export async function POST(request: NextRequest) {

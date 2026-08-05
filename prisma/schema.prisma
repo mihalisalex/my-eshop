@@ -73,6 +73,15 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// The storefront's hottest read path: every PLP (/women, /men, /collections/[slug],
+  /// category pages) filters on gender and/or category. Those filters are applied in the
+  /// query itself rather than in JS, so without these the listing pages sequential-scan
+  /// the whole catalog on every request. [gender, category] also serves gender-only
+  /// lookups via its leftmost prefix, so no separate single-column gender index is needed.
+  /// isNew/isSale are deliberately left unindexed — booleans that split the catalog
+  /// roughly in half aren't selective enough for an index to beat a scan.
+  @@index([gender, category])
+  @@index([category])
   @@map("products")
 }
 
@@ -350,7 +359,7 @@ model Checkout {
   /// "open" | "awaiting_payment" | "completed"
   status String  @default("open")
 
-  /// Address | null — Zod-validated on read/write, reuses lib/validations/checkout.ts's addressSchema.
+  /// Address | null — Zod-validated on read/write, reuses lib/validation/checkout.ts's addressSchema.
   shippingAddress Json?
   /// Address | null — Zod-validated, same schema.
   billingAddress  Json?
@@ -628,6 +637,23 @@ model Referral {
 
   @@index([referrerCustomerId])
   @@map("referrals")
+}
+
+/// A real newsletter signup from the sitewide footer / homepage Newsletter section
+/// (components/shared/NewsletterForm.tsx). Email is unique so re-subscribing is
+/// idempotent rather than accumulating duplicate rows — the form shows the same
+/// confirmation either way, which also avoids leaking whether an address is already
+/// on the list.
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  /// Where the signup came from, e.g. "footer" | "homepage" — lets the admin list show
+  /// which surface actually converts without a separate analytics dependency.
+  source       String?
+  subscribedAt DateTime @default(now())
+
+  @@index([subscribedAt])
+  @@map("newsletter_subscribers")
 }
 
 /// A real submission from the public Contact page (components/shared/ContactForm.tsx).

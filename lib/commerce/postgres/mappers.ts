@@ -10,7 +10,7 @@ import {
   productSeoOverrideSchema,
   imageSchema,
 } from "@/lib/validation/product";
-import { addressSchema } from "@/lib/validations/checkout";
+import { addressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema, cartLineItemSchema, cartTotalsSchema } from "@/lib/validation/commerce";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
 import { returnItemSchema } from "@/lib/validation/commerce";

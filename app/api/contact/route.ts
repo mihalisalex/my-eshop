@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { contactSchema } from "@/lib/validations/contact";
+import { contactSchema } from "@/lib/validation/contact";
 import { createContactMessage } from "@/services/contact";
 import { getEmailProvider, contactMessageNotificationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";

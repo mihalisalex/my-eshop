@@ -6,6 +6,7 @@ export * from "./settings";
 export * from "./seo";
 export * from "./blog";
 export * from "./admin";
+export * from "./newsletter";
 export * from "./reviews";
 export * from "./search";
 export * from "./about";

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { cartInclude, toCart, toCheckout, toJsonInput, toOrder } from "@/lib/commerce/postgres/mappers";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
-import { addressSchema } from "@/lib/validations/checkout";
+import { addressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema } from "@/lib/validation/commerce";
 import { resolveShippingRate, STANDARD_SHIPPING_RATE } from "@/lib/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";

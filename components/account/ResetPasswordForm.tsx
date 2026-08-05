@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/validations/auth";
+import { resetPasswordSchema, type ResetPasswordFormValues } from "@/lib/validation/auth";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";

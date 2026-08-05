@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { SocialSignInButtons } from "@/components/account/SocialSignInButtons";
-import { registerSchema, type RegisterFormValues } from "@/lib/validations/auth";
+import { registerSchema, type RegisterFormValues } from "@/lib/validation/auth";
 import type { OAuthProviderName } from "@/lib/oauth/types";
 
 const inputClass =

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { removeCustomerAddress, updateCustomerAddress } from "@/services/customers";
 import { requireCustomerSession } from "@/lib/customer-session";
-import { addressSchema } from "@/lib/validations/checkout";
+import { addressSchema } from "@/lib/validation/checkout";
 import { commerceErrorResponse, invalidInputResponse } from "@/lib/commerce/http-errors";
 
 type RouteParams = { params: Promise<{ addressId: string }> };

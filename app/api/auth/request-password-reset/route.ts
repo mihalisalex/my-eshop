@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { magicLinkSchema } from "@/lib/validations/auth";
+import { magicLinkSchema } from "@/lib/validation/auth";
 import { invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { createPasswordResetToken } from "@/lib/password-reset";
