@@ -32,6 +32,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        // Product photos for the WooCommerce-imported catalog batch, still hosted
+        // on the original store's WordPress media library rather than re-uploaded.
+        protocol: "https",
+        hostname: "alexandrisstores.gr",
+      },
     ],
   },
   async headers() {
