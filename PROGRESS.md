@@ -396,6 +396,76 @@ Products had real CRUD but no lifecycle. The **"Status" column was a lie** — i
 - **Bulk** publish/draft/archive/delete plus live search (name, SKU, **and brand** — merchandisers look products up by SKU constantly), status/category filters, sorting including by margin.
 - **Verified by making it fail first**: flipped one real product to draft and another to archived, then confirmed via real HTTP paths that the PLP dropped 33 to 31, both PDPs 404 while an active product still rendered with its buy box, the sitemap excluded both, and — critically — **the cart/wishlist path still resolved the draft product by id**. Admin showed "175 products, 173 active, 1 draft, 1 archived"; status filter narrowed to exactly the draft; bulk publish moved counts to 174/0. Margin checked live at 60%, then -33.3% with a "Selling below cost" warning. All test data restored: 175 products, all active, no leftover duplicates.
 
+## Batch 7 — Roles & permissions: a live authorization gap
+
+Picked over the Media Library after checking whether the roles matrix was actually
+enforced. It wasn't. This was a security fix, not a feature build.
+
+**What was wrong** — four separate things pointing the same way:
+- `signAdminSession` put only `email`/`name` in the JWT. `AdminSessionPayload` had no
+  `role` field, so nothing *could* check it.
+- `requireAdminSession()` only asked "is there a valid session". Every one of the 31
+  admin mutations called it and stopped there — being signed in was treated as being
+  allowed.
+- `app/admin/(dashboard)/layout.tsx` passed a hardcoded `role: "admin"` to the topbar, and
+  `AdminSession.role` in `lib/auth.ts` was typed as the *literal* `"admin"` — the type
+  itself encoded the assumption that every signed-in user is an admin.
+- `RoleSelect` was local `useState` with no server call: assigning a role appeared to work
+  and reverted on reload.
+
+Net effect: an "editor" could delete products, manage users and edit site settings, while
+`/admin/roles` displayed a matrix telling the owner they couldn't. The matrix was
+display-only strings with `admin: true / editor: false` booleans that nothing read.
+
+**What was built**
+- `constants/permissions.ts` rewritten around 13 keyed `Capability` values with
+  `ROLE_CAPABILITIES`, and it is now the single source of truth for *both* the guards and
+  the roles page, so the two can't drift apart again. Admin's capability list is derived
+  (`CAPABILITIES.map(c => c.key)`) rather than enumerated, so adding a capability can never
+  silently lock the owner out of their own dashboard.
+- The role is read from the `AdminUser` row rather than the JWT, memoized with React
+  `cache()`. Reading it from the token would have meant: pre-existing sessions have no role
+  to read, a demotion doesn't take effect until the token expires (up to a day of continued
+  elevated access), and a deleted admin's token keeps working. Reading it live fixes all
+  three — and the row's existence doubles as session validation. An unrecognised value in
+  the column degrades to the least-privileged role rather than being trusted.
+- `requireCapability` on all 31 mutations; `requireCapabilityOrRedirect` on the 9
+  capability-gated pages, because hiding a nav link isn't protection when the URL is still
+  typeable. Bulk delete is checked against the stricter `catalog:delete` specifically so
+  the bulk endpoint can't be used to do in one call what the single-product path refuses.
+- `RoleSelect` persists via a real action behind `admin:users`, with a guard refusing to
+  demote the last remaining admin (an unrecoverable dashboard lockout — there's no
+  self-service escalation).
+- Roles page rebuilt from the real model, showing the signed-in user's own role. Nav
+  filters to what the role can use. `/admin/appearance` was deliberately *un*-gated after a
+  look: it's a read-only list of design tokens with no data or actions to protect.
+
+**Verified with a real throwaway editor account, against the live DB**
+Signed in as an editor: topbar correctly read "editor" (previously hardcoded "admin"), and
+discounts/gift-cards/homepage/navigation/returns/seo/settings/users were all absent from
+the nav. Typing `/admin/settings` directly redirected to `/admin?denied=admin%3Asettings`.
+Bulk-deleting a product was refused — **175 products still present afterwards, nothing
+deleted** — while "Move to draft" (`catalog:edit`, which editors do have) succeeded,
+proving the boundary blocks the right things without over-blocking. Role changes were then
+driven through the real dropdown as a temp admin and confirmed persisted in the database in
+both directions, plus self-demotion while another admin exists.
+
+**Found during that verification and fixed**: the first bulk-delete attempt was correctly
+blocked but showed *no error at all* — `requireCapability` throws, and a thrown error in a
+Server Action never reaches the caller's `if (result?.error)`. The guard held but the UI
+looked broken. Added `capabilityDenied()` (returns the message instead of throwing) for
+actions that already carry an `{ error }` channel; the editor now sees "Your role (editor)
+doesn't have permission to do this."
+
+**Not tested live, deliberately**: the last-admin refusal branch. Firing it requires making
+the owner's account the sole admin being demoted, and a failure mid-test could lock them
+out of their own production dashboard. Covered by code review and
+`constants/permissions.test.ts` instead — the risk wasn't worth the test.
+
+Both temp accounts were deleted and the drafted product restored: one admin (the real
+owner, still `admin`), 175 products all active. The owner's password was never read or
+reset. 37 tests (up from 31).
+
 ## Test-data discipline
 
 Every live-DB verification this session was set up, proven, then **restored and re-verified**: a nested category with a moved product, two products flipped to draft/archived, newsletter signups, and a throwaway admin account (created and deleted — the real `alexandrisstores@gmail.com` admin was never touched, and its password was never reset or read).

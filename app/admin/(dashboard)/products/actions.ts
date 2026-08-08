@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { capabilityDenied, requireCapability } from "@/lib/admin-session";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import { writeProductRow } from "@/lib/products-import/write";
 
@@ -18,7 +18,8 @@ function revalidateStorefront() {
 }
 
 export async function createProduct(values: ProductFormValues): Promise<ProductActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = productFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -33,7 +34,8 @@ export async function createProduct(values: ProductFormValues): Promise<ProductA
 }
 
 export async function updateProduct(id: string, values: ProductFormValues): Promise<ProductActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = productFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -55,14 +57,15 @@ export async function updateProduct(id: string, values: ProductFormValues): Prom
  * wishlists; archiving does neither.
  */
 export async function deleteProduct(id: string): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("catalog:delete");
   await prisma.product.delete({ where: { id } });
   revalidateStorefront();
   redirect("/admin/products");
 }
 
 export async function archiveProduct(id: string): Promise<ProductActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   await prisma.product.update({
     where: { id },
     data: { status: "archived", archivedAt: new Date() },
@@ -73,7 +76,8 @@ export async function archiveProduct(id: string): Promise<ProductActionState> {
 }
 
 export async function restoreProduct(id: string): Promise<ProductActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   // Restores to "draft", never straight to "active": a product was archived for a reason,
   // so bringing it back should be a deliberate two-step (restore, review, then publish)
   // rather than silently putting it in front of customers again.
@@ -92,7 +96,8 @@ export async function restoreProduct(id: string): Promise<ProductActionState> {
  * hitting a constraint violation on the second attempt would be a pointless dead end.
  */
 export async function duplicateProduct(id: string): Promise<ProductActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
 
   const source = await prisma.product.findUnique({
     where: { id },
@@ -163,7 +168,11 @@ export type BulkProductAction = "publish" | "draft" | "archive" | "delete";
 
 /** Bulk lifecycle transitions. One statement per action rather than a loop of updates. */
 export async function bulkUpdateProducts(action: BulkProductAction, ids: string[]): Promise<BulkActionState> {
-  await requireAdminSession();
+  // Bulk delete is checked against the stricter capability, matching the single-product
+  // path — otherwise the bulk endpoint would be a way for an editor to do in one call
+  // exactly what deleteProduct refuses to let them do one at a time.
+  const denied = await capabilityDenied(action === "delete" ? "catalog:delete" : "catalog:edit");
+  if (denied) return { error: denied };
   if (ids.length === 0) return { error: "Select at least one product." };
 
   let updated: number;

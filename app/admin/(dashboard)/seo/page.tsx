@@ -2,8 +2,10 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { SeoSettingsForm } from "@/components/admin/SeoSettingsForm";
 import { getSeoDefaults } from "@/services";
 import { saveSeoDefaultsAction } from "@/app/admin/(dashboard)/seo/actions";
+import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
 export default async function AdminSeoPage() {
+  await requireCapabilityOrRedirect("admin:settings");
   const seo = await getSeoDefaults();
 
   return (

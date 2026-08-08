@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { capabilityDenied, requireCapability } from "@/lib/admin-session";
 import { collectionFormSchema, type CollectionFormValues } from "@/lib/validation/collection";
 
 export interface CollectionActionState {
@@ -29,7 +29,8 @@ function toCollectionWriteData(data: CollectionFormValues) {
 }
 
 export async function createCollection(values: CollectionFormValues): Promise<CollectionActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = collectionFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -49,7 +50,8 @@ export async function createCollection(values: CollectionFormValues): Promise<Co
 }
 
 export async function updateCollection(id: string, values: CollectionFormValues): Promise<CollectionActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = collectionFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -73,7 +75,7 @@ export async function updateCollection(id: string, values: CollectionFormValues)
 }
 
 export async function deleteCollection(id: string): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("catalog:delete");
   await prisma.collection.delete({ where: { id } });
   revalidateStorefront();
   redirect("/admin/collections");

@@ -5,8 +5,10 @@ import { formatDate } from "@/lib/format";
 import { getAllReturnsForAdmin } from "@/services/returns";
 import { updateReturnStatusAction } from "@/app/admin/(dashboard)/returns/actions";
 import type { Return } from "@/lib/commerce/types";
+import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
 export default async function AdminReturnsPage() {
+  await requireCapabilityOrRedirect("orders:returns");
   const returns = await getAllReturnsForAdmin();
 
   return (

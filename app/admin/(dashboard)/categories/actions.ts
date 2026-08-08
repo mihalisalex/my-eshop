@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { capabilityDenied } from "@/lib/admin-session";
 import { isSameOrDescendant } from "@/services/categories";
 import { categoryFormSchema, type CategoryFormValues } from "@/lib/validation/category";
 
@@ -51,7 +51,8 @@ function toCategoryWriteData(data: CategoryFormValues, parentId: string | null) 
 }
 
 export async function createCategory(values: CategoryFormValues): Promise<CategoryActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = categoryFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -77,7 +78,8 @@ export async function createCategory(values: CategoryFormValues): Promise<Catego
 }
 
 export async function updateCategory(id: string, values: CategoryFormValues): Promise<CategoryActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
   const parsed = categoryFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -113,7 +115,8 @@ export async function updateCategory(id: string, values: CategoryFormValues): Pr
 }
 
 export async function deleteCategory(id: string): Promise<CategoryActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:delete");
+  if (denied) return { error: denied };
 
   const [childCount, productCount] = await Promise.all([
     prisma.category.count({ where: { parentId: id } }),
@@ -133,7 +136,8 @@ export async function deleteCategory(id: string): Promise<CategoryActionState> {
 
 /** Drag-and-drop reorder within one parent — `orderedIds` is every sibling under `parentId` (or every root category, if null) in its new order. */
 export async function reorderCategories(parentId: string | null, orderedIds: string[]): Promise<CategoryActionState> {
-  await requireAdminSession();
+  const denied = await capabilityDenied("catalog:edit");
+  if (denied) return { error: denied };
 
   const siblings = await prisma.category.findMany({ where: { parentId }, select: { id: true } });
   const siblingIds = new Set(siblings.map((s) => s.id));

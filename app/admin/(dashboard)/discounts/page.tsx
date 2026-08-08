@@ -7,8 +7,10 @@ import { formatDate } from "@/lib/format";
 import { getAllDiscounts } from "@/services/discounts";
 import { toggleDiscountActive, deleteDiscount } from "@/app/admin/(dashboard)/discounts/actions";
 import type { Discount } from "@/types";
+import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
 export default async function AdminDiscountsPage() {
+  await requireCapabilityOrRedirect("catalog:discounts");
   const discounts = await getAllDiscounts();
 
   return (

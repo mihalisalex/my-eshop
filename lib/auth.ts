@@ -21,6 +21,7 @@
  */
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
+import type { AdminRole } from "@/types/admin";
 
 export const ADMIN_SESSION_COOKIE = "alexandris_admin_session";
 
@@ -31,7 +32,9 @@ export const DEMO_ADMIN_PASSWORD = "admin123";
 export interface AdminSession {
   name: string;
   email: string;
-  role: "admin";
+  /** Was the literal `"admin"` — the type itself hardcoded the assumption that every
+   * signed-in user is an admin, which is exactly what let editors through unchecked. */
+  role: AdminRole;
 }
 
 export interface AdminSessionPayload {

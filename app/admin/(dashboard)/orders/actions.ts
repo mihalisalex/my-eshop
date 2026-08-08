@@ -1,19 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminSession } from "@/lib/admin-session";
+import { requireCapability } from "@/lib/admin-session";
 import { getOrderById, updateOrderStatus, updateOrderTracking, type OrderTrackingInput } from "@/services/orders";
 import { getCourierProvider } from "@/lib/courier";
 import type { Order } from "@/lib/commerce/types";
 
 export async function updateOrderStatusAction(orderId: string, status: Order["status"]): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("orders:manage");
   await updateOrderStatus(orderId, status);
   revalidatePath("/", "layout");
 }
 
 export async function updateOrderTrackingAction(orderId: string, input: OrderTrackingInput): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("orders:manage");
   await updateOrderTracking(orderId, input);
   revalidatePath("/", "layout");
 }
@@ -28,7 +28,7 @@ export interface CreateShipmentActionState {
  * page's button, which is itself only rendered when ACS is configured.
  */
 export async function createAcsShipmentAction(orderId: string): Promise<CreateShipmentActionState> {
-  await requireAdminSession();
+  await requireCapability("orders:manage");
   try {
     const order = await getOrderById(orderId);
     if (!order) return { error: "Order not found." };
