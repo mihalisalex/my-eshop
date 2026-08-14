@@ -66,11 +66,34 @@ export default async function RootLayout({
     <html
       lang={locale}
       className={`${inter.variable} ${playfairDisplay.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Runs before first paint, so a visitor who has already answered the cookie banner
+            never sees it flash. The banner itself is server-rendered (see
+            CookieConsentBanner) because it sits in the viewport and was otherwise the
+            homepage's LCP element, painting only after hydration. Reading localStorage is
+            the one thing the server cannot do, so it is done here instead of deferring the
+            whole banner to an effect. Kept inline and dependency-free: an external file
+            would be a network round trip in front of first paint. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('alexandris_cookie_consent'))document.documentElement.dataset.consent='set'}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <JsonLd data={organizationSchema(seo)} />
         <JsonLd data={websiteSchema(seo)} />
         <NextIntlClientProvider messages={messages}>
+          {/* Deliberately ahead of {children}. It is position:fixed, so DOM order does not
+              affect where it appears — but it does decide when it appears. Sitting after
+              {children} meant its markup only flushed once the page's slowest server
+              component had finished streaming, so this banner painted ~3.3s in and became
+              the homepage's LCP element. Emitted first, it paints with the shell.
+              Stacking is unaffected: the cart drawer portals to the end of <body>, the
+              toast viewport is z-200, and the header is top-fixed with no overlap. */}
+          <CookieConsentBanner />
           <ToastProvider>
             <CartProvider>
               <WishlistProvider>
@@ -80,7 +103,6 @@ export default async function RootLayout({
             </CartProvider>
             <ToastViewport />
           </ToastProvider>
-          <CookieConsentBanner />
           <ReferralCapture />
         </NextIntlClientProvider>
       </body>

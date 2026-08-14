@@ -598,3 +598,48 @@ apply moved both to a new folder and merged tags additively without duplicates
 (`[a,b]` + `[a,c]` → `[a,b,c]`); only selected assets were affected. Test uploads were then
 deleted through the library's own delete path, so their blobs went with them, and the two
 real assets used for the bulk test were restored to their exact prior folder and tags.
+
+## Batch 10 — Mobile Core Web Vitals
+
+Baseline Lighthouse on the deployed site: mobile **89**, desktop 98, with accessibility,
+best-practices and SEO already at **100/100/100**. The entire mobile deficit was Largest
+Contentful Paint at 3.6s, and none of it was server time — the root document responds in
+50ms, which Lighthouse scores a perfect 1.0. It was 2,925ms of *render delay*: the page had
+arrived and simply wasn't painting.
+
+Three independent causes, each of which only became visible after fixing the one in front
+of it. Every step was re-measured rather than assumed.
+
+**1. Framer Motion serialises its `initial` state into the SSR HTML.** The hero headline —
+the LCP element — shipped as `opacity:0` and stayed invisible until React had hydrated and
+the animation ran. Chrome does not count a transparent element as painted, so LCP was
+effectively a measure of hydration. Replaced with a CSS animation carrying the same easing,
+durations and stagger; CSS starts at first paint and needs no JavaScript.
+
+**2. With the headline fixed, the LCP element turned out to be the cookie banner.** It is
+fixed to the bottom of the viewport, its paragraph is wide enough to out-measure the
+headline, and it rendered only inside a `useEffect` — so the store's Core Web Vitals were
+being set by its consent notice. It is now server-rendered. Consent lives in localStorage,
+which the server cannot read, so a tiny inline script stamps `data-consent` on `<html>`
+before first paint and CSS hides the banner for anyone who has already answered: no flash,
+no hydration wait. Verified both paths, including that the banner never appears for a
+visitor who has already consented.
+
+**3. Fading the LCP element costs LCP even in pure CSS** — the same rule as (1), which the
+measurement caught rather than the theory. The headline now animates transform only, fully
+opaque from the first frame, while the copy around it still fades. Observed LCP went
+**2,017ms -> 1,012ms, exactly equal to FCP**: the headline now paints at first paint.
+
+A methodological note worth keeping: Lighthouse reports two different sets of numbers, and
+against localhost they disagree sharply. The `observed*` metrics are real paint times from
+the trace; the score comes from Lantern's *simulated* values, which model a 4G network that
+does not exist in front of a local server. Simulated LCP still read 3.8s locally while
+observed LCP had already collapsed to equal FCP. Local runs are for confirming mechanism;
+only the deployed site's score is meaningful.
+
+Deliberately not done, with reasons: `browserslist` is unset, so ~14 KiB of polyfills ship
+for browsers older than `Object.hasOwn` (Safari < 15.4) — narrowing it decides which
+customers can shop, which is a business call, for a saving too small to move the score.
+Back/forward cache is disabled by `cache-control: no-store` on the document, which follows
+from rendering dynamically for locale and session; it is real for returning visitors but
+carries no weight in the performance score.

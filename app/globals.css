@@ -185,4 +185,63 @@
   .range-thumb::-moz-range-track {
     background: transparent;
   }
+  /* Hero entrance animation, in CSS rather than Framer Motion — deliberately.
+     Framer renders its `initial` state into the SSR HTML, so the hero headline shipped as
+     opacity:0 and only became visible once React had hydrated and the animation ran. The
+     headline is the page's LCP element, and Chrome does not count an element with opacity:0
+     as painted, so LCP was pinned to hydration: measured at 3.6s in production and 4.6s
+     locally, of which ~2.9s and ~4.2s respectively was pure render delay on a 50ms server
+     response. A CSS animation starts at first paint with no JavaScript involved, so the
+     element becomes visible a frame after the delay elapses. Same easing, durations and
+     stagger as the Framer version it replaces (EASE in constants/animation.ts).
+     Keep the LCP element's delay small — every ms of `animation-delay` here is a ms of LCP. */
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(var(--hero-rise-from, 16px));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .hero-rise {
+    animation: hero-rise var(--hero-rise-duration, 0.8s) cubic-bezier(0.22, 1, 0.36, 1)
+      var(--hero-rise-delay, 0s) both;
+  }
+  /* Movement without the fade, for the LCP element only. Chrome does not treat a
+     transparent element as painted, so anything that animates opacity from 0 does not
+     register as the Largest Contentful Paint until the fade has visibly progressed —
+     measured at ~800ms after First Contentful Paint for the hero headline, purely from its
+     own entrance animation. Sliding an already-opaque element costs nothing: it is painted
+     on the first frame, so LCP lands with FCP. The surrounding copy still fades, so the
+     hero as a whole keeps its staggered entrance. */
+  @keyframes hero-lift {
+    from {
+      transform: translateY(var(--hero-rise-from, 16px));
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  .hero-lift {
+    animation: hero-lift var(--hero-rise-duration, 0.8s) cubic-bezier(0.22, 1, 0.36, 1)
+      var(--hero-rise-delay, 0s) both;
+  }
+  /* Honours the OS "reduce motion" setting, which Framer did not do here. Content still
+     ends up fully visible — it simply arrives without the movement. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-rise,
+    .hero-lift {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* Paired with the inline script in app/layout.tsx: hides the server-rendered cookie
+     banner before first paint for anyone who has already made a choice. `display:none`
+     specifically — a hidden element is not painted, so it cannot become the LCP element. */
+  :root[data-consent="set"] [data-cookie-consent] {
+    display: none;
+  }
 }

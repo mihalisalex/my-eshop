@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { EASE } from "@/constants/animation";
 import { getExperimentVisitorId, getVariant, type Variant } from "@/lib/experiments";
 import { getCommerceProvider } from "@/lib/commerce";
 import type { HeroSection } from "@/types";
@@ -52,38 +51,34 @@ export function Hero({ data }: HeroProps) {
       </motion.div>
 
       <div className="container-luxe relative flex h-full flex-col items-start justify-end pb-24 md:pb-32">
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE }}
-          className="text-xs tracking-[0.25em] text-luxe-white uppercase"
-        >
-          {data.eyebrow}
-        </motion.p>
-        <motion.h1
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
-          className="font-heading mt-4 max-w-2xl text-5xl leading-[1.05] whitespace-pre-line text-luxe-white md:text-7xl"
+        {/* These four use the CSS `hero-rise` animation rather than Framer Motion. Framer
+            writes its `initial` state into the server-rendered HTML, which meant the headline
+            below shipped as opacity:0 and stayed invisible — and therefore did not count as
+            the Largest Contentful Paint — until React had hydrated. See app/globals.css. */}
+        <p className="hero-rise text-xs tracking-[0.25em] text-luxe-white uppercase">{data.eyebrow}</p>
+        <h1
+          // The LCP element, so it uses `hero-lift` (movement only) rather than `hero-rise`
+          // (movement + fade): a headline that fades in from transparent is not counted as
+          // painted until the fade progresses, which measured as ~800ms of LCP for nothing
+          // but the animation. It rises fully opaque instead. Zero delay for the same reason
+          // — every ms here is charged straight to the metric.
+          style={{ "--hero-rise-delay": "0s", "--hero-rise-duration": "0.9s", "--hero-rise-from": "24px" } as CSSProperties}
+          className="hero-lift font-heading mt-4 max-w-2xl text-5xl leading-[1.05] whitespace-pre-line text-luxe-white md:text-7xl"
         >
           {data.headline}
-        </motion.h1>
+        </h1>
         {data.subheadline ? (
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3, ease: EASE }}
-            className="mt-6 max-w-md text-base text-luxe-white/90"
+          <p
+            style={{ "--hero-rise-delay": "0.3s" } as CSSProperties}
+            className="hero-rise mt-6 max-w-md text-base text-luxe-white/90"
           >
             {data.subheadline}
-          </motion.p>
+          </p>
         ) : null}
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.45, ease: EASE }}
-          className="mt-8 flex flex-wrap items-center gap-4"
+        <div
+          style={{ "--hero-rise-delay": "0.45s" } as CSSProperties}
+          className="hero-rise mt-8 flex flex-wrap items-center gap-4"
         >
           {data.primaryCta ? (
             <Link
@@ -101,7 +96,7 @@ export function Hero({ data }: HeroProps) {
               {data.secondaryCta.label}
             </Link>
           ) : null}
-        </motion.div>
+        </div>
       </div>
     </section>
   );
