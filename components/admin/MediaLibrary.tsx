@@ -3,9 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { isOptimizableImageUrl } from "@/lib/image-hosts";
-import { Check, Copy, Lock } from "lucide-react";
-import { deleteMediaAssets, updateMediaDetails } from "@/app/admin/(dashboard)/media/actions";
+import { Check, Copy, Lock, Upload } from "lucide-react";
+import { bulkOrganiseMedia, deleteMediaAssets, updateMediaDetails } from "@/app/admin/(dashboard)/media/actions";
+import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
 import type { MediaAssetWithUsage } from "@/types/media";
 
 interface MediaLibraryProps {
@@ -29,7 +31,30 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
   const [editing, setEditing] = useState<MediaAssetWithUsage | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [bulkFolder, setBulkFolder] = useState("");
+  const [bulkTags, setBulkTags] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+
+  async function handleDroppedFiles(fileList: FileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) {
+      setError("Only image files can be uploaded.");
+      return;
+    }
+    setIsUploading(true);
+    const result = await uploadMediaFiles(files);
+    setIsUploading(false);
+    if (result.ok) {
+      setError(null);
+      setNotice(`Uploaded ${files.length} image${files.length === 1 ? "" : "s"}.`);
+      router.refresh();
+    } else {
+      setError(result.error ?? "Upload failed.");
+    }
+  }
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -71,7 +96,32 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
   }
 
   return (
-    <div>
+    // Drop handling lives on the whole library rather than a small target: dragging a file
+    // at a narrow strip is fiddly, and the obvious gesture is "drop it on the grid".
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!isDragging) setIsDragging(true);
+      }}
+      // dragleave fires when crossing onto a child element too, so only clear when the
+      // pointer has actually left the container — otherwise the overlay flickers constantly.
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer.files.length > 0) void handleDroppedFiles(e.dataTransfer.files);
+      }}
+      className={isDragging ? "outline-2 outline-offset-4 outline-luxe-black" : undefined}
+    >
+      {isDragging || isUploading ? (
+        <p className="mb-3 flex items-center gap-2 border border-dashed border-luxe-black bg-luxe-gray-light/40 p-4 text-sm">
+          <Upload className="size-4" strokeWidth={1.5} />
+          {isUploading ? "Uploading…" : "Drop images to upload"}
+        </p>
+      ) : null}
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           type="search"
@@ -110,9 +160,44 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
       {notice ? <p className="mb-3 border border-border bg-luxe-gray-light/40 p-3 text-sm">{notice}</p> : null}
 
       {selected.size > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 border border-luxe-black bg-luxe-gray-light/40 px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
-          <div className="ml-auto flex gap-2">
+        <div className="mb-3 space-y-2 border border-luxe-black bg-luxe-gray-light/40 px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">{selected.size} selected</span>
+            <input
+              value={bulkFolder}
+              onChange={(e) => setBulkFolder(e.target.value)}
+              placeholder="Move to folder…"
+              aria-label="Move selected to folder"
+              className="h-8 w-40 border border-border bg-transparent px-2 text-xs outline-none focus:border-luxe-black"
+            />
+            <input
+              value={bulkTags}
+              onChange={(e) => setBulkTags(e.target.value)}
+              placeholder="Add tags…"
+              aria-label="Add tags to selected"
+              className="h-8 w-40 border border-border bg-transparent px-2 text-xs outline-none focus:border-luxe-black"
+            />
+            <button
+              type="button"
+              disabled={isPending || (!bulkFolder.trim() && !bulkTags.trim())}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await bulkOrganiseMedia([...selected], { folder: bulkFolder, addTags: bulkTags });
+                  setError(result?.error ?? null);
+                  if (!result?.error) {
+                    setNotice(`Updated ${result.updated} image${result.updated === 1 ? "" : "s"}.`);
+                    setBulkFolder("");
+                    setBulkTags("");
+                    setSelected(new Set());
+                  }
+                })
+              }
+              className="h-8 border border-luxe-black px-3 text-xs font-medium tracking-[0.05em] uppercase disabled:opacity-50"
+            >
+              Apply
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {canDelete ? (
               <button
                 type="button"

@@ -528,3 +528,73 @@ last audit and were cleared with a lockfile-only `npm audit fix` — back to 0. 
 ## Test-data discipline
 
 Every live-DB verification this session was set up, proven, then **restored and re-verified**: a nested category with a moved product, two products flipped to draft/archived, newsletter signups, and a throwaway admin account (created and deleted — the real `alexandrisstores@gmail.com` admin was never touched, and its password was never reset or read).
+
+## Batch 9 — Category slug redirects + media loose ends
+
+**Slug redirects.** Renaming a category 404'd its old URL, losing accumulated ranking and
+breaking inbound links. `CategorySlugHistory` now records each outgoing slug inside the
+same transaction as the rename, so a rename that committed without its history row is
+impossible. History points at the *category* rather than storing a from/to pair, which
+makes rename chains (a to b to c) resolve in one hop to whatever the current slug is, with
+no chain-walking and no stale intermediate redirects. Reverting a rename deletes the row
+that would otherwise redirect the now-live URL back to itself in a loop.
+
+**Where the redirect lives, and why it matters.** The obvious implementation —
+`permanentRedirect()` in the page — silently does not work for this purpose. Next's own
+docs state that in a *streaming* context it inserts a client-side
+`<meta http-equiv="refresh">` rather than returning a 308, and every storefront route here
+streams. The observed symptom was `HTTP 200`, no `Location` header, and the 404 page
+rendering. The redirect therefore lives in `proxy.ts`, which runs before the response
+begins and returns a real 308 (proxy is Node runtime by default in Next 16, so Prisma is
+available). The page keeps a `permanentRedirect` backstop for anything that bypasses the
+proxy, documented as a soft redirect.
+
+That diagnosis was slower than it should have been because three things masked it at once:
+dev returns 200 for `notFound()`, dev served `x-nextjs-cache: HIT` from a disk cache that
+survived both restarts and deleting `.next`, and renaming via a script instead of the real
+action never triggers `revalidatePath`. What finally isolated it was a control (the
+`/admin` middleware redirect, which proved the harness could see 3xx at all) plus a
+throwaway route that called `permanentRedirect` unconditionally.
+
+**Verified**: a category renamed twice returns 308 from BOTH old slugs straight to the
+final one; the current slug returns 200 and does not self-redirect; an unknown slug 404s;
+and a slug retired and then reissued to a different category serves that new category
+rather than redirecting away from it — without that ordering the reissued category would be
+permanently unreachable.
+
+**Media loose ends**: dimensions are measured client-side before upload and sent along
+(avoids taking `sharp` on as a direct dependency for display metadata, and is parsed
+defensively server-side); bulk re-folder/re-tag, where a blank field means "leave alone"
+rather than the destructive "clear", and tags are additive and deduped; and a
+drag-and-drop drop zone covering the whole library, sharing one upload path with the button
+rather than a second one that could drift.
+
+All test data removed afterwards: 6 real categories with their original positions, 0 slug
+history rows, one admin (the real owner), 317 media assets, 175 products.
+
+### Two bugs the verification caught (both would have shipped)
+
+**Dimension capture was dead on arrival.** It measured via `URL.createObjectURL` + `<img>`,
+and this app's CSP allows `img-src 'self' data: …` with no `blob:`. The image load was
+blocked, `onerror` fired, and because `measureImage` correctly treats "couldn't decode" as
+"no metadata" — so a weird file never fails an upload — every upload was recorded with null
+dimensions and looked completely healthy. Nothing errored, nothing logged. Now measured
+with `createImageBitmap`, which decodes the File directly with no URL and no CSP surface,
+falling back to a `data:` URL for formats it can't handle. Confirmed by dropping a
+known-size image and reading the row back: 200 × 140.
+
+**A deleted admin account could deadlock the dashboard.** With a valid session cookie whose
+user row no longer exists, the DAL found no user and redirected `/admin` → `/admin/login`,
+while the proxy saw an intact JWT signature and redirected `/admin/login` → `/admin` — an
+infinite bounce with no way to sign in as anybody, lasting the full 24-hour cookie
+lifetime. Deleting an admin user or restoring a database snapshot triggers it. The proxy
+now confirms the user still exists before bouncing away from the login page, and clears the
+stale cookie when it doesn't. Found by accident: it was blocking my own verification, and
+the same conditions occur in production.
+
+Verified in the browser end to end: drop zone highlights and accepts a dropped file; a bulk
+apply with the folder field left blank changed tags and left folders untouched; a second
+apply moved both to a new folder and merged tags additively without duplicates
+(`[a,b]` + `[a,c]` → `[a,b,c]`); only selected assets were affected. Test uploads were then
+deleted through the library's own delete path, so their blobs went with them, and the two
+real assets used for the bulk test were restored to their exact prior folder and tags.

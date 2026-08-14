@@ -1,10 +1,48 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_SESSION_COOKIE, verifyAdminSession } from "@/lib/auth";
 import { CUSTOMER_SESSION_COOKIE, verifyCustomerSession } from "@/lib/customer-auth";
+import { prisma } from "@/lib/prisma";
 
-/** Next only supports one proxy/middleware export per project — both the admin and customer-account branches live in this single function. */
+/**
+ * Renamed category URLs are redirected HERE rather than in the page, and it has to be here.
+ * `/category/[slug]` streams, and Next emits a client-side `<meta http-equiv="refresh">`
+ * instead of a 308 when `permanentRedirect` is called in a streaming context — a soft
+ * redirect, which defeats the purpose of preserving the old URL's ranking. The proxy runs
+ * before any response begins, so it can return a real 308. (Proxy is Node runtime by
+ * default in Next 16, so Prisma is available here.)
+ *
+ * Costs one indexed lookup on category pageviews. The common case — a slug that was never
+ * renamed — is a single index miss.
+ */
+async function renamedCategoryRedirect(request: NextRequest): Promise<NextResponse | null> {
+  const slug = request.nextUrl.pathname.split("/")[2];
+  if (!slug) return null;
+
+  // A live category always wins, so a slug that was retired and later reissued serves the
+  // new category instead of redirecting away from it.
+  const live = await prisma.category.findUnique({ where: { slug }, select: { id: true } });
+  if (live) return null;
+
+  const history = await prisma.categorySlugHistory.findUnique({
+    where: { slug },
+    select: { category: { select: { slug: true, isVisible: true } } },
+  });
+  if (!history || !history.category.isVisible || history.category.slug === slug) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = `/category/${history.category.slug}`;
+  return NextResponse.redirect(url, 308);
+}
+
+/** Next only supports one proxy/middleware export per project — the admin, customer-account and category-redirect branches all live in this single function. */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/category/")) {
+    const redirectResponse = await renamedCategoryRedirect(request);
+    if (redirectResponse) return redirectResponse;
+    return NextResponse.next();
+  }
 
   if (pathname.startsWith("/admin")) {
     const isLoginRoute = pathname === "/admin/login";
@@ -20,6 +58,22 @@ export async function proxy(request: NextRequest) {
     }
 
     if (isLoginRoute && session) {
+      // A validly-signed token whose user no longer exists is not a session. Without this
+      // check the two halves of the system disagree and bounce forever: the dashboard's DAL
+      // finds no user and redirects /admin -> /admin/login, while this branch sees an intact
+      // signature and redirects /admin/login -> /admin. The browser is then locked out of
+      // signing in as anyone until the cookie expires a day later. Deleting an admin account
+      // (or restoring a database) is enough to trigger it, so clear the stale cookie and let
+      // the login form render. One indexed lookup, and only on the login route.
+      const stillExists = await prisma.adminUser.findUnique({
+        where: { id: session.sub },
+        select: { id: true },
+      });
+      if (!stillExists) {
+        const response = NextResponse.next();
+        response.cookies.delete(ADMIN_SESSION_COOKIE);
+        return response;
+      }
       return NextResponse.redirect(new URL("/admin", request.url));
     }
 
@@ -50,5 +104,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/account/:path*"],
+  matcher: ["/admin/:path*", "/account/:path*", "/category/:path*"],
 };

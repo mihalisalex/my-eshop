@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { capabilityDenied } from "@/lib/admin-session";
 import { deleteImageFromBlob } from "@/lib/blob";
 import { deleteMediaAssetRow, getMediaAssetById, getMediaUsage, updateMediaAsset } from "@/services/media";
@@ -8,6 +9,7 @@ import { deleteMediaAssetRow, getMediaAssetById, getMediaUsage, updateMediaAsset
 export interface MediaActionState {
   error?: string;
   deleted?: number;
+  updated?: number;
 }
 
 export async function updateMediaDetails(
@@ -29,6 +31,48 @@ export async function updateMediaDetails(
 
   revalidatePath("/admin/media");
   return {};
+}
+
+/**
+ * Bulk organise. `folder` and `tags` are applied independently so an admin can re-folder
+ * without clearing tags or vice versa — a blank field means "leave alone", not "clear",
+ * which is the destructive reading and never what's wanted from a bulk form.
+ */
+export async function bulkOrganiseMedia(
+  ids: string[],
+  values: { folder?: string; addTags?: string }
+): Promise<MediaActionState> {
+  const denied = await capabilityDenied("content:media");
+  if (denied) return { error: denied };
+  if (ids.length === 0) return { error: "Select at least one image." };
+
+  const folder = values.folder?.trim();
+  const addTags = (values.addTags ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+  if (!folder && addTags.length === 0) return { error: "Enter a folder or some tags to apply." };
+
+  if (folder) {
+    await prisma.mediaAsset.updateMany({ where: { id: { in: ids } }, data: { folder } });
+  }
+
+  if (addTags.length > 0) {
+    // Tags are additive and deduped per asset — a bulk tag shouldn't wipe existing ones.
+    const assets = await prisma.mediaAsset.findMany({ where: { id: { in: ids } }, select: { id: true, tags: true } });
+    await prisma.$transaction(
+      assets.map((a) =>
+        prisma.mediaAsset.update({
+          where: { id: a.id },
+          data: { tags: [...new Set([...a.tags, ...addTags])] },
+        })
+      )
+    );
+  }
+
+  revalidatePath("/admin/media");
+  return { updated: ids.length };
 }
 
 /**

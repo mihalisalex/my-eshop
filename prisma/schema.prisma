@@ -148,13 +148,36 @@ model Category {
   /// ProductSeoOverride | null — same shape/convention as Product.seo.
   seo Json?
 
-  products Product[]
+  products    Product[]
+  slugHistory CategorySlugHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([parentId])
   @@map("categories")
+}
+
+/// Every slug a category has ever had. Renaming used to 404 the old URL outright, losing
+/// the accumulated SEO equity and breaking every inbound link — a real revenue cost for a
+/// storefront, and the most likely thing an admin does after launch.
+///
+/// Points at the category rather than storing a from/to pair, which means rename chains
+/// (a -> b -> c) resolve in one hop to whatever the CURRENT slug is, with no chain-walking
+/// and no stale intermediate redirects.
+model CategorySlugHistory {
+  id String @id @default(cuid())
+
+  /// Unique across all history: two categories can't both claim the same old slug, and it
+  /// makes the lookup a single indexed read.
+  slug       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([categoryId])
+  @@map("category_slug_history")
 }
 
 model ProductColor {

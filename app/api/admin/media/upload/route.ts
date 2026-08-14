@@ -21,6 +21,21 @@ export async function POST(request: Request) {
     const folderValue = form.get("folder");
     const folder = typeof folderValue === "string" && folderValue.trim() !== "" ? folderValue.trim() : undefined;
 
+    /**
+     * Dimensions are measured in the browser and sent alongside, rather than decoded here.
+     * Reading them server-side would mean taking `sharp` on as a direct dependency (it's
+     * only present transitively, via Next) to obtain what is purely display metadata.
+     * Client-supplied values are fine for that: the worst case is a wrong number shown in
+     * the library, and they're parsed defensively rather than trusted as-is.
+     */
+    const dimensionsFor = (filename: string): { width?: number; height?: number } => {
+      const raw = form.get(`dimensions:${filename}`);
+      if (typeof raw !== "string") return {};
+      const [w, h] = raw.split("x").map((n) => Number.parseInt(n, 10));
+      const valid = (n: number) => Number.isInteger(n) && n > 0 && n < 100_000;
+      return valid(w) && valid(h) ? { width: w, height: h } : {};
+    };
+
     const assets = await Promise.all(
       files.map(async (file) => {
         const blob = await uploadImageToBlob(file);
@@ -31,6 +46,7 @@ export async function POST(request: Request) {
           contentType: blob.contentType ?? file.type ?? undefined,
           sizeBytes: Number.isFinite(file.size) ? file.size : undefined,
           folder,
+          ...dimensionsFor(file.name),
         });
       })
     );
