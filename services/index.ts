@@ -1,5 +1,6 @@
 export * from "./products";
 export * from "./categories";
+export * from "./media";
 export * from "./collections";
 export * from "./navigation";
 export * from "./homepage";

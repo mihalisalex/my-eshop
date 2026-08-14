@@ -466,6 +466,65 @@ Both temp accounts were deleted and the drafted product restored: one admin (the
 owner, still `admin`), 175 products all active. The owner's password was never read or
 reset. 37 tests (up from 31).
 
+## Batch 8 — Real Media Library (last of the five admin phases)
+
+The Media Library was a *derived view*, not a library: it scanned products/collections/
+homepage for image URLs and deduped them. Consequences — an uploaded file was invisible
+until someone attached it to a product (the upload button's own comment documented this as
+expected behaviour), there was nowhere to put alt text/folders/tags, and nothing could be
+deleted, because there was nothing to delete *from*.
+
+**What was built**
+- `MediaAsset` table (url unique, pathname, filename, altText, folder, tags, contentType,
+  size, dimensions). Folder is a flat label, not a tree — media folders are organisational,
+  unlike Category which is customer-facing taxonomy and genuinely needed nesting.
+- **317 already-referenced images backfilled**, so the library starts complete rather than
+  empty. The backfill walks arbitrary Json (product images/videos/seo, colour swatches,
+  collection and category images, blog covers, site content) pulling out anything that
+  parses as an image URL.
+- Upload now records an asset as well as writing to Blob, so upload-then-attach works. The
+  CSV import path records assets too (folder `imports`), so bulk-imported images are
+  manageable afterwards instead of existing only inside a product's images array.
+- Deletion removes the row *and* the Blob object, and is **refused while the image is still
+  referenced anywhere**, naming what uses it. Without that check, deleting from the library
+  would silently blank a live product photo — consumers store the URL, so it would keep
+  pointing at a file that no longer exists.
+- Usage detection has two implementations on purpose: a per-asset one (six `LIKE` queries,
+  used at delete time where accuracy matters most) and a bulk one that loads each
+  referencing record once and scans in memory, because the grid needs every asset's in-use
+  state at once and the per-asset version would be an N+1 across six tables.
+- New capabilities `content:media` (admin + editor) and `content:media-delete` (admin
+  only), mirroring the archive-vs-hard-delete split already used for products.
+
+**A real bug found by verification, not by the toolchain**
+The page crashed outright. `next/image` throws a **fatal, route-killing** error for any
+hostname missing from `remotePatterns` — it does not degrade to a broken image — so one
+legacy or mistyped URL blanks the entire library. (Two such URLs existed immediately: a
+placeholder `alexandris-demo.example` logo picked up from site content, plus the test
+fixture.) The naive fix — swap every `next/image` for `<img>` — would have meant pulling
+~318 full-size photos to fill 200px tiles, roughly 95MB. So `lib/image-hosts.ts` is now the
+single source of truth for both `next.config.ts`'s `remotePatterns` and a runtime
+`isOptimizableImageUrl()` check: configured hosts get the optimizer, anything else degrades
+to one broken thumbnail instead of a broken page. 7 tests cover the host matching,
+including the lookalike-suffix and multi-label-subdomain cases that would otherwise slip
+through a naive `endsWith`.
+
+**Also learned:** the sandboxed verification browser cannot reach external hosts directly,
+so a plain `<img>` pointing at Blob appears broken there while the identical URL returns 200
+through `/_next/image`. Confirmed with a `fetch()` before drawing any conclusion — it was
+the harness, not the app.
+
+**Verified live**: 318 assets listed (317 real + 1 deliberately-unused fixture), in-use
+badges correct, real product photos rendering through the optimizer while the two
+unconfigured URLs fell back cleanly. Deleting an in-use image was refused with
+"1 image is still in use and was not deleted: … (Product: …). Remove it from those first."
+and the count stayed at 318; the unused filter narrowed to `1 of 318`, and deleting that one
+succeeded — "Deleted 1 image." → `317 images · 0 unused`.
+
+Temp admin removed and fixtures cleaned: the real owner is the only admin, 317 media assets,
+175 products all active. Two new advisories (`js-yaml`, `nanoid`) had appeared since the
+last audit and were cleared with a lockfile-only `npm audit fix` — back to 0. 44 tests.
+
 ## Test-data discipline
 
 Every live-DB verification this session was set up, proven, then **restored and re-verified**: a nested category with a moved product, two products flipped to draft/archived, newsletter signups, and a throwaway admin account (created and deleted — the real `alexandrisstores@gmail.com` admin was never touched, and its password was never reset or read).

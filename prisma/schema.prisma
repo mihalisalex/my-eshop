@@ -729,6 +729,44 @@ model NewsletterSubscriber {
 }
 
 /// A real submission from the public Contact page (components/shared/ContactForm.tsx).
+/// A real, first-class media asset. Before this table the Media Library was derived: it
+/// listed images already referenced by a product/collection/homepage section, deduped by
+/// URL. That meant an uploaded file was invisible until someone attached it to something,
+/// there was nowhere to store alt text or organise anything, and nothing could be deleted
+/// (the "library" was a read-only view of other tables).
+model MediaAsset {
+  id String @id @default(cuid())
+
+  /// The public Blob URL. Unique because it's also how usage is detected — every consumer
+  /// stores the URL, not a foreign key, so this is the join between an asset and its uses.
+  url String @unique
+  /// The Blob object key. Kept alongside `url` because deletion targets the store, and a
+  /// URL that has been rewritten (CDN, custom domain) can't always be mapped back to a key.
+  pathname String
+  filename String
+
+  /// Default alt text, offered when the asset is attached somewhere. Consumers keep their
+  /// own copy (Product.images[].alt etc.) since the right alt text is context-dependent.
+  altText String?
+
+  /// Flat label, not a tree — media folders are organisational, unlike Category, which is
+  /// customer-facing taxonomy and genuinely needed nesting.
+  folder String?
+  tags   String[] @default([])
+
+  contentType String?
+  sizeBytes   Int?
+  width       Int?
+  height      Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([folder])
+  @@index([createdAt])
+  @@map("media_assets")
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

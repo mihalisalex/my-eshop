@@ -4,11 +4,10 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Uploads directly to /api/admin/media/upload (Vercel Blob). Note this only puts a file
- * in storage — the Media Library page's own listing is derived read-only from images
- * already referenced by a product/collection/homepage section (see media/page.tsx), so
- * a freshly uploaded image won't appear here until it's attached to something. That's a
- * page-behavior note, not a bug in this button.
+ * Uploads to /api/admin/media/upload, which stores the file in Vercel Blob AND records a
+ * MediaAsset — so an uploaded image appears in the library straight away. (It previously
+ * only wrote to storage, and the library listed images already referenced elsewhere, so a
+ * fresh upload was invisible until someone attached it to a product.)
  */
 export function MediaUploadButton() {
   const inputRef = useRef<HTMLInputElement>(null);

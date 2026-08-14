@@ -17,6 +17,8 @@ export type Capability =
   | "catalog:delete"
   | "catalog:discounts"
   | "content:blog"
+  | "content:media"
+  | "content:media-delete"
   | "content:publish"
   | "content:navigation"
   | "orders:view"
@@ -49,6 +51,13 @@ export const CAPABILITIES: CapabilityDefinition[] = [
   },
   { key: "catalog:discounts", group: "Catalog", label: "Manage discounts and gift cards" },
   { key: "content:blog", group: "Content", label: "Manage blog posts" },
+  { key: "content:media", group: "Content", label: "Upload and organise media" },
+  {
+    key: "content:media-delete",
+    group: "Content",
+    label: "Delete media permanently",
+    note: "Deletion also removes the file from blob storage and can't be undone. Images still used by a product, category or page are blocked from deletion for everyone.",
+  },
   { key: "content:publish", group: "Content", label: "Publish homepage sections and hero" },
   { key: "content:navigation", group: "Content", label: "Manage the navigation menu" },
   { key: "orders:view", group: "Customers & Orders", label: "View orders and customers" },
@@ -67,6 +76,9 @@ const EDITOR_CAPABILITIES: Capability[] = [
   "catalog:view",
   "catalog:edit",
   "content:blog",
+  // Editors upload images as a normal part of editing products and posts, but deleting
+  // from blob storage is irreversible — same archive-vs-hard-delete split as products.
+  "content:media",
   "orders:view",
   "orders:manage",
   "admin:activity",

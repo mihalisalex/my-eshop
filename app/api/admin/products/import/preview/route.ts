@@ -6,6 +6,7 @@ import { productFormSchema } from "@/lib/validation/product";
 import { parseProductsCsv } from "@/lib/products-import/csv";
 import { mapCsvRowToProductForm } from "@/lib/products-import/mapper";
 import { uploadImageToBlob } from "@/lib/blob";
+import { createMediaAsset } from "@/services/media";
 import type { ImportRowResult } from "@/lib/products-import/types";
 
 /**
@@ -26,8 +27,18 @@ export async function POST(request: Request) {
     const imageFiles = form.getAll("images").filter((value): value is File => value instanceof File);
     const resolvedImageUrls = new Map<string, string>();
     for (const file of imageFiles) {
-      const { url } = await uploadImageToBlob(file);
-      resolvedImageUrls.set(file.name.toLowerCase(), url);
+      const blob = await uploadImageToBlob(file);
+      // Recorded in the Media Library too, so images arriving via a bulk import are
+      // manageable afterwards rather than existing only inside a product's images array.
+      await createMediaAsset({
+        url: blob.url,
+        pathname: blob.pathname,
+        filename: file.name,
+        contentType: blob.contentType ?? file.type ?? undefined,
+        sizeBytes: Number.isFinite(file.size) ? file.size : undefined,
+        folder: "imports",
+      });
+      resolvedImageUrls.set(file.name.toLowerCase(), blob.url);
     }
 
     const csvText = await csvFile.text();
