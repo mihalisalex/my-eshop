@@ -195,72 +195,85 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
 
   return (
     <div className="container-luxe py-10 md:py-14">
-      {showHeader ? (
-        <div className="mb-8">
-          <h1 className="font-heading text-3xl md:text-4xl">{title}</h1>
-          {description ? <p className="mt-2 text-luxe-gray-dark">{description}</p> : null}
-        </div>
-      ) : null}
+      {/* Narrows the page inset to 12px on phones so product images can be meaningfully
+          larger while still sitting two to a row. Applied to the whole content block rather
+          than the grid alone, so the heading and the filter/sort toolbar stay flush with the
+          cards — a grid wider than the controls above it reads as a mistake.
+          Done as a negative margin rather than a `px-3` override because `container-luxe` is
+          declared in `@layer utilities` (app/globals.css), so its `px-6` would win against a
+          competing padding utility regardless of class order. Cannot overflow: it gives back
+          12px of the 24px the container reserves each side. Reset from `sm` upwards. */}
+      <div className="-mx-3 sm:mx-0">
+        {showHeader ? (
+          <div className="mb-8">
+            <h1 className="font-heading text-3xl md:text-4xl">{title}</h1>
+            {description ? <p className="mt-2 text-luxe-gray-dark">{description}</p> : null}
+          </div>
+        ) : null}
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[240px_1fr]">
-        <aside className="hidden lg:block">
-          {priceBounds ? (
-            <PlpFilterSidebar
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[240px_1fr]">
+          <aside className="hidden lg:block">
+            {priceBounds ? (
+              <PlpFilterSidebar
+                facets={facets}
+                priceBounds={priceBounds}
+                filters={filters}
+                onChange={handleFiltersChange}
+                onClearAll={handleClearAll}
+              />
+            ) : null}
+          </aside>
+
+          <div>
+            <PlpToolbar
+              total={total}
+              sort={sort}
+              onSortChange={handleSortChange}
               facets={facets}
-              priceBounds={priceBounds}
+              priceBounds={priceBounds ?? [0, 0]}
               filters={filters}
-              onChange={handleFiltersChange}
+              onFiltersChange={handleFiltersChange}
               onClearAll={handleClearAll}
             />
-          ) : null}
-        </aside>
 
-        <div>
-          <PlpToolbar
-            total={total}
-            sort={sort}
-            onSortChange={handleSortChange}
-            facets={facets}
-            priceBounds={priceBounds ?? [0, 0]}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onClearAll={handleClearAll}
-          />
-
-          {isLoading && products.length === 0 ? (
-            <p className="py-16 text-center text-sm text-luxe-gray-dark">Loading...</p>
-          ) : total === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <PackageSearch className="size-10 text-luxe-gray-dark" strokeWidth={1} />
-              <p className="text-sm text-luxe-gray-dark">No products match your filters.</p>
-              <button type="button" onClick={handleClearAll} className="text-sm underline underline-offset-4">
-                Clear filters
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
-                {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+            {isLoading && products.length === 0 ? (
+              <p className="py-16 text-center text-sm text-luxe-gray-dark">Loading...</p>
+            ) : total === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <PackageSearch className="size-10 text-luxe-gray-dark" strokeWidth={1} />
+                <p className="text-sm text-luxe-gray-dark">No products match your filters.</p>
+                <button type="button" onClick={handleClearAll} className="text-sm underline underline-offset-4">
+                  Clear filters
+                </button>
               </div>
-
-              <div ref={sentinelRef} className="h-1" />
-
-              {canLoadMore ? (
-                <div className="mt-10 flex justify-center">
-                  <button
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => updateParams({ page: String(urlPage + 1) })}
-                    className="h-12 border border-luxe-black px-8 text-xs font-medium tracking-[0.08em] uppercase transition-opacity hover:opacity-70 disabled:opacity-50"
-                  >
-                    {isLoading ? "Loading..." : "Load More"}
-                  </button>
+            ) : (
+              <>
+                {/* Column gap halves on mobile (16px -> 8px) so the two cards get the space
+                    instead; the other half of the gain comes from the page-level inset below.
+                    Unchanged from `sm` up, where there is already room. */}
+                <div className="mt-6 grid grid-cols-2 gap-x-2 gap-y-8 sm:grid-cols-3 sm:gap-x-4 sm:gap-y-10 lg:grid-cols-4">
+                  {products.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
                 </div>
-              ) : null}
-            </>
-          )}
+
+                <div ref={sentinelRef} className="h-1" />
+
+                {canLoadMore ? (
+                  <div className="mt-10 flex justify-center">
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => updateParams({ page: String(urlPage + 1) })}
+                      className="h-12 border border-luxe-black px-8 text-xs font-medium tracking-[0.08em] uppercase transition-opacity hover:opacity-70 disabled:opacity-50"
+                    >
+                      {isLoading ? "Loading..." : "Load More"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
