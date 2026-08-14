@@ -655,3 +655,31 @@ pull requests. The `perf/plp-scoped-product-fetch` branch is deleted. It was a s
 a PR meant reviewing your own work, and the preview deployment that would have justified it
 has failed on every branch build this project has ever produced. The deploy gate is the
 push, not the PR.
+
+## Batch 11 — Larger product images on phones
+
+Product cards measured 156x207 on a 375px screen, which left the imagery smaller than it
+needs to be on the device most customers browse from. They are now **172x229** — about 10%
+wider and 11% taller — still two to a row.
+
+Half the width comes from halving the column gap (16px -> 8px); the other half from
+narrowing the page inset from 24px to 12px on phones. The inset is applied to the **whole
+content block**, not the grid alone, so the heading and the filter/sort toolbar stay flush
+with the cards — a grid wider than the controls above it reads as a mistake rather than a
+choice. (Both variants were built and compared before picking this one.) A side effect is
+that "115 items" no longer wraps onto two lines.
+
+Implemented as a negative margin rather than a `px-3` override, because `container-luxe` is
+declared inside `@layer utilities` in globals.css: its `px-6` beats a competing padding
+utility regardless of class order, so `container-luxe px-3` would silently do nothing. Worth
+remembering for any future layout override.
+
+Verified at 320, 360, 375, 768 and 971px — two columns on phones, three on tablet, four on
+wide desktop, with tablet and desktop completely unchanged. Badges, prices, colour swatches
+and the infinite-scroll sentinel all intact, and confirmed again on the deployed site.
+
+Noted and left alone: at 320px the sort `<select>` is intrinsically wider than the toolbar
+row gives it, so the page scrolls sideways by a few pixels. Proven pre-existing rather than
+assumed — measuring with the change reverted in the live DOM gave 338px of scroll width
+against a 320px viewport, versus 326px with it. The change improves it; it does not fix it.
+The same two-up grid on the homepage, wishlist, cart and PDP sections keeps the old spacing.

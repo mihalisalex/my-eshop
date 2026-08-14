@@ -1,14 +1,28 @@
-# Session Summary — 2026-08-06 (full codebase audit; the five-part admin dashboard build, complete)
+# Session Summary — 2026-08-14 (full codebase audit; the five-part admin dashboard build, complete; mobile Core Web Vitals)
 
 Quick-reference recap of the LATEST session only — this file gets replaced each session, it's the fast catch-up, not the archive. See `PROGRESS.md` for the detailed batch-by-batch build log.
 
 ## Where things stand right now
 
-Branch **`perf/plp-scoped-product-fetch`**. The first 8 commits were merged to `main` (`84d3fa6`) and are **live in production**; the roles and media commits after that are not yet merged. There's no `gh` CLI and no `GITHUB_TOKEN` on this machine, so PRs are opened by the user in the GitHub web UI.
+**Everything in this file is merged and live in production.** Nothing is pending.
 
-The live catalog is **175 real products, all `status: "active"`**, plus **317 media assets**, on the shared Neon DB (local dev and production point at the same database — every migration below hit production).
+**Workflow changed mid-session: work goes straight to `main`.** No feature branches, no pull
+requests — `perf/plp-scoped-product-fetch` was deleted after its name had stopped describing
+its contents several phases earlier. It's a solo repo, so a PR meant reviewing your own work,
+and the preview deployment that would have justified one has **failed on every branch build
+this project has ever produced** (production builds succeed; previews almost certainly lack
+env vars in Vercel's Preview scope). **The deploy gate is the push, not the PR** — Vercel
+deploys production on every push to `main`, so commit freely and never push unprompted.
+
+Live site: **https://shopalexandris.vercel.app** (Vercel project `my-eshop`, team `alexandris`).
+The live catalog is **175 real products, all `status: "active"`**, **317 media assets**, 6
+categories, 1 admin, on the shared Neon DB (local dev and production point at the same
+database — every migration below hit production).
 
 Toolchain at session end: **build ✅ · tsc ✅ · eslint ✅ · 44 tests ✅ · `npm audit` 0 vulnerabilities**.
+
+Production Lighthouse, measured not estimated: **mobile 95/99/100 across three runs (median
+99, was 89)**, desktop 98, and **accessibility / best-practices / SEO at 100 / 100 / 100**.
 
 > **⚠️ The one thing to remember from this session.** I applied a *destructive* migration (dropping `products.category`) to the shared production DB while production still ran code that read that column, and then told the user the schema-ahead-of-code state was safe. It wasn't: **the live site stopped loading products entirely** until the code was merged. Additive migrations (new table, new nullable column) are genuinely invisible to older code; **a drop or a rename is not**. For a shared DB, either deploy first and migrate second, or split the change so the drop lands only after the code that stopped reading the column is live. Also: **never fix this by rolling back to an older deployment** — every older build expects the dropped column, so a rollback makes it worse. Fix forward.
 
@@ -40,6 +54,10 @@ Toolchain at session end: **build ✅ · tsc ✅ · eslint ✅ · 44 tests ✅ �
 
 9. **Category slug redirects + media loose ends.** Renaming a category used to 404 its old URL. Now a `CategorySlugHistory` table records every outgoing slug, and **proxy.ts** issues a real **308** to the category's current slug. Rename chains (a→b→c) resolve in one hop because history points at the *category*, not at a from/to pair, and a live category always wins over history so a reissued slug isn't hijacked. Also: media dimensions are captured on upload, plus bulk re-folder/re-tag and a drag-and-drop drop zone.
 
+10. **Two silent failures found while verifying (9), both of which would have shipped.** *Dimension capture never worked*: it measured via `URL.createObjectURL` + `<img>`, but the CSP allows `img-src 'self' data:` with no `blob:`, so the load was blocked and `onerror` fired — indistinguishable from a corrupt file, which the code correctly tolerates rather than failing the upload. Every upload recorded null dimensions while looking healthy. Now uses `createImageBitmap`. *A deleted admin account deadlocked the dashboard*: the DAL found no user and redirected `/admin` → `/admin/login`, while the proxy saw an intact JWT signature and redirected back — an infinite bounce for the full 24h cookie lifetime, triggered by deleting an admin or restoring a DB snapshot. The proxy now confirms the user exists before bouncing away from the login page.
+
+11. **Mobile Core Web Vitals: 89 → median 99.** The entire deficit was LCP (3.6s), none of it server time — the root document responds in 50ms. Three stacked causes, each only visible after fixing the one before it; see the section below. Also **larger product images on phones**: cards went 156×207 → 172×229 while staying two per row, by halving the column gap and narrowing the page inset to 12px on phones (applied to the whole content block, so the heading and filter/sort toolbar stay flush with the cards).
+
 ## Notes for next time (gotchas)
 
 - **`prisma migrate deploy` can fail on Neon's pooled endpoint** with "Timed out trying to acquire a postgres advisory lock". PgBouncer in transaction mode doesn't support advisory locks. It succeeded on retry here, but the real fix is running migrations against Neon's **direct** (non-`-pooler`) host. Nothing partially applied when it failed — `migrate status` confirmed clean before retrying.
@@ -66,8 +84,15 @@ Category slug renames are now safe — the old URL 308s to the new one (see item
 The five-part admin dashboard request is **complete** (Categories, Products, Roles & Permissions, Media Library — the fifth was the audit itself). Still open:
 1. **Custom roles** — the capability model supports adding them, but only `admin` and `editor` exist and there's no UI to define a new one; it currently means editing `ROLE_CAPABILITIES` in `constants/permissions.ts`.
 2. Product phase leftovers, scoped out deliberately: rich-text editor, dimensions/shipping class, reserved stock, per-variant inventory, product analytics/history. The products list and the media grid both filter **client-side** — correct at this size, needs server-side pagination past a few thousand rows.
-3. Media leftovers: no drag-and-drop upload zone, no image "replace in place", no bulk re-folder/re-tag, and no automatic width/height capture (the columns exist but only get filled if a future upload path measures the file).
+3. Media leftovers: drag-and-drop upload, bulk re-folder/re-tag and width/height capture are **all done now** (item 10 — note the dimensions of the 317 backfilled assets are still null, since nothing can retro-measure them without re-downloading each file). Still missing: image "replace in place".
 4. Other admin gaps found in the original audit: Inventory is a read-only stock table (no movements/multi-location/purchase orders/suppliers); Analytics has no date-range picker or profit reporting; SEO has no redirect manager or previews.
+
+Found while working, verified, deliberately not fixed — each is real but none was the task in hand:
+- **Soft 404s.** `/category/<unknown>` and `/collections/<unknown>` return **HTTP 200** with the not-found page; `/product/<unknown>` correctly returns 404. Same root cause as the redirect discovery below: once a streaming response has started, `notFound()` can no longer set the status. Means Google can index nonexistent URLs as real pages, and it partly undercuts the slug-redirect work.
+- **320px horizontal overflow** on listing pages: the sort `<select>` is intrinsically wider than the toolbar row leaves it. Pre-existing; item 11 reduced it (338px → 326px against a 320px viewport) without removing it. 360px and up are clean.
+- **The other two-up grids** (homepage Best Sellers, related products, recently viewed, wishlist, cart recommendations) still use the old 24px inset / 16px gap, so they now differ slightly from the listing pages changed in item 11.
+- **`browserslist` is unset**, so ~14 KiB of polyfills ship for browsers older than `Object.hasOwn` (Safari < 15.4). Narrowing it decides which customers can shop — a business call, not a perf tweak, and too small to move the Lighthouse score.
+- **Preview deployments have never worked** — every branch build errors while production succeeds. Most likely missing env vars in Vercel's Preview scope. Only worth fixing if the PR flow is ever wanted back.
 
 Longer-standing, unchanged from previous sessions:
 - **Payment/Stripe** — still the biggest blocker to a real checkout. Declined three times now; ask rather than assume.
