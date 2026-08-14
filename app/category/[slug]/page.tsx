@@ -2,12 +2,20 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductListingPage } from "@/components/plp/ProductListingPage";
-import { getAllCategories, getCategoryBySlug, getChildCategories, getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
+import {
+  getAllCategories,
+  getCategoryBySlug,
+  getChildCategories,
+  getNavigation,
+  getSiteSettings,
+  getSeoDefaults,
+  resolveRenamedCategorySlug,
+} from "@/services";
 import { localizeCategory, localizeCategories } from "@/lib/localize";
 import { buildMetadata } from "@/lib/seo";
 import { ROUTES } from "@/constants/routes";
@@ -38,6 +46,20 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
   const rawCategory = await getCategoryBySlug(slug);
+
+  if (!rawCategory) {
+    // Backstop only. proxy.ts already 308s renamed slugs before the request reaches here,
+    // which is what search engines need; this catches anything that bypassed the proxy.
+    //
+    // It cannot replace the proxy: this route streams, and the Next docs are explicit that
+    // `permanentRedirect` in a streaming context emits a client-side
+    // `<meta http-equiv="refresh">` rather than a 308 response. That still moves a human to
+    // the right page, but it's a soft redirect — exactly the wrong thing when the entire
+    // point is preserving the old URL's search ranking.
+    const currentSlug = await resolveRenamedCategorySlug(slug);
+    if (currentSlug) permanentRedirect(ROUTES.category(currentSlug));
+  }
+
   // Hidden categories 404 publicly (same convention as a draft page) — the admin can still
   // reach them directly at /admin/categories/[id] regardless of isVisible.
   if (!rawCategory || !rawCategory.isVisible) notFound();

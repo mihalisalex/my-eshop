@@ -148,13 +148,36 @@ model Category {
   /// ProductSeoOverride | null — same shape/convention as Product.seo.
   seo Json?
 
-  products Product[]
+  products    Product[]
+  slugHistory CategorySlugHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([parentId])
   @@map("categories")
+}
+
+/// Every slug a category has ever had. Renaming used to 404 the old URL outright, losing
+/// the accumulated SEO equity and breaking every inbound link — a real revenue cost for a
+/// storefront, and the most likely thing an admin does after launch.
+///
+/// Points at the category rather than storing a from/to pair, which means rename chains
+/// (a -> b -> c) resolve in one hop to whatever the CURRENT slug is, with no chain-walking
+/// and no stale intermediate redirects.
+model CategorySlugHistory {
+  id String @id @default(cuid())
+
+  /// Unique across all history: two categories can't both claim the same old slug, and it
+  /// makes the lookup a single indexed read.
+  slug       String   @unique
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([categoryId])
+  @@map("category_slug_history")
 }
 
 model ProductColor {
@@ -729,6 +752,44 @@ model NewsletterSubscriber {
 }
 
 /// A real submission from the public Contact page (components/shared/ContactForm.tsx).
+/// A real, first-class media asset. Before this table the Media Library was derived: it
+/// listed images already referenced by a product/collection/homepage section, deduped by
+/// URL. That meant an uploaded file was invisible until someone attached it to something,
+/// there was nowhere to store alt text or organise anything, and nothing could be deleted
+/// (the "library" was a read-only view of other tables).
+model MediaAsset {
+  id String @id @default(cuid())
+
+  /// The public Blob URL. Unique because it's also how usage is detected — every consumer
+  /// stores the URL, not a foreign key, so this is the join between an asset and its uses.
+  url String @unique
+  /// The Blob object key. Kept alongside `url` because deletion targets the store, and a
+  /// URL that has been rewritten (CDN, custom domain) can't always be mapped back to a key.
+  pathname String
+  filename String
+
+  /// Default alt text, offered when the asset is attached somewhere. Consumers keep their
+  /// own copy (Product.images[].alt etc.) since the right alt text is context-dependent.
+  altText String?
+
+  /// Flat label, not a tree — media folders are organisational, unlike Category, which is
+  /// customer-facing taxonomy and genuinely needed nesting.
+  folder String?
+  tags   String[] @default([])
+
+  contentType String?
+  sizeBytes   Int?
+  width       Int?
+  height      Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([folder])
+  @@index([createdAt])
+  @@map("media_assets")
+}
+
 model ContactMessage {
   id        String   @id @default(cuid())
   name      String

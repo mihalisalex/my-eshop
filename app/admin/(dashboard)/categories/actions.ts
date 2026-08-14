@@ -105,10 +105,31 @@ export async function updateCategory(id: string, values: CategoryFormValues): Pr
   const parentChanged = parentId !== current.parentId;
   const position = parentChanged ? await prisma.category.count({ where: { parentId } }) : current.position;
 
-  await prisma.category.update({
-    where: { id },
-    data: { ...toCategoryWriteData(data, parentId), position },
-  });
+  const slugChanged = current.slug !== data.slug;
+
+  await prisma.$transaction([
+    prisma.category.update({
+      where: { id },
+      data: { ...toCategoryWriteData(data, parentId), position },
+    }),
+    // Record the outgoing slug so its URL keeps working (see CategorySlugHistory). Written
+    // in the same transaction as the rename so the two can't diverge — a rename that
+    // committed without its history row would silently 404 the old URL.
+    ...(slugChanged
+      ? [
+          prisma.categorySlugHistory.upsert({
+            where: { slug: current.slug },
+            create: { slug: current.slug, categoryId: id },
+            // If this slug was previously retired by ANOTHER category and is now being
+            // released again, the newest owner wins — that's who a visitor should land on.
+            update: { categoryId: id },
+          }),
+        ]
+      : []),
+    // The new slug may itself be an old slug of this category (a rename reverted). Leaving
+    // that row would redirect the now-live URL back to itself in a loop.
+    ...(slugChanged ? [prisma.categorySlugHistory.deleteMany({ where: { slug: data.slug } })] : []),
+  ]);
 
   revalidateStorefront();
   redirect(`/admin/categories/${id}`);

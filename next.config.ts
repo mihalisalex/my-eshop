@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { REMOTE_IMAGE_HOSTS } from "./lib/image-hosts";
 
 // Baseline, not hardened: unsafe-inline/unsafe-eval are here because Next.js dev/hydration
 // and Framer Motion's inline transform styles need them without a nonce-based CSP wired
@@ -27,24 +28,9 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        // Product photos for the WooCommerce-imported catalog batch, still hosted
-        // on the original store's WordPress media library rather than re-uploaded.
-        protocol: "https",
-        hostname: "alexandrisstores.gr",
-      },
-      {
-        // Vercel Blob (Media Library uploads, CSV-import image uploads, and the
-        // WooCommerce-import re-host) — each store gets its own subdomain.
-        protocol: "https",
-        hostname: "*.public.blob.vercel-storage.com",
-      },
-    ],
+    // Single source of truth, shared with the runtime check in lib/image-hosts.ts — adding
+    // a host in one place and forgetting the other is how you get a fatal next/image error.
+    remotePatterns: REMOTE_IMAGE_HOSTS,
   },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];

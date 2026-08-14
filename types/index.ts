@@ -1,6 +1,7 @@
 export * from "./common";
 export * from "./product";
 export * from "./category";
+export * from "./media";
 export * from "./collection";
 export * from "./navigation";
 export * from "./homepage";

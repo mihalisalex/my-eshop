@@ -466,6 +466,135 @@ Both temp accounts were deleted and the drafted product restored: one admin (the
 owner, still `admin`), 175 products all active. The owner's password was never read or
 reset. 37 tests (up from 31).
 
+## Batch 8 — Real Media Library (last of the five admin phases)
+
+The Media Library was a *derived view*, not a library: it scanned products/collections/
+homepage for image URLs and deduped them. Consequences — an uploaded file was invisible
+until someone attached it to a product (the upload button's own comment documented this as
+expected behaviour), there was nowhere to put alt text/folders/tags, and nothing could be
+deleted, because there was nothing to delete *from*.
+
+**What was built**
+- `MediaAsset` table (url unique, pathname, filename, altText, folder, tags, contentType,
+  size, dimensions). Folder is a flat label, not a tree — media folders are organisational,
+  unlike Category which is customer-facing taxonomy and genuinely needed nesting.
+- **317 already-referenced images backfilled**, so the library starts complete rather than
+  empty. The backfill walks arbitrary Json (product images/videos/seo, colour swatches,
+  collection and category images, blog covers, site content) pulling out anything that
+  parses as an image URL.
+- Upload now records an asset as well as writing to Blob, so upload-then-attach works. The
+  CSV import path records assets too (folder `imports`), so bulk-imported images are
+  manageable afterwards instead of existing only inside a product's images array.
+- Deletion removes the row *and* the Blob object, and is **refused while the image is still
+  referenced anywhere**, naming what uses it. Without that check, deleting from the library
+  would silently blank a live product photo — consumers store the URL, so it would keep
+  pointing at a file that no longer exists.
+- Usage detection has two implementations on purpose: a per-asset one (six `LIKE` queries,
+  used at delete time where accuracy matters most) and a bulk one that loads each
+  referencing record once and scans in memory, because the grid needs every asset's in-use
+  state at once and the per-asset version would be an N+1 across six tables.
+- New capabilities `content:media` (admin + editor) and `content:media-delete` (admin
+  only), mirroring the archive-vs-hard-delete split already used for products.
+
+**A real bug found by verification, not by the toolchain**
+The page crashed outright. `next/image` throws a **fatal, route-killing** error for any
+hostname missing from `remotePatterns` — it does not degrade to a broken image — so one
+legacy or mistyped URL blanks the entire library. (Two such URLs existed immediately: a
+placeholder `alexandris-demo.example` logo picked up from site content, plus the test
+fixture.) The naive fix — swap every `next/image` for `<img>` — would have meant pulling
+~318 full-size photos to fill 200px tiles, roughly 95MB. So `lib/image-hosts.ts` is now the
+single source of truth for both `next.config.ts`'s `remotePatterns` and a runtime
+`isOptimizableImageUrl()` check: configured hosts get the optimizer, anything else degrades
+to one broken thumbnail instead of a broken page. 7 tests cover the host matching,
+including the lookalike-suffix and multi-label-subdomain cases that would otherwise slip
+through a naive `endsWith`.
+
+**Also learned:** the sandboxed verification browser cannot reach external hosts directly,
+so a plain `<img>` pointing at Blob appears broken there while the identical URL returns 200
+through `/_next/image`. Confirmed with a `fetch()` before drawing any conclusion — it was
+the harness, not the app.
+
+**Verified live**: 318 assets listed (317 real + 1 deliberately-unused fixture), in-use
+badges correct, real product photos rendering through the optimizer while the two
+unconfigured URLs fell back cleanly. Deleting an in-use image was refused with
+"1 image is still in use and was not deleted: … (Product: …). Remove it from those first."
+and the count stayed at 318; the unused filter narrowed to `1 of 318`, and deleting that one
+succeeded — "Deleted 1 image." → `317 images · 0 unused`.
+
+Temp admin removed and fixtures cleaned: the real owner is the only admin, 317 media assets,
+175 products all active. Two new advisories (`js-yaml`, `nanoid`) had appeared since the
+last audit and were cleared with a lockfile-only `npm audit fix` — back to 0. 44 tests.
+
 ## Test-data discipline
 
 Every live-DB verification this session was set up, proven, then **restored and re-verified**: a nested category with a moved product, two products flipped to draft/archived, newsletter signups, and a throwaway admin account (created and deleted — the real `alexandrisstores@gmail.com` admin was never touched, and its password was never reset or read).
+
+## Batch 9 — Category slug redirects + media loose ends
+
+**Slug redirects.** Renaming a category 404'd its old URL, losing accumulated ranking and
+breaking inbound links. `CategorySlugHistory` now records each outgoing slug inside the
+same transaction as the rename, so a rename that committed without its history row is
+impossible. History points at the *category* rather than storing a from/to pair, which
+makes rename chains (a to b to c) resolve in one hop to whatever the current slug is, with
+no chain-walking and no stale intermediate redirects. Reverting a rename deletes the row
+that would otherwise redirect the now-live URL back to itself in a loop.
+
+**Where the redirect lives, and why it matters.** The obvious implementation —
+`permanentRedirect()` in the page — silently does not work for this purpose. Next's own
+docs state that in a *streaming* context it inserts a client-side
+`<meta http-equiv="refresh">` rather than returning a 308, and every storefront route here
+streams. The observed symptom was `HTTP 200`, no `Location` header, and the 404 page
+rendering. The redirect therefore lives in `proxy.ts`, which runs before the response
+begins and returns a real 308 (proxy is Node runtime by default in Next 16, so Prisma is
+available). The page keeps a `permanentRedirect` backstop for anything that bypasses the
+proxy, documented as a soft redirect.
+
+That diagnosis was slower than it should have been because three things masked it at once:
+dev returns 200 for `notFound()`, dev served `x-nextjs-cache: HIT` from a disk cache that
+survived both restarts and deleting `.next`, and renaming via a script instead of the real
+action never triggers `revalidatePath`. What finally isolated it was a control (the
+`/admin` middleware redirect, which proved the harness could see 3xx at all) plus a
+throwaway route that called `permanentRedirect` unconditionally.
+
+**Verified**: a category renamed twice returns 308 from BOTH old slugs straight to the
+final one; the current slug returns 200 and does not self-redirect; an unknown slug 404s;
+and a slug retired and then reissued to a different category serves that new category
+rather than redirecting away from it — without that ordering the reissued category would be
+permanently unreachable.
+
+**Media loose ends**: dimensions are measured client-side before upload and sent along
+(avoids taking `sharp` on as a direct dependency for display metadata, and is parsed
+defensively server-side); bulk re-folder/re-tag, where a blank field means "leave alone"
+rather than the destructive "clear", and tags are additive and deduped; and a
+drag-and-drop drop zone covering the whole library, sharing one upload path with the button
+rather than a second one that could drift.
+
+All test data removed afterwards: 6 real categories with their original positions, 0 slug
+history rows, one admin (the real owner), 317 media assets, 175 products.
+
+### Two bugs the verification caught (both would have shipped)
+
+**Dimension capture was dead on arrival.** It measured via `URL.createObjectURL` + `<img>`,
+and this app's CSP allows `img-src 'self' data: …` with no `blob:`. The image load was
+blocked, `onerror` fired, and because `measureImage` correctly treats "couldn't decode" as
+"no metadata" — so a weird file never fails an upload — every upload was recorded with null
+dimensions and looked completely healthy. Nothing errored, nothing logged. Now measured
+with `createImageBitmap`, which decodes the File directly with no URL and no CSP surface,
+falling back to a `data:` URL for formats it can't handle. Confirmed by dropping a
+known-size image and reading the row back: 200 × 140.
+
+**A deleted admin account could deadlock the dashboard.** With a valid session cookie whose
+user row no longer exists, the DAL found no user and redirected `/admin` → `/admin/login`,
+while the proxy saw an intact JWT signature and redirected `/admin/login` → `/admin` — an
+infinite bounce with no way to sign in as anybody, lasting the full 24-hour cookie
+lifetime. Deleting an admin user or restoring a database snapshot triggers it. The proxy
+now confirms the user still exists before bouncing away from the login page, and clears the
+stale cookie when it doesn't. Found by accident: it was blocking my own verification, and
+the same conditions occur in production.
+
+Verified in the browser end to end: drop zone highlights and accepts a dropped file; a bulk
+apply with the folder field left blank changed tags and left folders untouched; a second
+apply moved both to a new folder and merged tags additively without duplicates
+(`[a,b]` + `[a,c]` → `[a,b,c]`); only selected assets were affected. Test uploads were then
+deleted through the library's own delete path, so their blobs went with them, and the two
+real assets used for the bulk test were restored to their exact prior folder and tags.

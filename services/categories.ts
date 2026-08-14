@@ -32,6 +32,26 @@ export async function getCategoryBySlug(slug: string): Promise<Category | undefi
   return row ? toCategory(row) : undefined;
 }
 
+/**
+ * Resolves a slug that a category *used* to have, to that category's CURRENT slug — the
+ * lookup behind the permanent redirect on `/category/[slug]`.
+ *
+ * Returns null when the slug is unknown, and also when it still resolves to the category's
+ * present slug, so a redirect is only issued when it would actually change the URL (a
+ * self-redirect would be an infinite loop).
+ */
+export async function resolveRenamedCategorySlug(slug: string): Promise<string | null> {
+  const history = await prisma.categorySlugHistory.findUnique({
+    where: { slug },
+    select: { category: { select: { slug: true, isVisible: true } } },
+  });
+  if (!history) return null;
+  if (history.category.slug === slug) return null;
+  // A retired category shouldn't be resurrected via an old URL — 404 like any hidden one.
+  if (!history.category.isVisible) return null;
+  return history.category.slug;
+}
+
 /** Direct children only, ordered — what the storefront category page shows as sub-category chips. */
 export async function getChildCategories(parentId: string): Promise<Category[]> {
   const rows = await prisma.category.findMany({

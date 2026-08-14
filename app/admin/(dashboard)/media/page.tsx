@@ -1,58 +1,35 @@
-import Image from "next/image";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import { MediaLibrary } from "@/components/admin/MediaLibrary";
 import { MediaUploadButton } from "@/components/admin/MediaUploadButton";
-import { getAllCollections, getAllProducts, getHomepageConfig } from "@/services";
-import type { Image as ImageType } from "@/types";
+import { requireCapabilityOrRedirect } from "@/lib/admin-session";
+import { roleHasCapability } from "@/constants/permissions";
+import { getAllMediaAssetsWithUsage, getMediaFolders } from "@/services/media";
 
-async function getAllMedia(): Promise<ImageType[]> {
-  const [products, collections, homepage] = await Promise.all([
-    getAllProducts({ includeUnpublished: true }),
-    getAllCollections(),
-    getHomepageConfig(),
-  ]);
-
-  const images: ImageType[] = [
-    ...products.flatMap((p) => p.images),
-    ...collections.map((c) => c.image),
-  ];
-
-  for (const section of homepage.sections) {
-    if ("image" in section.data && section.data.image) images.push(section.data.image);
-    if ("images" in section.data && Array.isArray(section.data.images)) images.push(...section.data.images);
-  }
-
-  const seen = new Set<string>();
-  return images.filter((image) => {
-    if (seen.has(image.src)) return false;
-    seen.add(image.src);
-    return true;
-  });
-}
-
+/**
+ * Reads the real media_assets table. This page used to derive its list by scanning
+ * products/collections/homepage for image URLs and deduping — which meant a freshly
+ * uploaded file didn't appear until it was attached to something, and nothing could carry
+ * alt text, a folder, tags, or be deleted.
+ */
 export default async function AdminMediaPage() {
-  const media = await getAllMedia();
+  const session = await requireCapabilityOrRedirect("content:media");
+  const [assets, folders] = await Promise.all([getAllMediaAssetsWithUsage(), getMediaFolders()]);
+
+  const unused = assets.filter((a) => a.usage.length === 0).length;
 
   return (
     <div>
       <AdminPageHeader
         title="Media Library"
-        description={`${media.length} images currently referenced across the site. Swap this for a real DAM/CDN integration later.`}
+        description={`${assets.length} images · ${unused} unused. Uploads appear here immediately, before being attached to anything.`}
         actions={<MediaUploadButton />}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {media.map((image) => (
-          <div key={image.src} className="group relative aspect-square overflow-hidden border border-border bg-luxe-white">
-            <Image
-              src={image.src}
-              alt={image.alt}
-              fill
-              sizes="200px"
-              className="object-cover"
-            />
-          </div>
-        ))}
-      </div>
+      <MediaLibrary
+        assets={assets}
+        folders={folders}
+        canDelete={roleHasCapability(session.role, "content:media-delete")}
+      />
     </div>
   );
 }
