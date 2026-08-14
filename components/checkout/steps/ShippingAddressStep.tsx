@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
-import { addressSchema, type AddressFormValues } from "@/lib/validations/checkout";
+import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { useAuth } from "@/components/providers/AuthProvider";

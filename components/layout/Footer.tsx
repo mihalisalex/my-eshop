@@ -20,7 +20,7 @@ export function Footer({ navigation, settings }: FooterProps) {
           <p className="font-heading text-xl tracking-[0.1em] uppercase">{settings.siteName}</p>
           <p className="mt-3 max-w-xs text-sm text-luxe-gray-dark">{settings.tagline}</p>
           <div className="mt-6 max-w-xs">
-            <NewsletterForm compact />
+            <NewsletterForm compact source="footer" />
           </div>
           <ul className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs tracking-[0.05em] text-luxe-gray-dark uppercase">
             {settings.socialLinks.map((social) => (

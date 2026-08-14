@@ -1,9 +1,31 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { notifyBackInStockIfNeeded } from "@/lib/products-import/back-in-stock";
+import { findOrCreateCategoryBySlug } from "@/services/categories";
 import type { ProductFormValues } from "@/lib/validation/product";
 
-function toProductWriteData(data: ProductFormValues) {
+/**
+ * `categoryId` is resolved once, outside `toProductWriteData`, and threaded in — the
+ * single-product admin form only ever submits a slug from a real `<select>` (so this
+ * always just finds), while CSV import rows may reference a category that doesn't exist
+ * yet (so this creates it, same auto-mapping precedent as the WooCommerce import
+ * documented in NOTES.md). Either way there's exactly one resolution path.
+ */
+/**
+ * Stamped only on the actual transition into "archived", never on a save of an
+ * already-archived product — otherwise every subsequent edit would reset the archive date
+ * and destroy the record of when the product was really retired. Cleared on the way out.
+ * `undefined` is Prisma's "leave this column alone", which is exactly the no-op we want.
+ */
+function resolveArchivedAt(
+  nextStatus: ProductFormValues["status"],
+  previousStatus?: string
+): Date | null | undefined {
+  if (nextStatus !== "archived") return null;
+  return previousStatus === "archived" ? undefined : new Date();
+}
+
+function toProductWriteData(data: ProductFormValues, categoryId: string, previousStatus?: string) {
   return {
     slug: data.slug,
     name: data.name,
@@ -11,10 +33,11 @@ function toProductWriteData(data: ProductFormValues) {
     priceAmount: data.price,
     compareAtPriceAmount: data.compareAtPrice ?? null,
     salePriceAmount: data.salePrice ?? null,
+    costPriceAmount: data.costPrice ?? null,
     currencyCode: data.currencyCode,
     images: data.images,
     videos: data.videos ?? undefined,
-    category: data.category,
+    categoryId,
     tags: data.tags,
     gender: data.gender,
     season: data.season ?? null,
@@ -31,6 +54,10 @@ function toProductWriteData(data: ProductFormValues) {
     inventoryPolicy: data.inventoryPolicy,
     shippingWeightGrams: data.shippingWeightGrams ?? null,
     availableForSale: data.availableForSale,
+    status: data.status,
+    archivedAt: resolveArchivedAt(data.status, previousStatus),
+    brand: data.brand ?? null,
+    vendor: data.vendor ?? null,
     seo: data.seo ?? undefined,
   };
 }
@@ -43,6 +70,8 @@ function toProductWriteData(data: ProductFormValues) {
  * bulk-import tool's commit route, so there's exactly one place this logic can drift.
  */
 export async function writeProductRow(data: ProductFormValues, existingId?: string): Promise<{ id: string }> {
+  const { id: categoryId } = await findOrCreateCategoryBySlug(data.category);
+
   const nestedWrites = {
     colors: {
       create: data.colors.map((color, position) => ({
@@ -70,10 +99,11 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
 
   if (existingId) {
     // Read before the transaction — needed to diff old vs. new per-size purchasability
-    // for back-in-stock notifications, since the delete-then-recreate below discards it.
+    // for back-in-stock notifications (the delete-then-recreate below discards it), and
+    // to tell a real archive transition from a save of an already-archived product.
     const oldState = await prisma.product.findUnique({
       where: { id: existingId },
-      select: { inventoryPolicy: true, sizes: { select: { name: true, quantity: true } } },
+      select: { inventoryPolicy: true, status: true, sizes: { select: { name: true, quantity: true } } },
     });
 
     await prisma.$transaction([
@@ -82,7 +112,7 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
       prisma.productCollection.deleteMany({ where: { productId: existingId } }),
       prisma.product.update({
         where: { id: existingId },
-        data: { ...toProductWriteData(data), ...nestedWrites },
+        data: { ...toProductWriteData(data, categoryId, oldState?.status), ...nestedWrites },
       }),
     ]);
 
@@ -98,7 +128,7 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
   }
 
   const product = await prisma.product.create({
-    data: { ...toProductWriteData(data), ...nestedWrites },
+    data: { ...toProductWriteData(data, categoryId), ...nestedWrites },
   });
   return { id: product.id };
 }

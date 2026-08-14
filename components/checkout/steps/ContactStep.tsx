@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { ArrowRight } from "lucide-react";
-import { contactSchema, type ContactFormValues } from "@/lib/validations/checkout";
+import { contactSchema, type ContactFormValues } from "@/lib/validation/checkout";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 
 export function ContactStep() {

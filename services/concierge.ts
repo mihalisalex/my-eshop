@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { ConciergeFormValues } from "@/lib/validations/concierge";
+import type { ConciergeFormValues } from "@/lib/validation/concierge";
 
 export interface ConciergeRequest extends ConciergeFormValues {
   id: string;

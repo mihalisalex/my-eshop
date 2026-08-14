@@ -1,7 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-import type { Product, ProductGender, ProductSeason, InventoryPolicy } from "@/types/product";
+import type { Product, ProductGender, ProductSeason, InventoryPolicy, ProductStatus } from "@/types/product";
+import type { Category } from "@/types/category";
 import type { Collection } from "@/types/collection";
 import type { Discount, GiftCard } from "@/types/commerce";
 import {
@@ -10,7 +11,7 @@ import {
   productSeoOverrideSchema,
   imageSchema,
 } from "@/lib/validation/product";
-import { addressSchema } from "@/lib/validations/checkout";
+import { addressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema, cartLineItemSchema, cartTotalsSchema } from "@/lib/validation/commerce";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
 import { returnItemSchema } from "@/lib/validation/commerce";
@@ -45,6 +46,7 @@ export const productInclude = {
   colors: { orderBy: { position: "asc" } },
   sizes: { orderBy: { position: "asc" } },
   collections: { orderBy: { position: "asc" } },
+  category: true,
 } satisfies Prisma.ProductInclude;
 
 export type ProductRow = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
@@ -66,6 +68,10 @@ export function toProduct(row: ProductRow): Product {
       row.salePriceAmount != null
         ? { amount: toNumber(row.salePriceAmount), currencyCode: row.currencyCode }
         : undefined,
+    costPrice:
+      row.costPriceAmount != null
+        ? { amount: toNumber(row.costPriceAmount), currencyCode: row.currencyCode }
+        : undefined,
     images: productImagesSchema.parse(row.images),
     videos: row.videos ? productVideosSchema.parse(row.videos) : undefined,
     colors: row.colors.map((color) => ({
@@ -80,7 +86,10 @@ export function toProduct(row: ProductRow): Product {
       sku: size.sku ?? undefined,
       barcode: size.barcode ?? undefined,
     })),
-    category: row.category,
+    // `category` stays a plain slug string here (not the joined Category object) so every
+    // existing consumer keeps working unchanged — see the Product.category doc comment.
+    category: row.category.slug,
+    categoryId: row.categoryId,
     collectionIds: row.collections.map((link) => link.collectionId),
     tags: row.tags,
     gender: row.gender as ProductGender,
@@ -100,7 +109,36 @@ export function toProduct(row: ProductRow): Product {
     inventoryPolicy: row.inventoryPolicy as InventoryPolicy,
     shippingWeightGrams: row.shippingWeightGrams ?? undefined,
     availableForSale: row.availableForSale,
+    status: row.status as ProductStatus,
+    archivedAt: row.archivedAt?.toISOString(),
+    brand: row.brand ?? undefined,
+    vendor: row.vendor ?? undefined,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+  };
+}
+
+export const categoryInclude = {
+  _count: { select: { products: true } },
+} satisfies Prisma.CategoryInclude;
+
+export type CategoryRow = Prisma.CategoryGetPayload<{ include: typeof categoryInclude }>;
+
+export function toCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    nameEl: row.nameEl ?? undefined,
+    description: row.description ?? undefined,
+    descriptionEl: row.descriptionEl ?? undefined,
+    parentId: row.parentId ?? undefined,
+    position: row.position,
+    image: row.image ? imageSchema.parse(row.image) : undefined,
+    bannerImage: row.bannerImage ? imageSchema.parse(row.bannerImage) : undefined,
+    isFeatured: row.isFeatured,
+    isVisible: row.isVisible,
+    seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+    productCount: row._count.products,
   };
 }
 

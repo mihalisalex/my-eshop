@@ -9,7 +9,35 @@ export function isOnSale(product: Product): boolean {
   return Boolean(product.salePrice || product.isSale) && Boolean(product.compareAtPrice);
 }
 
-export function getTotalStock(product: Product): number {
+export interface ProductMargin {
+  /** Effective selling price minus unit cost, in the product's currency. */
+  profit: number;
+  /** Profit as a percentage of the selling price (gross margin), not of cost (markup). */
+  marginPercent: number;
+}
+
+/**
+ * Margin against the price actually charged (`getEffectivePrice`, so a sale price wins),
+ * which is the number that reflects reality — computing it off the list price would
+ * overstate profit on everything discounted.
+ *
+ * Returns null when cost is unknown rather than defaulting to 0, so the UI can say "not
+ * set" instead of confidently reporting 100% margin on every product that has no cost yet.
+ * Deliberately derived on read and never stored: a persisted margin silently goes stale
+ * the moment price or cost changes.
+ */
+export function getProductMargin(product: Product): ProductMargin | null {
+  const cost = product.costPrice?.amount;
+  if (cost == null) return null;
+
+  const price = getEffectivePrice(product).amount;
+  const profit = price - cost;
+  // A free/zero-priced product has no meaningful margin percentage — avoid dividing by zero.
+  const marginPercent = price === 0 ? 0 : (profit / price) * 100;
+  return { profit, marginPercent };
+}
+
+function getTotalStock(product: Product): number {
   return product.sizes.reduce((sum, size) => sum + size.quantity, 0);
 }
 
@@ -41,10 +69,6 @@ export function getProductBadges(product: Product): ProductBadge[] {
   }
 
   return badges;
-}
-
-export function formatMaterials(product: Product): string {
-  return product.materials.join(", ");
 }
 
 /**

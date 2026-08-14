@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { contactSchema, type ContactFormValues } from "@/lib/validations/contact";
+import { contactSchema, type ContactFormValues } from "@/lib/validation/contact";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";

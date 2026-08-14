@@ -5,7 +5,7 @@ import { emptyCollectionFormValues } from "@/lib/validation/collection";
 import { getAllProducts } from "@/services/products";
 
 export default async function NewCollectionPage() {
-  const products = await getAllProducts();
+  const products = await getAllProducts({ includeUnpublished: true });
 
   return (
     <div>

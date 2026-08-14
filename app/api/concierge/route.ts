@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { conciergeSchema } from "@/lib/validations/concierge";
+import { conciergeSchema } from "@/lib/validation/concierge";
 import { createConciergeRequest } from "@/services/concierge";
 import { getCustomerSession } from "@/lib/customer-session";
 import { invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";

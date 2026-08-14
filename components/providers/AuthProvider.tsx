@@ -37,11 +37,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    commerce.auth.getSession().then((session) => {
-      if (cancelled) return;
-      setCustomer(session?.customer ?? null);
-      setIsLoading(false);
-    });
+    commerce.auth
+      .getSession()
+      .then((session) => {
+        if (cancelled) return;
+        setCustomer(session?.customer ?? null);
+      })
+      // A failed session probe means "not signed in", not "keep waiting forever" —
+      // without this the whole app sits behind isLoading on any transient /api/auth
+      // failure.
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to restore session", error);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
     return () => {
       cancelled = true;
     };

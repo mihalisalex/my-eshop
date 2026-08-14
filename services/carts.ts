@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { cartInclude, toCart, toNumber, type CartRow } from "@/lib/commerce/postgres/mappers";
 import { round2 } from "@/lib/commerce/postgres/cart-totals";
@@ -212,41 +213,49 @@ export async function mergeCarts(guestCartId: string, customerCartId: string): P
   if (!guestRow) return reloadCart(customerCartId);
   await requireCartRow(customerCartId);
 
+  // The customer's existing items are read once and matched in memory. Previously this
+  // issued a findFirst per guest item and then a second write per item, all sequential —
+  // ~2N round-trips on the sign-in path for an N-item guest cart.
+  const customerItems = await prisma.cartLineItem.findMany({ where: { cartId: customerCartId } });
+  const variantKey = (item: { productId: string; color: string; size: string; savedForLater: boolean }) =>
+    `${item.productId}|${item.color}|${item.size}|${item.savedForLater}`;
+  const existingByVariant = new Map(customerItems.map((item) => [variantKey(item), item]));
+
+  const quantityUpdates: { id: string; quantity: number }[] = [];
+  const newItems: Prisma.CartLineItemCreateManyInput[] = [];
+
   for (const guestItem of guestRow.lineItems) {
-    const existing = await prisma.cartLineItem.findFirst({
-      where: {
-        cartId: customerCartId,
-        productId: guestItem.productId,
-        color: guestItem.color,
-        size: guestItem.size,
-        savedForLater: guestItem.savedForLater,
-      },
-    });
+    const existing = existingByVariant.get(variantKey(guestItem));
     if (existing) {
       const combined = existing.quantity + guestItem.quantity;
       const cap = existing.maxQuantity || combined;
-      await prisma.cartLineItem.update({ where: { id: existing.id }, data: { quantity: Math.min(combined, cap) } });
+      quantityUpdates.push({ id: existing.id, quantity: Math.min(combined, cap) });
     } else {
-      await prisma.cartLineItem.create({
-        data: {
-          cartId: customerCartId,
-          productId: guestItem.productId,
-          slug: guestItem.slug,
-          name: guestItem.name,
-          imageSrc: guestItem.imageSrc,
-          imageAlt: guestItem.imageAlt,
-          color: guestItem.color,
-          size: guestItem.size,
-          unitPriceAmount: guestItem.unitPriceAmount,
-          quantity: guestItem.quantity,
-          maxQuantity: guestItem.maxQuantity,
-          savedForLater: guestItem.savedForLater,
-        },
+      newItems.push({
+        cartId: customerCartId,
+        productId: guestItem.productId,
+        slug: guestItem.slug,
+        name: guestItem.name,
+        imageSrc: guestItem.imageSrc,
+        imageAlt: guestItem.imageAlt,
+        color: guestItem.color,
+        size: guestItem.size,
+        unitPriceAmount: guestItem.unitPriceAmount,
+        quantity: guestItem.quantity,
+        maxQuantity: guestItem.maxQuantity,
+        savedForLater: guestItem.savedForLater,
       });
     }
   }
 
-  await prisma.cart.delete({ where: { id: guestCartId } });
+  // Transactional so a mid-merge failure can't drop the guest cart with only some of its
+  // items transferred — the customer would silently lose the remainder.
+  await prisma.$transaction([
+    ...quantityUpdates.map(({ id, quantity }) => prisma.cartLineItem.update({ where: { id }, data: { quantity } })),
+    ...(newItems.length ? [prisma.cartLineItem.createMany({ data: newItems })] : []),
+    prisma.cart.delete({ where: { id: guestCartId } }),
+  ]);
+
   return reloadCart(customerCartId);
 }
 

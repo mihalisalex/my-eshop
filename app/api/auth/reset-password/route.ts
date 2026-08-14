@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { resetPasswordInputSchema } from "@/lib/validations/auth";
+import { resetPasswordInputSchema } from "@/lib/validation/auth";
 import { consumePasswordResetToken } from "@/lib/password-reset";
 import { getCustomerById } from "@/services/customers";
 import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";

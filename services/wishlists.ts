@@ -72,11 +72,16 @@ export async function linkWishlistToCustomer(anonymousId: string, customerId: st
   if (!guestRow || guestRow.id === customerRow.id) return toWishlist(customerRow);
 
   const existingProductIds = new Set(customerRow.items.map((item) => item.productId));
-  for (const item of guestRow.items) {
-    if (!existingProductIds.has(item.productId)) {
-      await prisma.wishlistItem.create({ data: { wishlistId: customerRow.id, productId: item.productId } });
-    }
-  }
-  await prisma.wishlist.delete({ where: { id: guestRow.id } });
+  const toAdd = guestRow.items
+    .filter((item) => !existingProductIds.has(item.productId))
+    .map((item) => ({ wishlistId: customerRow.id, productId: item.productId }));
+
+  // One INSERT for the whole merge rather than one per item, and in a transaction with
+  // the guest-row delete so a failure partway can't leave items copied AND the guest
+  // wishlist still present (a sign-in that duplicates the list on retry).
+  await prisma.$transaction([
+    ...(toAdd.length ? [prisma.wishlistItem.createMany({ data: toAdd, skipDuplicates: true })] : []),
+    prisma.wishlist.delete({ where: { id: guestRow.id } }),
+  ]);
   return getWishlistByOwner({ customerId });
 }

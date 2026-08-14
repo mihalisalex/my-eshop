@@ -3,9 +3,10 @@ import { ProductForm } from "@/components/admin/ProductForm";
 import { createProduct } from "@/app/admin/(dashboard)/products/actions";
 import { emptyProductFormValues } from "@/lib/validation/product";
 import { getAllCollections } from "@/services/collections";
+import { getCategoryOptions } from "@/services/categories";
 
 export default async function NewProductPage() {
-  const collections = await getAllCollections();
+  const [collections, categories] = await Promise.all([getAllCollections(), getCategoryOptions()]);
 
   return (
     <div>
@@ -13,6 +14,7 @@ export default async function NewProductPage() {
       <ProductForm
         defaultValues={emptyProductFormValues}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
+        categories={categories}
         onSubmit={createProduct}
         submitLabel="Create Product"
       />

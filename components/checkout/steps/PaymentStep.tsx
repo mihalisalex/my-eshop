@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, ShieldCheck } from "lucide-react";
-import { cardSchema, addressSchema, type CardFormValues, type AddressFormValues } from "@/lib/validations/checkout";
+import { cardSchema, addressSchema, type CardFormValues, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { ExpressCheckoutButtons } from "@/components/checkout/ExpressCheckoutButtons";

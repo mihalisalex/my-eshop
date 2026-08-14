@@ -7,9 +7,10 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
 
   return (
     <div className="flex min-h-screen bg-luxe-gray-light">
-      <AdminSidebar />
+      <AdminSidebar role={session.role} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <AdminTopbar session={{ name: session.name, email: session.email, role: "admin" }} />
+        {/* `role` was hardcoded to "admin" here, so an editor was shown "admin" in the topbar. */}
+        <AdminTopbar session={{ name: session.name, email: session.email, role: session.role }} />
         <main className="flex-1 overflow-x-hidden p-4 md:p-8">{children}</main>
       </div>
     </div>

@@ -54,32 +54,41 @@ export function createMockSearchService(productService: ProductService): SearchS
   return {
     async search(query: string, options: SearchOptions = {}): Promise<SearchResult> {
       const normalized = query.trim().toLowerCase();
-      const all = await productService.getAll();
 
       // Scope filters narrow which section of the catalog we're browsing (category page,
-      // gender page, a collection, new-in, sale). Facets are built from this scoped set so
-      // counts reflect "what's available here," not the user's already-applied refinements.
-      let scoped = normalized ? all.filter((p) => matches(p, normalized)) : all;
-      if (options.category) scoped = scoped.filter((p) => p.category === options.category);
+      // gender page, a collection, new-in, sale) — pushed into the query itself so a
+      // category/gender page only ever pulls its own slice of the catalog instead of
+      // fetching every product in the store on every search. Facets are built from this
+      // scoped set so counts reflect "what's available here," not the user's already-
+      // applied refinements.
       // Unisex items (accessories) are shoppable from both gendered sections, not just a
       // literal gender match — otherwise browsing /women or /men never surfaces accessories.
-      if (options.gender) scoped = scoped.filter((p) => p.gender === options.gender || p.gender === "unisex");
-      if (options.collectionId) scoped = scoped.filter((p) => p.collectionIds.includes(options.collectionId!));
-      if (options.isNew) scoped = scoped.filter((p) => p.isNew);
-      if (options.isSale) scoped = scoped.filter((p) => p.isSale);
+      const scoped0 = await productService.getAll({
+        category: options.category,
+        gender: options.gender,
+        includeUnisex: Boolean(options.gender),
+        collectionId: options.collectionId,
+        isNew: options.isNew,
+        isSale: options.isSale,
+      });
+      const scoped = normalized ? scoped0.filter((p) => matches(p, normalized)) : scoped0;
 
       const facets = buildFacets(scoped);
 
-      // Refinement filters — the user's adjustable facet selections.
+      // Refinement filters — the user's adjustable facet selections. Each is bound to a
+      // local first so the narrowing survives into the filter closure (TypeScript can't
+      // carry `options.x?.length` through one), which is what the `!` assertions were
+      // papering over.
       let results = scoped;
-      if (options.colors?.length) {
-        results = results.filter((p) => p.colors.some((c) => options.colors!.includes(c.name)));
+      const { colors, sizes, tags } = options;
+      if (colors?.length) {
+        results = results.filter((p) => p.colors.some((c) => colors.includes(c.name)));
       }
-      if (options.sizes?.length) {
-        results = results.filter((p) => p.sizes.some((s) => options.sizes!.includes(s.name)));
+      if (sizes?.length) {
+        results = results.filter((p) => p.sizes.some((s) => sizes.includes(s.name)));
       }
-      if (options.tags?.length) {
-        results = results.filter((p) => p.tags.some((t) => options.tags!.includes(t)));
+      if (tags?.length) {
+        results = results.filter((p) => p.tags.some((t) => tags.includes(t)));
       }
       if (options.availability === "in-stock") {
         results = results.filter((p) => isAvailable(p));

@@ -2,7 +2,7 @@
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addressSchema, type AddressFormValues } from "@/lib/validations/checkout";
+import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES } from "@/constants/countries";
 import { AddressAutocompleteInput } from "@/components/checkout/AddressAutocompleteInput";
 import { cn } from "@/lib/utils";

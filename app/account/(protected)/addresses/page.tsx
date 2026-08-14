@@ -6,7 +6,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { getCommerceProvider } from "@/lib/commerce";
 import { AddressForm } from "@/components/account/AddressForm";
 import { useToast } from "@/components/providers/ToastProvider";
-import type { AddressFormValues } from "@/lib/validations/checkout";
+import type { AddressFormValues } from "@/lib/validation/checkout";
 
 type EditState = { mode: "add" } | { mode: "edit"; addressId: string } | null;
 

@@ -43,10 +43,20 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
     const id = getAnonymousId();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOwnerId(id);
-    commerce.wishlist.getWishlist(id).then((initial) => {
-      setWishlist(initial);
-      setIsLoading(false);
-    });
+    commerce.wishlist
+      .getWishlist(id)
+      .then((initial) => {
+        setWishlist(initial);
+      })
+      // Clearing the loading flag has to happen on failure too — leaving it pinned
+      // stalls every wishlist affordance in the app behind a spinner that can never
+      // resolve. A null wishlist is already the pre-load state, so consumers handle it.
+      .catch((error) => {
+        console.error("Failed to load wishlist", error);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [commerce]);
 
   const toggle = useCallback(

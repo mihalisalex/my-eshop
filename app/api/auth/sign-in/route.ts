@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/lib/validations/auth";
+import { loginSchema } from "@/lib/validation/auth";
 import { getCustomerById } from "@/services/customers";
 import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";

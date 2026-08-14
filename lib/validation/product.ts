@@ -53,6 +53,7 @@ export const productSeasonSchema = z.enum([
   "all-season",
 ]);
 export const inventoryPolicySchema = z.enum(["deny", "continue"]);
+export const productStatusSchema = z.enum(["draft", "active", "archived"]);
 
 const slugSchema = z
   .string()
@@ -66,6 +67,8 @@ export const productFormSchema = z.object({
   price: z.number().positive("Price must be greater than 0"),
   compareAtPrice: z.number().positive().optional(),
   salePrice: z.number().positive().optional(),
+  /** Allows 0 (genuinely free stock — samples, gifts) where price/salePrice require positive. */
+  costPrice: z.number().min(0).optional(),
   currencyCode: z.string().length(3),
   images: z.array(imageSchema).min(1, "At least one image is required"),
   videos: z.array(productVideoSchema).optional(),
@@ -89,6 +92,9 @@ export const productFormSchema = z.object({
   inventoryPolicy: inventoryPolicySchema,
   shippingWeightGrams: z.number().int().positive().optional(),
   availableForSale: z.boolean(),
+  status: productStatusSchema,
+  brand: z.string().optional(),
+  vendor: z.string().optional(),
   seo: productSeoOverrideSchema.optional(),
 });
 
@@ -105,6 +111,7 @@ export function productToFormValues(product: Product): ProductFormValues {
     price: product.price.amount,
     compareAtPrice: product.compareAtPrice?.amount,
     salePrice: product.salePrice?.amount,
+    costPrice: product.costPrice?.amount,
     currencyCode: product.price.currencyCode,
     images: product.images,
     videos: product.videos,
@@ -133,6 +140,9 @@ export function productToFormValues(product: Product): ProductFormValues {
     inventoryPolicy: product.inventoryPolicy,
     shippingWeightGrams: product.shippingWeightGrams,
     availableForSale: product.availableForSale,
+    status: product.status,
+    brand: product.brand,
+    vendor: product.vendor,
     seo: product.seo,
   };
 }
@@ -160,4 +170,7 @@ export const emptyProductFormValues: ProductFormValues = {
   sku: "",
   inventoryPolicy: "deny",
   availableForSale: true,
+  // New products start as drafts so a half-finished entry can't appear on the storefront
+  // the moment it's saved — publishing is a deliberate step.
+  status: "draft",
 };

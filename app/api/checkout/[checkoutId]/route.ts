@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { setGiftWrap, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
-import { addressSchema, contactSchema } from "@/lib/validations/checkout";
+import { addressSchema, contactSchema } from "@/lib/validation/checkout";
 import type { Checkout } from "@/lib/commerce/types";
 
 /**

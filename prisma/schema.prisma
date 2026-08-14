@@ -25,6 +25,10 @@ model Product {
   priceAmount          Decimal @db.Decimal(10, 2)
   compareAtPriceAmount Decimal? @db.Decimal(10, 2)
   salePriceAmount      Decimal? @db.Decimal(10, 2)
+  /// What the item costs the business — the basis for margin. Optional because it's
+  /// commercially sensitive and often unknown at import time; margin is computed on read
+  /// (lib/product.ts), never stored, so it can't drift from price/cost.
+  costPriceAmount      Decimal? @db.Decimal(10, 2)
   currencyCode         String  @default("EUR")
 
   /// Image[] — order matters (images[0] = card image, images[1] = hover-swap). Zod-validated on read/write.
@@ -32,10 +36,14 @@ model Product {
   /// ProductVideo[] | null. Zod-validated on read/write.
   videos Json?
 
-  category String
-  tags     String[]
-  gender   String
-  season   String?
+  categoryId String
+  /// onDelete: Restrict — a category with products assigned can't be deleted at the DB
+  /// level even if the admin-side guard (app/admin/(dashboard)/categories/actions.ts)
+  /// is ever bypassed; the admin flow is "reassign or delete the products first."
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  tags       String[]
+  gender     String
+  season      String?
 
   materials        String[]
   careInstructions String[]
@@ -58,7 +66,25 @@ model Product {
   /// "deny" | "continue" — mirrors the Shopify-style convention used across the app.
   inventoryPolicy     String  @default("deny")
   shippingWeightGrams Int?
+  /// Purchasability, NOT publication — whether a published product can currently be bought.
+  /// Deliberately separate from `status`: a live product can be temporarily unbuyable
+  /// (supplier issue) without being unpublished, and the admin list previously conflated
+  /// the two by labelling this "Active"/"Draft".
   availableForSale    Boolean @default(true)
+
+  /// Publication lifecycle: "draft" | "active" | "archived". Only "active" products are
+  /// ever visible to customers (see services/products.ts — storefront reads filter on this
+  /// by default and admin must explicitly opt out). Archived is a soft delete: it retires a
+  /// product from the storefront while keeping it resolvable for the orders, carts and
+  /// wishlists that already reference it, which a hard delete would break.
+  status     String    @default("active")
+  archivedAt DateTime?
+
+  /// Merchandising/sourcing attributes. Free text rather than relations — these are
+  /// filter/report dimensions today, not entities with their own pages or behaviour;
+  /// promoting them to tables is a later step if they ever need one.
+  brand  String?
+  vendor String?
 
   /// ProductSeoOverride | null. Zod-validated on read/write.
   seo Json?
@@ -73,7 +99,62 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  /// The storefront's hottest read path: every PLP (/women, /men, /collections/[slug],
+  /// category pages) filters on gender and/or category. Those filters are applied in the
+  /// query itself rather than in JS, so without these the listing pages sequential-scan
+  /// the whole catalog on every request. [gender, categoryId] also serves gender-only
+  /// lookups via its leftmost prefix, so no separate single-column gender index is needed.
+  /// isNew/isSale are deliberately left unindexed — booleans that split the catalog
+  /// roughly in half aren't selective enough for an index to beat a scan.
+  @@index([gender, categoryId])
+  @@index([categoryId])
   @@map("products")
+}
+
+/// Real taxonomy, replacing the flat string that used to live on Product.category —
+/// supports unlimited nesting (self-relation), admin-managed images/SEO, and stable
+/// display order. See services/categories.ts and app/admin/(dashboard)/categories/.
+model Category {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+  /// Greek translation — optional, falls back to `name` when absent. See lib/localize.ts.
+  nameEl        String?
+  description   String?
+  descriptionEl String?
+
+  parentId String?
+  /// onDelete: SetNull — deleting a parent promotes its children to top-level rather than
+  /// cascading the delete, which would silently destroy an entire subtree. The admin delete
+  /// action additionally blocks deleting a category that still has children or assigned
+  /// products, so SetNull is a safety net for direct DB operations, not the normal path.
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+
+  /// Stable display order among siblings — same convention as ProductColor.position.
+  /// Drag-and-drop reordering in the admin only ever reorders within one parent; moving a
+  /// category to a different parent is a deliberate field edit (parentId), not a cross-tree
+  /// drag, so position never needs to be unique/compacted across the whole table.
+  position Int @default(0)
+
+  /// Image | null — card image for nav menus / category grids. Zod-validated on read/write.
+  image Json?
+  /// Image | null — wide banner shown on the category's own storefront page.
+  bannerImage Json?
+
+  isFeatured Boolean @default(false)
+  isVisible  Boolean @default(true)
+
+  /// ProductSeoOverride | null — same shape/convention as Product.seo.
+  seo Json?
+
+  products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@map("categories")
 }
 
 model ProductColor {
@@ -350,7 +431,7 @@ model Checkout {
   /// "open" | "awaiting_payment" | "completed"
   status String  @default("open")
 
-  /// Address | null — Zod-validated on read/write, reuses lib/validations/checkout.ts's addressSchema.
+  /// Address | null — Zod-validated on read/write, reuses lib/validation/checkout.ts's addressSchema.
   shippingAddress Json?
   /// Address | null — Zod-validated, same schema.
   billingAddress  Json?
@@ -628,6 +709,23 @@ model Referral {
 
   @@index([referrerCustomerId])
   @@map("referrals")
+}
+
+/// A real newsletter signup from the sitewide footer / homepage Newsletter section
+/// (components/shared/NewsletterForm.tsx). Email is unique so re-subscribing is
+/// idempotent rather than accumulating duplicate rows — the form shows the same
+/// confirmation either way, which also avoids leaking whether an address is already
+/// on the list.
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  /// Where the signup came from, e.g. "footer" | "homepage" — lets the admin list show
+  /// which surface actually converts without a separate analytics dependency.
+  source       String?
+  subscribedAt DateTime @default(now())
+
+  @@index([subscribedAt])
+  @@map("newsletter_subscribers")
 }
 
 /// A real submission from the public Contact page (components/shared/ContactForm.tsx).

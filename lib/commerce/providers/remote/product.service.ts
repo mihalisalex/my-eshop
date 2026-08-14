@@ -20,8 +20,11 @@ export function createRemoteProductService(): ProductService {
       const query = new URLSearchParams();
       if (params?.category) query.set("category", params.category);
       if (params?.gender) query.set("gender", params.gender);
+      if (params?.includeUnisex) query.set("includeUnisex", "true");
       if (params?.collectionId) query.set("collectionId", params.collectionId);
       if (params?.tag) query.set("tag", params.tag);
+      if (params?.isNew) query.set("isNew", "true");
+      if (params?.isSale) query.set("isSale", "true");
       return fetchProducts(query);
     },
 

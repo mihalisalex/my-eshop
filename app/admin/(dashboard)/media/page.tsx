@@ -6,7 +6,7 @@ import type { Image as ImageType } from "@/types";
 
 async function getAllMedia(): Promise<ImageType[]> {
   const [products, collections, homepage] = await Promise.all([
-    getAllProducts(),
+    getAllProducts({ includeUnpublished: true }),
     getAllCollections(),
     getHomepageConfig(),
   ]);

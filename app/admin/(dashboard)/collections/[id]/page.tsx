@@ -12,7 +12,7 @@ interface AdminCollectionDetailPageProps {
 
 export default async function AdminCollectionDetailPage({ params }: AdminCollectionDetailPageProps) {
   const { id } = await params;
-  const [collections, products] = await Promise.all([getAllCollections(), getAllProducts()]);
+  const [collections, products] = await Promise.all([getAllCollections(), getAllProducts({ includeUnpublished: true })]);
   const collection = collections.find((c) => c.id === id);
   if (!collection) notFound();
 

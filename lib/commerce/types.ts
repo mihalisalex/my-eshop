@@ -328,8 +328,12 @@ export interface AnalyticsEvent {
 export interface ProductQueryParams {
   category?: string;
   gender?: ProductGender;
+  /** When true and `gender` is set, also include unisex products. */
+  includeUnisex?: boolean;
   collectionId?: string;
   tag?: string;
+  isNew?: boolean;
+  isSale?: boolean;
 }
 
 export interface ProductService {

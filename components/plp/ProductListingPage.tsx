@@ -66,25 +66,34 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     // eslint-disable-next-line react-hooks/exhaustive-deps -- baseFiltersKey is the stable identity for the baseFilters object
   }, [baseFiltersKey, commerce]);
 
-  const priceRange: [number, number] = [
+  // Used for the slider UI, which needs the full bounds to draw its track/handles.
+  const displayPriceRange: [number, number] = [
     minPriceParam ? Number(minPriceParam) : (priceBounds?.[0] ?? 0),
     maxPriceParam ? Number(maxPriceParam) : (priceBounds?.[1] ?? 0),
   ];
 
-  // Keyed by every filter/sort dimension below (everything except urlPage/priceBounds/
-  // commerce) — a signature change means a genuinely different result set, so it gets
-  // a fresh cache entry; the same signature reuses whatever pages were already fetched.
+  // Sent to the search API only when the user actually narrowed the range. Omitting it
+  // otherwise is equivalent to filtering by the full bounds anyway (a no-op), and lets the
+  // results fetch below run immediately instead of waiting on the bounds fetch to resolve —
+  // that wait used to serialize two full round-trips before any product appeared.
+  const minPriceFilter = minPriceParam ? Number(minPriceParam) : undefined;
+  const maxPriceFilter = maxPriceParam ? Number(maxPriceParam) : undefined;
+
+  // Keyed by every filter/sort dimension below (everything except urlPage/commerce) — a
+  // signature change means a genuinely different result set, so it gets a fresh cache
+  // entry; the same signature reuses whatever pages were already fetched. Deliberately
+  // independent of the price-bounds fetch above (see minPriceFilter/maxPriceFilter) so
+  // this effect can run immediately instead of waiting on that one to resolve.
   // This is what turns "Load More" from a full 1..urlPage refetch into a single new
   // request per click, without changing any of the state this component exposes.
   const pageCacheRef = useRef(new Map<string, { pages: Map<number, Product[]>; facets: SearchFacet[]; total: number }>());
 
   useEffect(() => {
-    if (!priceBounds) return;
     let cancelled = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
     setIsLoading(true);
 
-    const signature = JSON.stringify({ baseFiltersKey, colors, sizes, tags, availability, sort, priceRange });
+    const signature = JSON.stringify({ baseFiltersKey, colors, sizes, tags, availability, sort, minPriceFilter, maxPriceFilter });
     let entry = pageCacheRef.current.get(signature);
     if (!entry) {
       entry = { pages: new Map<number, Product[]>(), facets: [], total: 0 };
@@ -101,8 +110,8 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
           sizes: sizes.length ? sizes : undefined,
           tags: tags.length ? tags : undefined,
           availability,
-          minPrice: priceRange[0],
-          maxPrice: priceRange[1],
+          minPrice: minPriceFilter,
+          maxPrice: maxPriceFilter,
           sort,
           page,
           pageSize: PAGE_SIZE,
@@ -126,7 +135,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- colors/sizes are re-derived from searchParams each render; joining keeps the effect keyed on their content
-  }, [baseFiltersKey, colors.join(","), sizes.join(","), tags.join(","), availability, sort, priceRange[0], priceRange[1], urlPage, priceBounds, commerce]);
+  }, [baseFiltersKey, colors.join(","), sizes.join(","), tags.join(","), availability, sort, minPriceFilter, maxPriceFilter, urlPage, commerce]);
 
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -182,7 +191,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     return () => observer.disconnect();
   }, [canLoadMore, isLoading, urlPage, updateParams]);
 
-  const filters: PlpFilters = { colors, sizes, availability, priceRange };
+  const filters: PlpFilters = { colors, sizes, availability, priceRange: displayPriceRange };
 
   return (
     <div className="container-luxe py-10 md:py-14">

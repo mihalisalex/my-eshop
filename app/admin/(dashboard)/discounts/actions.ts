@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { requireCapability } from "@/lib/admin-session";
 import { discountFormSchema, type DiscountFormValues } from "@/lib/validation/discount";
 
 export interface DiscountActionState {
@@ -15,7 +15,7 @@ function revalidateStorefront() {
 }
 
 export async function createDiscount(values: DiscountFormValues): Promise<DiscountActionState> {
-  await requireAdminSession();
+  await requireCapability("catalog:discounts");
   const parsed = discountFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   const data = parsed.data;
@@ -39,13 +39,13 @@ export async function createDiscount(values: DiscountFormValues): Promise<Discou
 
 /** No redirect — called from the list page itself, not a detail page (discounts have no detail page). */
 export async function toggleDiscountActive(id: string, active: boolean): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("catalog:discounts");
   await prisma.discount.update({ where: { id }, data: { active } });
   revalidateStorefront();
 }
 
 export async function deleteDiscount(id: string): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("catalog:discounts");
   await prisma.discount.delete({ where: { id } });
   revalidateStorefront();
 }

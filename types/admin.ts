@@ -1,8 +1,13 @@
+/** What an admin account is allowed to do — see constants/permissions.ts for the mapping. */
+export type AdminRole = "admin" | "editor";
+
+export const ADMIN_ROLES: AdminRole[] = ["admin", "editor"];
+
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "editor";
+  role: AdminRole;
   avatar?: string;
 }
 
@@ -17,6 +22,8 @@ export interface DashboardStat {
 export interface NewsletterSubscriber {
   id: string;
   email: string;
+  /** Which surface the signup came from, e.g. "footer" | "homepage". */
+  source?: string;
   subscribedAt: string;
 }
 

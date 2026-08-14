@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { requireCapability } from "@/lib/admin-session";
 import { createPost, deletePost, updatePost } from "@/services/blog";
 import { blogFormSchema, type BlogFormValues } from "@/lib/validation/blog";
 
@@ -16,7 +16,7 @@ function revalidateStorefront() {
 }
 
 export async function createBlogPost(values: BlogFormValues): Promise<BlogActionState> {
-  await requireAdminSession();
+  await requireCapability("content:blog");
   const parsed = blogFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
@@ -29,7 +29,7 @@ export async function createBlogPost(values: BlogFormValues): Promise<BlogAction
 }
 
 export async function updateBlogPost(id: string, values: BlogFormValues): Promise<BlogActionState> {
-  await requireAdminSession();
+  await requireCapability("content:blog");
   const parsed = blogFormSchema.safeParse(values);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
 
@@ -42,7 +42,7 @@ export async function updateBlogPost(id: string, values: BlogFormValues): Promis
 }
 
 export async function deleteBlogPost(id: string): Promise<void> {
-  await requireAdminSession();
+  await requireCapability("content:blog");
   await deletePost(id);
   revalidateStorefront();
   redirect("/admin/blog");

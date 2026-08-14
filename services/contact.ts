@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import type { ContactFormValues } from "@/lib/validations/contact";
+import type { ContactFormValues } from "@/lib/validation/contact";
 
 export interface ContactMessage extends ContactFormValues {
   id: string;

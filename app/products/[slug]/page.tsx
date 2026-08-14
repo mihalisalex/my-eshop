@@ -23,7 +23,9 @@ import {
   getReviewSummary,
   getSeoDefaults,
   getSiteSettings,
+  getCategoryById,
 } from "@/services";
+import { ROUTES } from "@/constants/routes";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -55,7 +57,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const rawProduct = await getProductBySlug(slug);
   if (!rawProduct) notFound();
 
-  const [navigation, settings, seo, rawRelated, reviews, reviewSummary, locale] = await Promise.all([
+  const [navigation, settings, seo, rawRelated, reviews, reviewSummary, locale, category] = await Promise.all([
     getNavigation(),
     getSiteSettings(),
     getSeoDefaults(),
@@ -63,13 +65,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
     getReviewsForProduct(rawProduct.id),
     getReviewSummary(rawProduct.id),
     getLocale(),
+    getCategoryById(rawProduct.categoryId),
   ]);
   const product = localizeProduct(rawProduct, locale as Locale);
   const related = localizeProducts(rawRelated, locale as Locale);
 
   const breadcrumbItems = [
     { name: "Home", href: "/" },
-    { name: product.category.charAt(0).toUpperCase() + product.category.slice(1), href: `/${product.category}` },
+    // Was `/${product.category}` — a dead link (no such top-level route ever existed).
+    // Now a real page: app/category/[slug]/page.tsx, with the category's real display
+    // name instead of a crudely capitalized slug.
+    ...(category ? [{ name: category.name, href: ROUTES.category(category.slug) }] : []),
     { name: product.name, href: `/products/${product.slug}` },
   ];
 

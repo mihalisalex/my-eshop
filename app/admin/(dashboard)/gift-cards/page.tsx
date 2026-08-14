@@ -7,8 +7,10 @@ import { formatMoney } from "@/lib/format";
 import { getAllGiftCards } from "@/services/gift-cards";
 import { toggleGiftCardActive, deleteGiftCard } from "@/app/admin/(dashboard)/gift-cards/actions";
 import type { GiftCard } from "@/types";
+import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
 export default async function AdminGiftCardsPage() {
+  await requireCapabilityOrRedirect("catalog:discounts");
   const giftCards = await getAllGiftCards();
 
   return (

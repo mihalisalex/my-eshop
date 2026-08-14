@@ -1,18 +1,18 @@
 import "server-only";
-import subscribersData from "@/data/newsletter-subscribers.json";
 import activityLogData from "@/data/activity-log.json";
 import { prisma } from "@/lib/prisma";
 import { cartTotalsSchema } from "@/lib/validation/commerce";
-import type { ActivityLogEntry, AdminUser, DashboardStat, NewsletterSubscriber } from "@/types";
+import { getNewsletterSubscriberCount } from "@/services/newsletter";
+import type { ActivityLogEntry, AdminUser, DashboardStat } from "@/types";
 
 /**
  * Orders/Customers/Discounts/GiftCards/Returns moved to services/orders.ts,
  * services/customers.ts, services/discounts.ts, services/gift-cards.ts,
- * services/returns.ts (all Postgres-backed now). This file keeps the domains
- * still genuinely mock/JSON-backed.
+ * services/returns.ts, and Newsletter to services/newsletter.ts (all
+ * Postgres-backed now). This file keeps the domains still genuinely
+ * mock/JSON-backed — currently just the activity log.
  */
 
-const subscribers = subscribersData as NewsletterSubscriber[];
 const activityLog = activityLogData as ActivityLogEntry[];
 
 /**
@@ -32,18 +32,15 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   }));
 }
 
-export async function getNewsletterSubscribers(): Promise<NewsletterSubscriber[]> {
-  return subscribers;
-}
-
 export async function getActivityLog(): Promise<ActivityLogEntry[]> {
   return [...activityLog].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getDashboardStats(): Promise<DashboardStat[]> {
-  const [orders, customerCount] = await Promise.all([
+  const [orders, customerCount, subscriberCount] = await Promise.all([
     prisma.order.findMany({ select: { totals: true } }),
     prisma.customer.count(),
+    getNewsletterSubscriberCount(),
   ]);
   const revenue = orders.reduce((sum, order) => sum + cartTotalsSchema.parse(order.totals).total.amount, 0);
 
@@ -51,6 +48,6 @@ export async function getDashboardStats(): Promise<DashboardStat[]> {
     { id: "revenue", label: "Revenue", value: `€${revenue.toLocaleString()}` },
     { id: "orders", label: "Orders", value: String(orders.length) },
     { id: "customers", label: "Customers", value: String(customerCount) },
-    { id: "subscribers", label: "Newsletter Subscribers", value: String(subscribers.length) },
+    { id: "subscribers", label: "Newsletter Subscribers", value: String(subscriberCount) },
   ];
 }

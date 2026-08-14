@@ -7,7 +7,7 @@ import { NewArrivals } from "@/components/sections/NewArrivals";
 import { BrandStory } from "@/components/sections/BrandStory";
 import { SocialGrid } from "@/components/sections/SocialGrid";
 import { Newsletter } from "@/components/sections/Newsletter";
-import { getCollectionsByIds, getProductsByIds } from "@/services";
+import { getCollectionsByIds, getPublishedProductsByIds } from "@/services";
 import { localizeCollections, localizeProducts } from "@/lib/localize";
 import type { Locale } from "@/i18n/config";
 import type { HomepageSection } from "@/types";
@@ -41,7 +41,7 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
     }
 
     case "bestSellers": {
-      const products = localizeProducts(await getProductsByIds(section.data.productIds), locale);
+      const products = localizeProducts(await getPublishedProductsByIds(section.data.productIds), locale);
       return (
         <BestSellers
           title={section.data.title}
@@ -56,7 +56,7 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
       return <EditorialBanner data={section.data} />;
 
     case "newArrivals": {
-      const products = localizeProducts(await getProductsByIds(section.data.productIds), locale);
+      const products = localizeProducts(await getPublishedProductsByIds(section.data.productIds), locale);
       return (
         <NewArrivals title={section.data.title} subtitle={section.data.subtitle} products={products} />
       );

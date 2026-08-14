@@ -1,35 +1,32 @@
+import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { DataTable } from "@/components/admin/DataTable";
-import { getAllProducts } from "@/services";
-
-interface CategoryRow {
-  name: string;
-  count: number;
-}
+import { CategoryTree } from "@/components/admin/CategoryTree";
+import { getCategoryTree } from "@/services/categories";
 
 export default async function AdminCategoriesPage() {
-  const products = await getAllProducts();
-  const counts = new Map<string, number>();
-  for (const product of products) {
-    counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
-  }
-  const rows: CategoryRow[] = Array.from(counts.entries()).map(([name, count]) => ({ name, count }));
+  const tree = await getCategoryTree();
+  const total = countAll(tree);
 
   return (
     <div>
       <AdminPageHeader
         title="Categories"
-        description="Categories are derived from product data today; promote this to a managed taxonomy when the catalog moves to a real backend."
+        description={`${total} categor${total === 1 ? "y" : "ies"}. Drag the handle to reorder siblings; open a category to move it to a different parent.`}
+        actions={
+          <Link
+            href="/admin/categories/new"
+            className="flex h-9 items-center bg-luxe-black px-4 text-xs font-medium tracking-[0.05em] text-luxe-white uppercase"
+          >
+            New Category
+          </Link>
+        }
       />
 
-      <DataTable<CategoryRow>
-        columns={[
-          { header: "Category", cell: (row) => <span className="capitalize">{row.name}</span> },
-          { header: "Products", cell: (row) => row.count },
-        ]}
-        rows={rows}
-        getRowKey={(row) => row.name}
-      />
+      <CategoryTree nodes={tree} />
     </div>
   );
+}
+
+function countAll(nodes: { children: unknown[] }[]): number {
+  return nodes.reduce((sum, node) => sum + 1 + countAll(node.children as { children: unknown[] }[]), 0);
 }

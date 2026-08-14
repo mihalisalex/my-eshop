@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/product/ProductCard";
-import { getAllLookbooks, getLookbookBySlug, getNavigation, getProductsByIds, getSiteSettings } from "@/services";
+import { getAllLookbooks, getLookbookBySlug, getNavigation, getPublishedProductsByIds, getSiteSettings } from "@/services";
 
 interface LookbookPageProps {
   params: Promise<{ slug: string }>;
@@ -30,7 +30,7 @@ export default async function LookbookPage({ params }: LookbookPageProps) {
   const [navigation, settings, products] = await Promise.all([
     getNavigation(),
     getSiteSettings(),
-    lookbook.productIds ? getProductsByIds(lookbook.productIds) : Promise.resolve([]),
+    lookbook.productIds ? getPublishedProductsByIds(lookbook.productIds) : Promise.resolve([]),
   ]);
 
   return (

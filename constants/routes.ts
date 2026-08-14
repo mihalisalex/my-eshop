@@ -5,6 +5,7 @@ export const ROUTES = {
   newIn: "/new-in",
   collections: "/collections",
   collection: (slug: string) => `/collections/${slug}`,
+  category: (slug: string) => `/category/${slug}`,
   sale: "/sale",
   journal: "/journal",
   journalPost: (slug: string) => `/journal/${slug}`,
