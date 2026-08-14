@@ -73,3 +73,38 @@ Longer-standing, unchanged from previous sessions:
 - **Payment/Stripe** — still the biggest blocker to a real checkout. Declined three times now; ask rather than assume.
 - Connect real credentials for Resend / ACS Courier / OAuth. Custom domain (still `*.vercel.app`).
 - The 5 collections + homepage Best Sellers/New Arrivals are still **empty** — user chose to curate these themselves via `/admin`.
+
+## Core Web Vitals: what actually gates LCP here
+
+Mobile Lighthouse was 89 with LCP 3.6s; accessibility, best-practices and SEO were already
+100. The whole deficit was LCP, and none of it was the server (root document responds in
+50ms). Three separate causes, each found only by re-measuring after fixing the previous one:
+
+1. **Framer Motion writes its `initial` state into the SSR HTML.** The hero headline shipped
+   as `opacity:0` and became visible only after hydration. Chrome does not count a
+   transparent element as painted, so LCP was pinned to hydration — ~2.9s of pure render
+   delay in production, ~4.2s locally. Entrance animations that affect anything in the first
+   viewport belong in CSS, which starts at first paint with no JS.
+2. **The cookie banner was the LCP element.** It is fixed to the bottom of the viewport, its
+   paragraph is wide, and it rendered only in a `useEffect`. Now server-rendered, with an
+   inline pre-paint script stamping `data-consent` on `<html>` so anyone who already chose
+   never sees it. Consent is in localStorage, which the server cannot read — hence the
+   inline script rather than simply moving the component.
+3. **Even in CSS, fading the LCP element costs LCP.** Same rule as (1): the element is not
+   "painted" until the fade progresses. The headline now animates transform only
+   (`hero-lift`), fully opaque from the first frame; everything around it still fades
+   (`hero-rise`). Observed LCP went 2017ms -> 1012ms, exactly equal to FCP.
+
+**Reading Lighthouse locally is misleading.** It reports two different numbers: `observed*`
+metrics (real paint times in the trace) and the simulated Lantern values that produce the
+score. Against localhost there is no real network for Lantern to model, so simulated LCP
+stayed ~3.8s while observed LCP had already collapsed to equal FCP. Use `observedLCP` from
+`audits.metrics.details.items[0]` to judge a local fix, and only trust the score against the
+deployed site.
+
+Not done, deliberately: `browserslist` is unset, so ~14 KiB of polyfills ship for browsers
+predating `Object.hasOwn` (Safari < 15.4). Narrowing it is a decision about which customers
+can shop, not a perf tweak, for a saving too small to move the score. Back/forward cache is
+also disabled by `cache-control: no-store` on the document, which follows from rendering
+dynamically for locale and session — real for returning-visitor UX, but not part of the
+Lighthouse performance score.
