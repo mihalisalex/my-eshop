@@ -643,3 +643,15 @@ customers can shop, which is a business call, for a saving too small to move the
 Back/forward cache is disabled by `cache-control: no-store` on the document, which follows
 from rendering dynamically for locale and session; it is real for returning visitors but
 carries no weight in the performance score.
+
+**Result, measured on the deployed site over three runs: mobile 95 / 99 / 100 (median 99),
+up from 89.** LCP 3.6s -> 1.4s, consistent across all three runs; TBT 120ms -> 50-80ms;
+accessibility, best-practices and SEO unchanged at 100. The 95 was a cold serverless start
+(TTFB 2.2s, Speed Index 5.7s); the two warm runs both landed at 2.6s Speed Index. One run
+showed CLS 0.015 — still well inside "good", but noted rather than smoothed over.
+
+Workflow change from this point: work goes **straight to `main`**, no feature branches, no
+pull requests. The `perf/plp-scoped-product-fetch` branch is deleted. It was a solo repo, so
+a PR meant reviewing your own work, and the preview deployment that would have justified it
+has failed on every branch build this project has ever produced. The deploy gate is the
+push, not the PR.
