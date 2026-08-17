@@ -56,6 +56,33 @@ function resolveMaxQuantity(product: Product, sizeName: string): number {
   return product.inventoryPolicy === "continue" ? 99 : 0;
 }
 
+/**
+ * Size was always validated against the product; colour never was, and it is stored on
+ * the line item, snapshotted into `Order.lineItems` at purchase, and shown to the admin
+ * when they pick and pack. So an unvalidated colour is both a data-integrity problem and
+ * the dedupe key's weak point: `findFirst` below matches on colour, so re-adding the same
+ * product with a different colour string created a SEPARATE line item and sidestepped the
+ * per-line stock cap entirely. Sending a mojibaked colour was enough to do it.
+ *
+ * A product with no colours legitimately has none to send — the purchase panel submits
+ * `product.colors[0]?.name ?? ""` — so blank is accepted only in that case, and always
+ * normalised to "" rather than passed through.
+ */
+function resolveColorName(product: Product, requested: string): string {
+  const trimmed = requested.trim();
+  if (product.colors.length === 0) {
+    if (trimmed) {
+      throw new CommerceError("INVALID_VARIANT", `${product.name} isn't available in a colour.`);
+    }
+    return "";
+  }
+  const match = product.colors.find((color) => color.name === trimmed);
+  if (!match) {
+    throw new CommerceError("INVALID_VARIANT", `${product.name} isn't available in that colour.`);
+  }
+  return match.name;
+}
+
 export async function addLineItem(cartId: string, input: AddLineItemInput): Promise<Cart> {
   await requireCartRow(cartId);
   const product = await getProductById(input.productId);
@@ -65,17 +92,28 @@ export async function addLineItem(cartId: string, input: AddLineItemInput): Prom
   }
 
   const maxQuantity = resolveMaxQuantity(product, input.size);
-  const colorMatch = product.colors.find((c) => c.name === input.color);
+  const color = resolveColorName(product, input.color);
+  const colorMatch = product.colors.find((c) => c.name === color);
   const image = colorMatch?.image ?? { src: product.images[0].src, alt: product.images[0].alt };
   const unitPrice = product.salePrice ?? product.price;
 
   const existing = await prisma.cartLineItem.findFirst({
-    where: { cartId, productId: input.productId, color: input.color, size: input.size, savedForLater: false },
+    where: { cartId, productId: input.productId, color, size: input.size, savedForLater: false },
   });
 
+  // Clamped on BOTH branches. Only the update path used to clamp, so the very first add
+  // of a line stored whatever quantity was asked for: a crafted request for 9999 against
+  // a size with one unit in stock produced a line item with quantity 9999, maxQuantity 1,
+  // and a cart total of EUR 713,900. completeCheckout re-validates stock inside the order
+  // transaction so it was never an oversell, but it left the shopper with a nonsense cart
+  // that could then never check out.
+  const clamp = (quantity: number) => (maxQuantity > 0 ? Math.min(quantity, maxQuantity) : quantity);
+
   if (existing) {
-    const nextQuantity = Math.min(existing.quantity + input.quantity, maxQuantity || existing.quantity + input.quantity);
-    await prisma.cartLineItem.update({ where: { id: existing.id }, data: { quantity: nextQuantity, maxQuantity } });
+    await prisma.cartLineItem.update({
+      where: { id: existing.id },
+      data: { quantity: clamp(existing.quantity + input.quantity), maxQuantity },
+    });
   } else {
     await prisma.cartLineItem.create({
       data: {
@@ -85,10 +123,10 @@ export async function addLineItem(cartId: string, input: AddLineItemInput): Prom
         name: product.name,
         imageSrc: image.src,
         imageAlt: image.alt,
-        color: input.color,
+        color,
         size: input.size,
         unitPriceAmount: unitPrice.amount,
-        quantity: input.quantity,
+        quantity: clamp(input.quantity),
         maxQuantity,
       },
     });

@@ -135,6 +135,7 @@ export class CommerceError extends Error {
     | "INVALID_GIFT_CARD"
     | "CART_NOT_FOUND"
     | "LINE_ITEM_NOT_FOUND"
+    | "INVALID_VARIANT"
     | "INVALID_CREDENTIALS"
     | "EMAIL_IN_USE"
     | "CHECKOUT_INCOMPLETE";
