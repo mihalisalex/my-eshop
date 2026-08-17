@@ -40,11 +40,24 @@ function buildFacets(products: Product[]): SearchFacet[] {
 
   const toValues = (counts: Map<string, number>) => Array.from(counts.entries()).map(([value, count]) => ({ value, count }));
 
+  /**
+   * Shoe sizes are numeric strings, so they came out in whatever order the catalog was
+   * iterated — the Women filter listed "40, 41, 36, 37, 38, 39, 42". Sorted numerically
+   * where every value is a number, and alphabetically otherwise, so a future lettered
+   * scale (S/M/L, or EU 38½) still lands somewhere sensible rather than throwing.
+   */
+  const sortSizes = (values: { value: string; count: number }[]) => {
+    const allNumeric = values.every((entry) => Number.isFinite(Number(entry.value)));
+    return [...values].sort((a, b) =>
+      allNumeric ? Number(a.value) - Number(b.value) : a.value.localeCompare(b.value)
+    );
+  };
+
   return [
     { key: "category", label: "Category", values: toValues(categoryCounts) },
     { key: "gender", label: "Gender", values: toValues(genderCounts) },
     { key: "color", label: "Color", values: toValues(colorCounts) },
-    { key: "size", label: "Size", values: toValues(sizeCounts) },
+    { key: "size", label: "Size", values: sortSizes(toValues(sizeCounts)) },
     { key: "tag", label: "Tags", values: toValues(tagCounts) },
   ];
 }

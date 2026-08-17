@@ -227,6 +227,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
           <div>
             <PlpToolbar
               total={total}
+              isLoading={isLoading && products.length === 0}
               sort={sort}
               onSortChange={handleSortChange}
               facets={facets}

@@ -70,11 +70,13 @@ export function websiteSchema(seo: SiteSeoDefaults) {
     "@type": "WebSite",
     name: seo.organization.name,
     url: seo.siteUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${seo.siteUrl}/search?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+    // No `potentialAction`/SearchAction here. It used to advertise
+    // `${siteUrl}/search?q={search_term_string}` to search engines, and there is no
+    // /search route — search exists only as a header overlay with no URL of its own, so
+    // the declared endpoint 404s. Telling Google a sitelinks-searchbox target that does
+    // not resolve is worse than declaring nothing. Restore this the day a real /search
+    // page exists (which would also make results linkable, shareable and bookmarkable —
+    // see the audit's QA-042).
   };
 }
 

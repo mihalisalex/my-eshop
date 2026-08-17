@@ -10,6 +10,8 @@ import type { SearchFacet } from "@/lib/commerce/types";
 
 interface PlpToolbarProps {
   total: number;
+  /** Suppresses the count while the first result set is still in flight — see below. */
+  isLoading?: boolean;
   sort: PlpSort;
   onSortChange: (sort: PlpSort) => void;
   facets: SearchFacet[];
@@ -21,6 +23,7 @@ interface PlpToolbarProps {
 
 export function PlpToolbar({
   total,
+  isLoading = false,
   sort,
   onSortChange,
   facets,
@@ -34,7 +37,12 @@ export function PlpToolbar({
 
   return (
     <div className="flex items-center justify-between gap-4 border-b border-border pb-4">
-      <p className="text-sm text-luxe-gray-dark">{t(total === 1 ? "itemsOne" : "itemsOther", { count: total })}</p>
+      {/* Nothing rather than "0 items" while the first fetch is in flight. The count
+          rendered as 0 during loading and then jumped to the real figure, so on a slow
+          connection a shopper saw an apparently empty category before it filled in. */}
+      <p className="text-sm text-luxe-gray-dark">
+        {isLoading ? " " : t(total === 1 ? "itemsOne" : "itemsOther", { count: total })}
+      </p>
       <div className="flex items-center gap-3">
         <button
           type="button"

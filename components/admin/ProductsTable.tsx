@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
-import { getProductMargin } from "@/lib/product";
+import { getEffectivePrice, getProductMargin } from "@/lib/product";
 import { bulkUpdateProducts, duplicateProduct, type BulkProductAction } from "@/app/admin/(dashboard)/products/actions";
 import type { Product, ProductStatus } from "@/types";
 
@@ -58,11 +58,12 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
       case "name":
         sorted.sort((a, b) => a.name.localeCompare(b.name));
         break;
+      // Sorts on the effective price too, so the order matches the column being read.
       case "price-asc":
-        sorted.sort((a, b) => a.price.amount - b.price.amount);
+        sorted.sort((a, b) => getEffectivePrice(a).amount - getEffectivePrice(b).amount);
         break;
       case "price-desc":
-        sorted.sort((a, b) => b.price.amount - a.price.amount);
+        sorted.sort((a, b) => getEffectivePrice(b).amount - getEffectivePrice(a).amount);
         break;
       case "margin":
         // Products with no cost set sort last rather than pretending to be 0% margin.
@@ -276,7 +277,17 @@ function ProductRow({ product, selected, onToggle }: { product: Product; selecte
         </Link>
       </td>
       <td className="p-3 capitalize">{product.category}</td>
-      <td className="p-3">{formatMoney(product.price)}</td>
+      {/* The effective price — what the product actually sells for. This column showed
+          `product.price` (the pre-discount figure), and 172 of 175 products carry a sale
+          price, so the owner was reading EUR 79 for something the storefront was selling
+          at EUR 59 on almost every row. The list price is kept alongside, struck through,
+          so nothing is lost. */}
+      <td className="p-3">
+        {formatMoney(getEffectivePrice(product))}
+        {product.salePrice ? (
+          <span className="ml-1.5 text-xs text-luxe-gray-dark line-through">{formatMoney(product.price)}</span>
+        ) : null}
+      </td>
       <td className="p-3">
         {margin ? (
           <span className={margin.marginPercent < 0 ? "text-destructive" : undefined}>
