@@ -529,6 +529,12 @@ model Order {
   /// race. This timestamp is what stops the loser sending a second copy.
   confirmationEmailSentAt DateTime?
 
+  /// Set exactly once, the moment an order first moves to a stock-returning status
+  /// (cancelled or refunded). Claimed with a null-guarded updateMany so two concurrent
+  /// status changes cannot both credit the same units back - the same once-only pattern
+  /// as confirmationEmailSentAt.
+  restockedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

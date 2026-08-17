@@ -6,7 +6,10 @@ export const contactSchema = z.object({
 });
 export type ContactFormValues = z.infer<typeof contactSchema>;
 
-export const addressSchema = z.object({
+/**
+ * The fields that never changed their rules, shared by both schemas below.
+ */
+const addressBase = {
   firstName: z.string().trim().min(1, "First name is required"),
   lastName: z.string().trim().min(1, "Last name is required"),
   company: z.string().trim().optional(),
@@ -15,6 +18,30 @@ export const addressSchema = z.object({
   city: z.string().trim().min(1, "City is required"),
   region: z.string().trim().optional(),
   postalCode: z.string().trim().min(2, "Enter a valid postal code"),
+};
+
+/**
+ * For addresses ALREADY PERSISTED — order snapshots, saved customer addresses, checkout
+ * rows written before the rules tightened.
+ *
+ * This split is not cosmetic. `addressSchema` does double duty as an input validator and
+ * as the parser for stored JSON (`toOrder`, `toCheckout`, `completeCheckout`), so making
+ * `phone` required immediately broke every order placed while it was optional: the admin
+ * dashboard and orders list both 500'd on a ZodError the moment they tried to read one.
+ * Tightening what the app ACCEPTS must never retroactively invalidate what it already
+ * WROTE — historical records are facts, not submissions, and cannot be corrected by the
+ * person now reading them.
+ */
+export const storedAddressSchema = z.object({
+  ...addressBase,
+  countryCode: z.string().trim().min(2),
+  phone: z.string().trim().optional(),
+});
+export type StoredAddress = z.infer<typeof storedAddressSchema>;
+
+/** The strict INPUT schema: what a form or API request must supply today. */
+export const addressSchema = z.object({
+  ...addressBase,
   // Checked against the list the shop actually ships to, not just "at least two
   // characters" — the previous rule accepted any string, so a crafted request could
   // put an arbitrary value on the order and every downstream country-based rule

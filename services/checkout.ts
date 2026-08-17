@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { cartInclude, toCart, toCheckout, toJsonInput, toOrder } from "@/lib/commerce/postgres/mappers";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
-import { addressSchema } from "@/lib/validation/checkout";
+import { storedAddressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema } from "@/lib/validation/commerce";
 import { resolveShippingRate, STANDARD_SHIPPING_RATE } from "@/lib/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
@@ -161,8 +161,8 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
     throw new CommerceError("CHECKOUT_INCOMPLETE", "Choose a payment method before placing your order.");
   }
   const email = checkoutRow.email;
-  const shippingAddress = addressSchema.parse(checkoutRow.shippingAddress);
-  const billingAddress = checkoutRow.billingAddress ? addressSchema.parse(checkoutRow.billingAddress) : shippingAddress;
+  const shippingAddress = storedAddressSchema.parse(checkoutRow.shippingAddress);
+  const billingAddress = checkoutRow.billingAddress ? storedAddressSchema.parse(checkoutRow.billingAddress) : shippingAddress;
   const shippingRate = checkoutRow.shippingRate ? shippingRateSchema.parse(checkoutRow.shippingRate) : STANDARD_SHIPPING_RATE;
 
   const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });

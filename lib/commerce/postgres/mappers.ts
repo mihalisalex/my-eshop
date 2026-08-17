@@ -11,7 +11,7 @@ import {
   productSeoOverrideSchema,
   imageSchema,
 } from "@/lib/validation/product";
-import { addressSchema } from "@/lib/validation/checkout";
+import { storedAddressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema, cartLineItemSchema, cartTotalsSchema } from "@/lib/validation/commerce";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
 import { returnItemSchema } from "@/lib/validation/commerce";
@@ -308,8 +308,8 @@ export function toCheckout(row: CheckoutRow): Checkout {
     id: row.id,
     cartId: row.cartId,
     email: row.email ?? undefined,
-    shippingAddress: row.shippingAddress ? addressSchema.parse(row.shippingAddress) : undefined,
-    billingAddress: row.billingAddress ? addressSchema.parse(row.billingAddress) : undefined,
+    shippingAddress: row.shippingAddress ? storedAddressSchema.parse(row.shippingAddress) : undefined,
+    billingAddress: row.billingAddress ? storedAddressSchema.parse(row.billingAddress) : undefined,
     shippingRate: row.shippingRate ? shippingRateSchema.parse(row.shippingRate) : undefined,
     giftWrap: row.giftWrap,
     giftMessage: row.giftMessage ?? undefined,
@@ -334,8 +334,8 @@ export function toOrder(row: OrderRow): Order {
       giftWrapTotal: totals.giftWrapTotal ?? { amount: 0, currencyCode: totals.total.currencyCode },
       paymentFeeTotal: totals.paymentFeeTotal ?? { amount: 0, currencyCode: totals.total.currencyCode },
     },
-    shippingAddress: addressSchema.parse(row.shippingAddress),
-    billingAddress: addressSchema.parse(row.billingAddress),
+    shippingAddress: storedAddressSchema.parse(row.shippingAddress),
+    billingAddress: storedAddressSchema.parse(row.billingAddress),
     shippingRate: shippingRateSchema.parse(row.shippingRate),
     giftWrap: row.giftWrap,
     giftMessage: row.giftMessage ?? undefined,
