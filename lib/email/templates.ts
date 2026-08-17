@@ -135,9 +135,9 @@ function totalsHtml(totals: CartTotals): string {
       ${row("Shipping", totals.shippingTotal)}
       ${totals.giftWrapTotal.amount > 0 ? row("Gift Wrapping", totals.giftWrapTotal) : ""}
       ${totals.paymentFeeTotal.amount > 0 ? row("Payment Fee", totals.paymentFeeTotal) : ""}
-      ${row("Tax", totals.taxTotal)}
       <tr><td colspan="2" style="padding-top:10px;border-top:1px solid ${HAIRLINE};"></td></tr>
       ${row("Total", totals.total, true)}
+      ${row("Includes VAT", totals.taxTotal)}
     </table>`;
 }
 

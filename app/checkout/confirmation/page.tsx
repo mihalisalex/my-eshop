@@ -200,13 +200,13 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
             <span>{formatMoney(order.totals.paymentFeeTotal)}</span>
           </div>
         ) : null}
-        <div className="flex justify-between">
-          <span className="text-luxe-gray-dark">Tax</span>
-          <span>{formatMoney(order.totals.taxTotal)}</span>
-        </div>
         <div className="flex justify-between border-t border-border pt-1.5 text-base font-medium">
           <span>Total</span>
           <span>{formatMoney(order.totals.total)}</span>
+        </div>
+        <div className="flex justify-between text-xs text-luxe-gray-dark">
+          <span>Includes VAT</span>
+          <span>{formatMoney(order.totals.taxTotal)}</span>
         </div>
       </div>
 

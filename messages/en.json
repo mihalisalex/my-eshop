@@ -39,7 +39,7 @@
     "giftWrapping": "Gift Wrapping",
     "paymentFee": "Payment Fee",
     "free": "Free",
-    "estimatedTax": "Estimated Tax (VAT)",
+    "estimatedTax": "Includes VAT",
     "total": "Total"
   },
   "Checkout": {

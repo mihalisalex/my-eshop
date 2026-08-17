@@ -1,6 +1,31 @@
 import type { CartTotals, ShippingRate } from "@/lib/commerce/types";
-import { computeShippingChargeForRate } from "@/lib/shipping";
+import { computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
+
+/** Matches resolveCartAmounts: VAT is extracted from the pre-gift-card total, not added to it. */
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * Every overlay below substitutes one VAT-INCLUSIVE component of the total, so the
+ * informational tax line has to move with it. Under the old exclusive model tax was
+ * computed on `subtotal - discount` alone and shipping genuinely did not affect it, which
+ * is why these functions used to swap an amount and leave `taxTotal` untouched. That
+ * shortcut is now wrong: changing Standard to Express changes how much VAT the order
+ * bears.
+ */
+function withTotal(totals: CartTotals, nextTotal: number): CartTotals {
+  const total = Math.max(nextTotal, 0);
+  // Gift cards are a payment method, so they sit outside the VAT base — add back whatever
+  // they covered to recover the figure the tax was borne on.
+  const vatBase = total + totals.giftCardTotal.amount;
+  return {
+    ...totals,
+    total: { amount: round2(total), currencyCode: totals.total.currencyCode },
+    taxTotal: { amount: round2(vatIncludedIn(vatBase)), currencyCode: totals.taxTotal.currencyCode },
+  };
+}
 
 /**
  * `Cart.totals` always reflects the generic standard/free shipping estimate
@@ -18,33 +43,26 @@ import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
  * costs its listed price) — `computeShippingChargeForRate` is the single
  * source of truth for that distinction, shared with the server-side charge.
  *
- * Shipping doesn't factor into VAT in this app's model (tax is computed on
- * `subtotal - discount`, before shipping is added), so swapping the shipping
- * amount is a safe direct substitution — no need to re-run discount/tax
- * math, which is why this one function works for both the client-side
- * display (no Prisma/server-only dependency) and the server-side charge.
+ * The shipping charge is VAT-inclusive like every other amount here, so `withTotal`
+ * re-derives the informational tax line rather than leaving it alone.
  */
 export function applySelectedShippingRate(totals: CartTotals, selectedRate: ShippingRate | undefined | null): CartTotals {
   if (!selectedRate) return totals;
   const taxableAmount = totals.subtotal.amount - totals.discountTotal.amount;
   const shippingAmount = computeShippingChargeForRate(selectedRate, taxableAmount, totals.subtotal.amount > 0);
-  const totalAmount = Math.max(totals.total.amount - totals.shippingTotal.amount + shippingAmount, 0);
-  return {
-    ...totals,
-    shippingTotal: { amount: shippingAmount, currencyCode: totals.shippingTotal.currencyCode },
-    total: { amount: totalAmount, currencyCode: totals.total.currencyCode },
-  };
+  return withTotal(
+    { ...totals, shippingTotal: { amount: shippingAmount, currencyCode: totals.shippingTotal.currencyCode } },
+    totals.total.amount - totals.shippingTotal.amount + shippingAmount
+  );
 }
 
-/** Same overlay pattern as applySelectedShippingRate — a flat fee that doesn't affect tax (added post-tax, same as shipping). */
+/** Same overlay pattern as applySelectedShippingRate — a flat, VAT-inclusive fee. */
 export function applyGiftWrap(totals: CartTotals, giftWrap: boolean): CartTotals {
   const giftWrapAmount = giftWrap && totals.subtotal.amount > 0 ? GIFT_WRAP_FEE : 0;
-  const totalAmount = Math.max(totals.total.amount - totals.giftWrapTotal.amount + giftWrapAmount, 0);
-  return {
-    ...totals,
-    giftWrapTotal: { amount: giftWrapAmount, currencyCode: totals.giftWrapTotal.currencyCode },
-    total: { amount: totalAmount, currencyCode: totals.total.currencyCode },
-  };
+  return withTotal(
+    { ...totals, giftWrapTotal: { amount: giftWrapAmount, currencyCode: totals.giftWrapTotal.currencyCode } },
+    totals.total.amount - totals.giftWrapTotal.amount + giftWrapAmount
+  );
 }
 
 /**
@@ -59,10 +77,8 @@ export function applyGiftWrap(totals: CartTotals, giftWrap: boolean): CartTotals
  */
 export function applyPaymentFee(totals: CartTotals, feeAmount: number): CartTotals {
   const fee = totals.subtotal.amount > 0 ? Math.max(feeAmount, 0) : 0;
-  const totalAmount = Math.max(totals.total.amount - totals.paymentFeeTotal.amount + fee, 0);
-  return {
-    ...totals,
-    paymentFeeTotal: { amount: fee, currencyCode: totals.paymentFeeTotal.currencyCode },
-    total: { amount: totalAmount, currencyCode: totals.total.currencyCode },
-  };
+  return withTotal(
+    { ...totals, paymentFeeTotal: { amount: fee, currencyCode: totals.paymentFeeTotal.currencyCode } },
+    totals.total.amount - totals.paymentFeeTotal.amount + fee
+  );
 }

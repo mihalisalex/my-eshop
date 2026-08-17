@@ -42,13 +42,15 @@ export function CartTotalsSummary({ totals }: CartTotalsSummaryProps) {
           <span>{formatMoney(totals.paymentFeeTotal)}</span>
         </div>
       ) : null}
-      <div className="flex justify-between">
-        <span className="text-luxe-gray-dark">{t("estimatedTax")}</span>
-        <span>{formatMoney(totals.taxTotal)}</span>
-      </div>
       <div className="flex justify-between border-t border-border pt-2 text-base font-medium">
         <span>{t("total")}</span>
         <span>{formatMoney(totals.total)}</span>
+      </div>
+      {/* Below the total, not above it: VAT is contained in these prices, not added to
+          them, and a tax row sitting between the fee and the total reads as a surcharge. */}
+      <div className="flex justify-between text-xs text-luxe-gray-dark">
+        <span>{t("estimatedTax")}</span>
+        <span>{formatMoney(totals.taxTotal)}</span>
       </div>
     </div>
   );

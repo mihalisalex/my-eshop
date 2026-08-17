@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { resolveCartAmounts, type ComputeTotalsLineItem } from "./cart-totals";
-import { STANDARD_SHIPPING_RATE, EXPRESS_SHIPPING_RATE, FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+import {
+  STANDARD_SHIPPING_RATE,
+  EXPRESS_SHIPPING_RATE,
+  FREE_SHIPPING_THRESHOLD,
+  VAT_RATE,
+  vatIncludedIn,
+} from "@/lib/shipping";
 
 const CURRENCY = "EUR";
 const item = (unitPriceAmount: number, quantity = 1, savedForLater = false): ComputeTotalsLineItem => ({
@@ -14,7 +20,57 @@ describe("resolveCartAmounts", () => {
     const result = resolveCartAmounts({ lineItems: [item(50, 2)], discounts: [], giftCards: [], currencyCode: CURRENCY });
     expect(result.totals.subtotal.amount).toBe(100);
     expect(result.totals.shippingTotal.amount).toBe(6.95); // under the free-shipping threshold
-    expect(result.totals.taxTotal.amount).toBeCloseTo(100 * 0.21, 5);
+    // VAT is contained in the prices, so it does not move the total.
+    expect(result.totals.total.amount).toBe(106.95);
+    expect(result.totals.taxTotal.amount).toBeCloseTo(vatIncludedIn(106.95), 2);
+  });
+
+  it("never adds tax on top of the displayed price", () => {
+    // The regression that mattered most: a EUR 59 product used to bill at EUR 78.34
+    // because 21% was ADDED to a price that already included VAT, contradicting both
+    // Greek consumer law and this shop's own Terms of Service.
+    const result = resolveCartAmounts({ lineItems: [item(59)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    expect(result.totals.total.amount).toBe(59 + 6.95);
+    expect(result.totals.taxTotal.amount).toBeLessThan(result.totals.total.amount);
+  });
+
+  it("extracts VAT from the gross amount rather than adding it to a net one", () => {
+    // gross x rate / (1 + rate), not gross x rate — confusing the two is the original bug.
+    const result = resolveCartAmounts({
+      lineItems: [item(124)],
+      discounts: [],
+      giftCards: [],
+      currencyCode: CURRENCY,
+      selectedShippingRate: { ...STANDARD_SHIPPING_RATE, price: { amount: 0, currencyCode: CURRENCY } },
+    });
+    expect(result.totals.total.amount).toBe(124);
+    expect(result.totals.taxTotal.amount).toBeCloseTo(24, 2); // 124 gross at 24% contains exactly 24
+    expect(VAT_RATE).toBe(0.24);
+  });
+
+  it("shrinks the VAT figure when a discount shrinks the gross amount", () => {
+    const full = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const discounted = resolveCartAmounts({
+      lineItems: [item(100)],
+      discounts: [{ code: "TEN", type: "percentage", value: 10 }],
+      giftCards: [],
+      currencyCode: CURRENCY,
+    });
+    expect(discounted.totals.taxTotal.amount).toBeLessThan(full.totals.taxTotal.amount);
+  });
+
+  it("does not reduce VAT when a gift card pays part of the order", () => {
+    // A gift card is a means of payment, not a price reduction, so the VAT the sale
+    // bore is unchanged by redeeming one.
+    const withoutCard = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const withCard = resolveCartAmounts({
+      lineItems: [item(100)],
+      discounts: [],
+      giftCards: [{ code: "GC", balanceAmount: 50 }],
+      currencyCode: CURRENCY,
+    });
+    expect(withCard.totals.total.amount).toBeCloseTo(withoutCard.totals.total.amount - 50, 5);
+    expect(withCard.totals.taxTotal.amount).toBeCloseTo(withoutCard.totals.taxTotal.amount, 5);
   });
 
   it("excludes saved-for-later items from the subtotal", () => {
@@ -106,8 +162,9 @@ describe("resolveCartAmounts", () => {
       paymentFee: 2,
     });
     expect(result.totals.total.amount).toBe(0);
+    // No tax term: it is already inside the 10 and the shipping/fee amounts.
     expect(result.giftCards[0].amountApplied.amount).toBeCloseTo(
-      10 + 10 * 0.21 + result.totals.shippingTotal.amount + 2,
+      10 + result.totals.shippingTotal.amount + 2,
       5
     );
   });

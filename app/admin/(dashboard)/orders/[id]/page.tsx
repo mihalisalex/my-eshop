@@ -101,13 +101,13 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
                   <span>{formatMoney(order.totals.paymentFeeTotal)}</span>
                 </div>
               ) : null}
-              <div className="flex justify-between text-luxe-gray-dark">
-                <span>Tax</span>
-                <span>{formatMoney(order.totals.taxTotal)}</span>
-              </div>
               <div className="flex justify-between pt-1.5 text-sm font-medium">
                 <span>Total</span>
                 <span>{formatMoney(order.totals.total)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-luxe-gray-dark">
+                <span>Includes VAT</span>
+                <span>{formatMoney(order.totals.taxTotal)}</span>
               </div>
             </div>
           </div>

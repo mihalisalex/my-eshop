@@ -1,7 +1,7 @@
 import "server-only";
 import type { AppliedDiscount, AppliedGiftCard, CartTotals, ShippingRate } from "@/lib/commerce/types";
 import type { Money } from "@/types";
-import { computeShippingAmount, computeShippingChargeForRate, VAT_RATE } from "@/lib/shipping";
+import { computeShippingAmount, computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
 
 /** Relocated from the mock's providers/mock/storage.ts — now purely a server-side money-rounding helper. */
@@ -84,14 +84,22 @@ export function resolveCartAmounts(input: {
   const discountAmount = resolvedDiscounts.reduce((sum, d) => sum + d.amount.amount, 0);
 
   const taxableAmount = Math.max(subtotalAmount - discountAmount, 0);
-  const taxAmount = activeItems.length === 0 ? 0 : taxableAmount * VAT_RATE;
   const shippingAmount = selectedShippingRate
     ? computeShippingChargeForRate(selectedShippingRate, taxableAmount, activeItems.length > 0)
     : computeShippingAmount(taxableAmount, activeItems.length > 0);
   const giftWrapAmount = giftWrap && activeItems.length > 0 ? GIFT_WRAP_FEE : 0;
   // An empty cart can't owe a payment surcharge — same guard as gift wrapping.
   const paymentFeeAmount = activeItems.length > 0 ? Math.max(paymentFee ?? 0, 0) : 0;
-  const preGiftCardTotal = taxableAmount + taxAmount + shippingAmount + giftWrapAmount + paymentFeeAmount;
+
+  // Every one of these amounts already includes VAT, so the total is a plain sum — the
+  // tax figure below is extracted FROM it for the invoice, never added TO it. This is the
+  // whole shape of the inclusive model: what the shopper saw on the product card is what
+  // they pay, and `taxTotal` only tells them how much of it was VAT.
+  const preGiftCardTotal = taxableAmount + shippingAmount + giftWrapAmount + paymentFeeAmount;
+
+  // Computed on the pre-gift-card figure on purpose. A gift card is a means of payment,
+  // not a price reduction, so redeeming one does not change how much VAT the sale bore.
+  const taxAmount = activeItems.length === 0 ? 0 : vatIncludedIn(preGiftCardTotal);
 
   // Gift cards apply in stored (application) order, each capped at whatever's
   // still owed after the ones before it — same re-derive-don't-trust fix.
