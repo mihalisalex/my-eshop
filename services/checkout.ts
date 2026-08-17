@@ -151,6 +151,15 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
   if (!checkoutRow.shippingAddress || !checkoutRow.email) {
     throw new CommerceError("CHECKOUT_INCOMPLETE", "Checkout is missing required address/email details.");
   }
+  // A payment method is as required as the address. Without this an order could be
+  // created with no Payment row at all — stock decremented, gift cards debited, status
+  // "confirmed" — and the confirmation page's `isSettled || !payment` branch rendered it
+  // with the green success tick, so nothing anywhere said the shop had not been paid.
+  // The method is still re-validated against live configuration below; this only
+  // establishes that one was chosen.
+  if (!checkoutRow.paymentMethodId) {
+    throw new CommerceError("CHECKOUT_INCOMPLETE", "Choose a payment method before placing your order.");
+  }
   const email = checkoutRow.email;
   const shippingAddress = addressSchema.parse(checkoutRow.shippingAddress);
   const billingAddress = checkoutRow.billingAddress ? addressSchema.parse(checkoutRow.billingAddress) : shippingAddress;

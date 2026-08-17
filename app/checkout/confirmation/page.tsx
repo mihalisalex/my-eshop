@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AlertCircle, CheckCircle2, Clock, Landmark } from "lucide-react";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, orderReference } from "@/lib/format";
 import { getOrderById } from "@/services/orders";
 import { getPrimaryPaymentForOrder, verifyPaymentWithProvider } from "@/services/payments";
 import { sendOrderConfirmationEmail } from "@/services/checkout";
@@ -78,7 +78,17 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
   const instructions = readInstructions(payment);
   const isSettled = payment?.status === "paid";
   const awaitingCustomer = payment?.status === "awaiting_customer_action";
-  const isFailed = payment?.status === "failed" || payment?.status === "cancelled" || payment?.status === "expired";
+  // An order with NO payment row is a failure state, not a success one. It used to share
+  // the green tick with a settled payment (`isSettled || !payment`), so an order the shop
+  // had not been paid for looked identical to one that was. completeCheckout now refuses
+  // to create such an order at all, but historical orders predating the payment system
+  // have no payment either, and this page still has to render them honestly.
+  const isFailed =
+    !payment ||
+    payment.status === "failed" ||
+    payment.status === "cancelled" ||
+    payment.status === "expired";
+  const reference = orderReference(order.id);
 
   return (
     <div className="container-luxe max-w-2xl py-16 md:py-24">
@@ -87,7 +97,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
       <div className="flex flex-col items-center text-center">
         {isFailed ? (
           <AlertCircle className="size-12 text-destructive" strokeWidth={1} />
-        ) : isSettled || !payment ? (
+        ) : isSettled ? (
           <CheckCircle2 className="size-12 text-luxe-black" strokeWidth={1} />
         ) : (
           <Clock className="size-12 text-luxe-black" strokeWidth={1} />
@@ -98,8 +108,8 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
         <p className="mt-2 text-sm text-luxe-gray-dark">
           {isFailed ? (
             <>
-              Your order <span className="text-luxe-black">#{order.id.slice(-8).toUpperCase()}</span> is saved, but we
-              haven&apos;t received payment. Please get in touch and we&apos;ll help you complete it.
+              Your order <span className="text-luxe-black">#{reference}</span> is saved, but we haven&apos;t received
+              payment. Please get in touch and we&apos;ll help you complete it.
             </>
           ) : (
             <>
@@ -107,7 +117,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
             </>
           )}
         </p>
-        <p className="mt-1 text-sm text-luxe-gray-dark">Order number: {order.id}</p>
+        <p className="mt-1 text-sm text-luxe-gray-dark">Order number: #{reference}</p>
       </div>
 
       {payment ? (

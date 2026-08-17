@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { requireCapability } from "@/lib/admin-session";
 import { commerceErrorResponse, invalidInputResponse } from "@/lib/commerce/http-errors";
 import { productFormSchema } from "@/lib/validation/product";
 import { writeProductRow } from "@/lib/products-import/write";
@@ -22,7 +22,11 @@ interface CommitRequestRow {
  */
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    // Bulk-writes the catalog, so it takes the same capability as the single-product
+    // form rather than merely checking that someone is signed in — being authenticated
+    // has never been the same thing as being allowed, and this was the last admin write
+    // path still conflating the two.
+    await requireCapability("catalog:edit");
     const body = await request.json();
     const rows = body?.rows;
     if (!Array.isArray(rows) || rows.length === 0) return invalidInputResponse("No rows to import.");

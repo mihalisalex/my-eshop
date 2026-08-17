@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdminSession } from "@/lib/admin-session";
+import { requireCapability } from "@/lib/admin-session";
 import { commerceErrorResponse, invalidInputResponse } from "@/lib/commerce/http-errors";
 import { productFormSchema } from "@/lib/validation/product";
 import { parseProductsCsv } from "@/lib/products-import/csv";
@@ -18,7 +18,9 @@ import type { ImportRowResult } from "@/lib/products-import/types";
  */
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    // Same capability as the commit route: preview already uploads images to Blob and
+    // creates MediaAsset rows, so it is a write path too, not a read-only dry run.
+    await requireCapability("catalog:edit");
 
     const form = await request.formData();
     const csvFile = form.get("csv");
