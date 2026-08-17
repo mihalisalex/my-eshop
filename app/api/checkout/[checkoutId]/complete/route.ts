@@ -13,8 +13,11 @@ import { commerceErrorResponse } from "@/lib/commerce/http-errors";
 export async function POST(_request: NextRequest, { params }: { params: Promise<{ checkoutId: string }> }) {
   try {
     const { checkoutId } = await params;
-    const order = await completeCheckout(checkoutId);
-    return NextResponse.json({ order });
+    // `payment`/`customerAction` are provider-agnostic by construction — the client
+    // learns "redirect here" or "show these instructions", never which vendor is
+    // behind them. See CompleteCheckoutResult in lib/commerce/types.ts.
+    const result = await completeCheckout(checkoutId);
+    return NextResponse.json(result);
   } catch (error) {
     return commerceErrorResponse(error);
   }

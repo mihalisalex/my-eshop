@@ -19,14 +19,13 @@ export const addressSchema = z.object({
 });
 export type AddressFormValues = z.infer<typeof addressSchema>;
 
-export const cardSchema = z.object({
-  cardName: z.string().trim().min(1, "Name on card is required"),
-  cardNumber: z
-    .string()
-    .trim()
-    .transform((v) => v.replace(/\s+/g, ""))
-    .refine((v) => /^\d{13,19}$/.test(v), "Enter a valid card number"),
-  expiry: z.string().trim().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Use MM/YY"),
-  cvc: z.string().trim().regex(/^\d{3,4}$/, "3–4 digits"),
-});
-export type CardFormValues = z.infer<typeof cardSchema>;
+/*
+ * `cardSchema` (cardName / cardNumber / expiry / cvc) used to live here, backing a
+ * demo card form on the payment step. It has been REMOVED deliberately, not
+ * misplaced: this application must never accept a card number or a CVV, because
+ * doing so pulls it into PCI scope and makes its own logs and error reports a
+ * liability. Card data is collected on the payment processor's own page — see
+ * lib/payments/providers/stripe.ts — and the only thing that comes back is a token
+ * and a status. If a future integration appears to need a card field here, that is
+ * a sign the integration is being wired up wrongly.
+ */

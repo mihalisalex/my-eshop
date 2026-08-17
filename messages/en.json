@@ -37,6 +37,7 @@
     "giftCard": "Gift Card",
     "shipping": "Shipping",
     "giftWrapping": "Gift Wrapping",
+    "paymentFee": "Payment Fee",
     "free": "Free",
     "estimatedTax": "Estimated Tax (VAT)",
     "total": "Total"
@@ -59,11 +60,12 @@
     "billingAddress": "Billing address",
     "sameAsShipping": "Same as shipping address",
     "deliveryMethod": "Delivery method",
+    "paymentMethod": "Payment method",
     "giftWrapping": "Gift wrapping",
     "noMessageAdded": "No message added",
     "placeOrder": "Place Order",
     "placingOrder": "Placing Order...",
-    "demoDisclaimer": "Demo checkout — no payment is charged."
+    "demoDisclaimer": "By placing your order you agree to our Terms of Service."
   },
   "Plp": {
     "filter": "Filter",

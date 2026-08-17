@@ -69,6 +69,49 @@ describe("resolveCartAmounts", () => {
     expect(emptyCartWrap.totals.giftWrapTotal.amount).toBe(0);
   });
 
+  it("adds the payment fee to the total, and only when there are active items", () => {
+    const withFee = resolveCartAmounts({
+      lineItems: [item(100)],
+      discounts: [],
+      giftCards: [],
+      currencyCode: CURRENCY,
+      paymentFee: 2,
+    });
+    const withoutFee = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    expect(withFee.totals.paymentFeeTotal.amount).toBe(2);
+    expect(withFee.totals.total.amount).toBeCloseTo(withoutFee.totals.total.amount + 2, 5);
+
+    const emptyCart = resolveCartAmounts({ lineItems: [], discounts: [], giftCards: [], currencyCode: CURRENCY, paymentFee: 2 });
+    expect(emptyCart.totals.paymentFeeTotal.amount).toBe(0);
+  });
+
+  it("never lets a negative payment fee act as a discount", () => {
+    const result = resolveCartAmounts({
+      lineItems: [item(100)],
+      discounts: [],
+      giftCards: [],
+      currencyCode: CURRENCY,
+      paymentFee: -50,
+    });
+    expect(result.totals.paymentFeeTotal.amount).toBe(0);
+  });
+
+  it("applies the payment fee before gift cards, so a gift card can cover it", () => {
+    // The fee is part of what's owed, not an extra charged after settlement.
+    const result = resolveCartAmounts({
+      lineItems: [item(10)],
+      discounts: [],
+      giftCards: [{ code: "GC", balanceAmount: 1000 }],
+      currencyCode: CURRENCY,
+      paymentFee: 2,
+    });
+    expect(result.totals.total.amount).toBe(0);
+    expect(result.giftCards[0].amountApplied.amount).toBeCloseTo(
+      10 + 10 * 0.21 + result.totals.shippingTotal.amount + 2,
+      5
+    );
+  });
+
   it("regression: an explicitly selected Standard rate stays free over the shipping threshold (past revenue bug — see PROGRESS.md)", () => {
     const result = resolveCartAmounts({
       lineItems: [item(FREE_SHIPPING_THRESHOLD + 50)],

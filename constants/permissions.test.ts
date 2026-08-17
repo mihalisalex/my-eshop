@@ -16,8 +16,16 @@ describe("capability model", () => {
     }
   });
 
+  it("withholds every money-moving and credential-exposing payment capability from editors", () => {
+    for (const capability of ["payments:manage", "payments:refund", "payments:configure"] as const) {
+      expect(roleHasCapability("editor", capability)).toBe(false);
+    }
+  });
+
   it("still lets editors do their actual job", () => {
-    for (const capability of ["catalog:view", "catalog:edit", "content:blog", "orders:view", "orders:manage"] as const) {
+    // payments:view included deliberately — an editor has to know whether an order
+    // has been paid for before dispatching it.
+    for (const capability of ["catalog:view", "catalog:edit", "content:blog", "orders:view", "orders:manage", "payments:view"] as const) {
       expect(roleHasCapability("editor", capability)).toBe(true);
     }
   });

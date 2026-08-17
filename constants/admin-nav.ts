@@ -29,6 +29,8 @@ import {
   Sparkles,
   Users2,
   Upload,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 
 export interface AdminNavItem {
@@ -76,6 +78,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "Customers",
     items: [
       { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+      { label: "Payments", href: "/admin/payments", icon: CreditCard, capability: "payments:view" },
       { label: "Customers", href: "/admin/customers", icon: Users },
       { label: "Returns", href: "/admin/returns", icon: PackageOpen, capability: "orders:returns" },
       { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
@@ -94,6 +97,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
   {
     title: "Configuration",
     items: [
+      { label: "Payment Settings", href: "/admin/settings/payments", icon: Wallet, capability: "payments:configure" },
       { label: "SEO Settings", href: "/admin/seo", icon: Search, capability: "admin:settings" },
       { label: "Site Settings", href: "/admin/settings", icon: Settings, capability: "admin:settings" },
       // No capability: a read-only list of design tokens, with no data or actions to protect.

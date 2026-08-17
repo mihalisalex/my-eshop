@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { setGiftWrap, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
+import { setGiftWrap, setPaymentMethod, setShippingRate, updateBillingAddress, updateEmail, updateShippingAddress } from "@/services/checkout";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { addressSchema, contactSchema } from "@/lib/validation/checkout";
@@ -49,8 +49,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (body.billingAddress) checkout = await updateBillingAddress(checkoutId, body.billingAddress);
     if (typeof body.shippingRateId === "string") checkout = await setShippingRate(checkoutId, body.shippingRateId);
     if (typeof body.giftWrap === "boolean") checkout = await setGiftWrap(checkoutId, body.giftWrap, body.giftMessage);
+    // Stored as a preference only — services/checkout.ts re-validates it against the
+    // live configuration at order time, so writing it here grants nothing.
+    if (typeof body.paymentMethodId === "string") checkout = await setPaymentMethod(checkoutId, body.paymentMethodId);
 
-    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, giftWrap.");
+    if (!checkout) return invalidInputResponse("Body must include at least one of email, shippingAddress, billingAddress, shippingRateId, giftWrap, paymentMethodId.");
     return NextResponse.json({ checkout });
   } catch (error) {
     return commerceErrorResponse(error);

@@ -1,4 +1,4 @@
-import type { Checkout, CheckoutService, Order } from "@/lib/commerce/types";
+import type { Checkout, CheckoutService, CompleteCheckoutResult } from "@/lib/commerce/types";
 import { fetchJson } from "./http";
 
 export function createRemoteCheckoutService(): CheckoutService {
@@ -49,15 +49,22 @@ export function createRemoteCheckoutService(): CheckoutService {
       ).checkout;
     },
 
+    async setPaymentMethod(checkoutId, paymentMethodId) {
+      return (
+        await fetchJson<{ checkout: Checkout }>(`/api/checkout/${checkoutId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ paymentMethodId }),
+        })
+      ).checkout;
+    },
+
     // `cart` kept for interface parity — the server ignores it and always re-fetches
     // the authoritative cart itself (see app/api/checkout/[checkoutId]/complete/route.ts).
     async completeCheckout(checkoutId, cart) {
-      return (
-        await fetchJson<{ order: Order }>(`/api/checkout/${checkoutId}/complete`, {
-          method: "POST",
-          body: JSON.stringify({ cart }),
-        })
-      ).order;
+      return await fetchJson<CompleteCheckoutResult>(`/api/checkout/${checkoutId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({ cart }),
+      });
     },
   };
 }

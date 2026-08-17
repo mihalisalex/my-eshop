@@ -464,6 +464,12 @@ model Checkout {
   giftWrap    Boolean @default(false)
   giftMessage String?
 
+  /// The payment method the shopper selected, e.g. "cod" | "stripe_card".
+  /// Nullable: it isn't chosen until the payment step, and an abandoned checkout
+  /// never gets one. Availability is re-validated server-side at order time —
+  /// a stored id here is a preference, never an authorisation.
+  paymentMethodId String?
+
   createdAt DateTime @default(now())
 
   @@index([cartId])
@@ -516,10 +522,20 @@ model Order {
   /// Set once the review-request follow-up email has actually been sent for this order.
   reviewRequestSentAt DateTime?
 
+  /// Set the moment the order-confirmation email actually goes out. Needed because
+  /// that email is no longer always sent at checkout: for a redirect-based payment
+  /// (card, wallet) it is sent when the payment is verified as settled, which can
+  /// happen from either the return-path check or a webhook — whichever wins the
+  /// race. This timestamp is what stops the loser sending a second copy.
+  confirmationEmailSentAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  returns Return[]
+  returns  Return[]
+  /// Normally exactly one, but a failed attempt the shopper retries with a
+  /// different method legitimately adds a second — see the Payment model.
+  payments Payment[]
 
   @@index([customerId])
   @@map("orders")
@@ -817,4 +833,214 @@ model PasswordResetToken {
 
   @@index([customerId])
   @@map("password_reset_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+//
+// The payment domain is deliberately its OWN set of tables rather than columns
+// bolted onto Order. An order's lifecycle and its money's lifecycle are separate
+// facts (a Cash-on-Delivery order ships while its payment is still pending; a
+// delivered order can later be refunded without the shipment un-happening), and
+// collapsing them makes accounting impossible to reconstruct. See
+// lib/payments/types.ts.
+// ---------------------------------------------------------------------------
+
+/// One attempt to collect the money for an order. An order normally has exactly
+/// one, but a failed attempt that the shopper retries with a different method
+/// legitimately produces a second row â€” hence a plain relation rather than a
+/// unique. `idempotencyKey` is what stops a double-click or a retried request
+/// from producing duplicates (Â§15).
+model Payment {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Registry id from lib/payments/registry.ts, e.g. "stripe" | "cod" | "piraeus".
+  /// A plain string, not an enum, so a future provider needs no migration here.
+  provider String
+  /// Method id, e.g. "stripe_card" | "apple_pay" | "cod". One provider can serve
+  /// several methods, which is why this is stored separately from `provider`.
+  method   String
+
+  /// The provider's own identifier (Stripe PaymentIntent id, bank reference, â€¦).
+  /// Nullable because internal methods have none until/unless one is recorded.
+  externalPaymentId String?
+
+  amountAmount   Decimal @db.Decimal(10, 2)
+  currencyCode   String  @default("EUR")
+  /// Running total refunded. Kept as a column rather than derived from the
+  /// transaction log so partial-refund arithmetic cannot drift from the audit trail.
+  refundedAmount Decimal @default(0) @db.Decimal(10, 2)
+
+  /// PaymentStatus â€” transitions are validated server-side by
+  /// lib/payments/status.ts's assertTransition. Never written from client code.
+  status String @default("pending")
+
+  /// "sandbox" | "production" â€” recorded at creation time, so a payment taken in
+  /// test mode stays identifiable after the store flips to live credentials.
+  environment String @default("production")
+
+  /// Stable per logical payment attempt. Unique so a retried create can be
+  /// recognised and returned instead of duplicated.
+  idempotencyKey String @unique
+
+  failureReason String?
+  /// Provider-specific extras (last4, redirect target, bank reference). Never
+  /// credentials, never card numbers, never a CVV â€” see PAYMENTS.md, Security.
+  metadata      Json    @default("{}")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  paidAt      DateTime?
+  failedAt    DateTime?
+  cancelledAt DateTime?
+  refundedAt  DateTime?
+
+  transactions PaymentTransaction[]
+  webhooks     PaymentWebhookEvent[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([provider, method])
+  @@index([createdAt])
+  @@index([externalPaymentId])
+  @@map("payments")
+}
+
+/// Append-only audit trail. Every status change, webhook, manual confirmation and
+/// provider error appends one row â€” this is what makes a real-world payment
+/// dispute debuggable months later, and it is never updated or deleted.
+model PaymentTransaction {
+  id        String  @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  /// PaymentEventType from lib/payments/types.ts.
+  eventType String
+  /// Status after this event, when the event changed one.
+  status    String?
+  /// "customer" | "admin" | "provider" | "system".
+  actorType String  @default("system")
+  /// AdminUser.id or Customer.id where known. Not a foreign key: an admin can be
+  /// deleted long after the fact and the audit line must survive them.
+  actorId   String?
+
+  amountAmount Decimal? @db.Decimal(10, 2)
+  currencyCode String?
+
+  message String?
+  /// Structured detail for the timeline. Provider payloads are redacted before
+  /// they land here â€” the raw copy lives on PaymentWebhookEvent instead.
+  data    Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([paymentId, createdAt])
+  @@index([eventType])
+  @@map("payment_transactions")
+}
+
+/// Raw inbound webhook, stored before it is acted on. The (provider, eventId)
+/// unique is the duplicate-suppression mechanism sections 14/15 require: a provider
+/// that retries an event we already applied hits this constraint and the second
+/// delivery becomes a no-op rather than a second refund.
+model PaymentWebhookEvent {
+  id        String @id @default(cuid())
+  provider  String
+  /// The provider's own event id. Providers that do not issue one get a hash of
+  /// the payload, which achieves the same at-most-once effect for identical bodies.
+  eventId   String
+  eventType String
+
+  paymentId String?
+  payment   Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  /// Verbatim body as received, kept for forensics. Signature verification runs
+  /// against these exact bytes before anything is parsed.
+  rawPayload String
+  /// True only once a real signature check passed. An unverified event is stored
+  /// (so an attack or a misconfiguration is visible) but never applied.
+  verified   Boolean @default(false)
+
+  /// "received" | "processed" | "ignored" | "failed"
+  processingStatus String  @default("received")
+  errorMessage     String?
+
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
+  @@index([provider, receivedAt])
+  @@map("payment_webhook_events")
+}
+
+/// Credentials and environment for one provider. Secrets are AES-256-GCM encrypted
+/// at rest (lib/payments/crypto.ts) and never leave the server in plaintext â€” the
+/// admin UI receives a masked projection only. Non-secret values live in `config`
+/// so they can be read and displayed without decryption.
+model PaymentProviderConfig {
+  id       String @id @default(cuid())
+  /// Registry id â€” one row per provider.
+  provider String @unique
+
+  /// "sandbox" | "production".
+  environment String  @default("sandbox")
+  /// Master switch for the whole provider. Individual methods have their own
+  /// toggle in PaymentMethodSetting; a disabled provider hides all of its methods.
+  enabled     Boolean @default(false)
+
+  /// Non-secret configuration values, keyed by PaymentConfigField.key.
+  config           Json @default("{}")
+  /// Secret values, each individually encrypted. Shape: { key: "v1.iv.tag.ciphertext" }.
+  encryptedSecrets Json @default("{}")
+
+  /// Result of the last "Test Connection" run, so the dashboard can show a real
+  /// status without hitting every provider's API on each page load.
+  lastTestedAt    DateTime?
+  lastTestStatus  String?
+  lastTestMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_provider_configs")
+}
+
+/// Admin-editable merchandising settings for one payment method. Capability facts
+/// (supportsRefunds, requiresWebhook, â€¦) are NOT here â€” those are properties of the
+/// integration and live in code beside the provider that implements them, where an
+/// admin cannot toggle them into being true.
+model PaymentMethodSetting {
+  id       String @id @default(cuid())
+  /// Method id from the provider's PaymentMethodDefinition, e.g. "cod".
+  methodId String @unique
+  provider String
+
+  enabled   Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  /// Overrides the definition's default customer-facing strings when set.
+  displayName String?
+  description String?
+
+  /// "none" | "fixed" | "percentage". Always applied server-side (lib/payments/fees.ts).
+  feeType  String  @default("none")
+  feeValue Decimal @default(0) @db.Decimal(10, 2)
+
+  minimumAmount Decimal? @db.Decimal(10, 2)
+  maximumAmount Decimal? @db.Decimal(10, 2)
+
+  /// ISO country codes. Empty array = available everywhere.
+  countries       String[] @default([])
+  /// lib/shipping.ts rate ids this method is restricted to. Empty = every rate.
+  /// Exists for COD, which a store may want to forbid on express delivery.
+  shippingRateIds String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider])
+  @@map("payment_method_settings")
 }

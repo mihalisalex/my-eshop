@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { CommerceError } from "@/lib/commerce/types";
+import { PaymentError } from "@/lib/payments/types";
 
 /**
  * Shared error->HTTP mapping for every cart/checkout/customer/wishlist/auth
@@ -10,6 +11,13 @@ import { CommerceError } from "@/lib/commerce/types";
 export function commerceErrorResponse(error: unknown): NextResponse {
   if (error instanceof CommerceError) {
     return NextResponse.json({ error: { code: error.code, message: error.message } }, { status: 400 });
+  }
+  // A PaymentError's `message` is written for the audit log and can name provider
+  // internals or configuration state — only `publicMessage` is ever sent to a
+  // shopper. The real one is logged server-side instead.
+  if (error instanceof PaymentError) {
+    console.error("[payments]", error.code, error.message);
+    return NextResponse.json({ error: { code: error.code, message: error.publicMessage } }, { status: 400 });
   }
   if (error instanceof Error && error.message === "Unauthorized") {
     return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Sign in required." } }, { status: 401 });

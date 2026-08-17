@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/components/providers/CartProvider";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { CartTotalsSummary } from "@/components/cart/CartTotalsSummary";
-import { applyGiftWrap, applySelectedShippingRate } from "@/lib/commerce/checkout-totals";
+import { applyGiftWrap, applyPaymentFee, applySelectedShippingRate } from "@/lib/commerce/checkout-totals";
 
 export function OrderSummary() {
   const { cart } = useCart();
-  const { checkout } = useCheckout();
+  const { checkout, selectedPaymentFee } = useCheckout();
   const [mobileOpen, setMobileOpen] = useState(false);
   const activeItems = cart?.lineItems.filter((i) => !i.savedForLater) ?? [];
 
@@ -21,7 +21,14 @@ export function OrderSummary() {
   // cart.totals always reflects the generic standard/free shipping estimate —
   // once a shopper has picked a specific rate (Delivery step), reflect its real
   // price here too, so what's shown matches what's actually charged at the end.
-  const totals = applyGiftWrap(applySelectedShippingRate(cart.totals, checkout?.shippingRate), Boolean(checkout?.giftWrap));
+  // The payment surcharge is the same story one step later: the SERVER computed
+  // this number (GET /api/payment-methods) and the server recomputes it again at
+  // order time — this only displays it, so the summary can't quietly disagree
+  // with the amount actually charged.
+  const totals = applyPaymentFee(
+    applyGiftWrap(applySelectedShippingRate(cart.totals, checkout?.shippingRate), Boolean(checkout?.giftWrap)),
+    selectedPaymentFee?.amount ?? 0
+  );
 
   return (
     <div className="border border-border bg-luxe-gray-light/40 lg:sticky lg:top-24">

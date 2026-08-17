@@ -63,8 +63,17 @@ export function resolveCartAmounts(input: {
   selectedShippingRate?: ShippingRate;
   /** Set once a shopper has opted into gift wrapping during checkout — a flat fee, not tied to line items. */
   giftWrap?: boolean;
+  /**
+   * Surcharge for the selected payment method, already computed by
+   * lib/payments/fees.ts. Passed in rather than computed here so this module stays
+   * free of database access — the fee's *rule* lives in PaymentMethodSetting, and
+   * the caller (services/payments.ts / the checkout API) is what reads it. Both the
+   * quote shown at checkout and the amount actually charged go through this same
+   * parameter, so they cannot disagree.
+   */
+  paymentFee?: number;
 }): ResolvedCartAmounts {
-  const { lineItems, discounts, giftCards, currencyCode, selectedShippingRate, giftWrap } = input;
+  const { lineItems, discounts, giftCards, currencyCode, selectedShippingRate, giftWrap, paymentFee } = input;
   const activeItems = lineItems.filter((item) => !item.savedForLater);
   const subtotalAmount = activeItems.reduce((sum, item) => sum + item.unitPriceAmount * item.quantity, 0);
 
@@ -80,7 +89,9 @@ export function resolveCartAmounts(input: {
     ? computeShippingChargeForRate(selectedShippingRate, taxableAmount, activeItems.length > 0)
     : computeShippingAmount(taxableAmount, activeItems.length > 0);
   const giftWrapAmount = giftWrap && activeItems.length > 0 ? GIFT_WRAP_FEE : 0;
-  const preGiftCardTotal = taxableAmount + taxAmount + shippingAmount + giftWrapAmount;
+  // An empty cart can't owe a payment surcharge — same guard as gift wrapping.
+  const paymentFeeAmount = activeItems.length > 0 ? Math.max(paymentFee ?? 0, 0) : 0;
+  const preGiftCardTotal = taxableAmount + taxAmount + shippingAmount + giftWrapAmount + paymentFeeAmount;
 
   // Gift cards apply in stored (application) order, each capped at whatever's
   // still owed after the ones before it — same re-derive-don't-trust fix.
@@ -104,6 +115,7 @@ export function resolveCartAmounts(input: {
       giftCardTotal: money(giftCardAmount, currencyCode),
       shippingTotal: money(shippingAmount, currencyCode),
       giftWrapTotal: money(giftWrapAmount, currencyCode),
+      paymentFeeTotal: money(paymentFeeAmount, currencyCode),
       taxTotal: money(taxAmount, currencyCode),
       total: money(totalAmount, currencyCode),
     },

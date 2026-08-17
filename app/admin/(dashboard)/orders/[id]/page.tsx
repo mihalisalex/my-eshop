@@ -3,7 +3,11 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
 import { OrderTrackingForm } from "@/components/admin/OrderTrackingForm";
 import { formatDate, formatMoney } from "@/lib/format";
+import Link from "next/link";
 import { getOrderById } from "@/services/orders";
+import { getPaymentsForOrder } from "@/services/payments";
+import { paymentProviderRegistry } from "@/lib/payments/registry";
+import { PaymentStatusPill } from "@/components/admin/PaymentStatusPill";
 import { updateOrderStatusAction, updateOrderTrackingAction, createAcsShipmentAction } from "@/app/admin/(dashboard)/orders/actions";
 import { isAcsCourierConfigured } from "@/lib/courier";
 
@@ -27,6 +31,12 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
   const { id } = await params;
   const order = await getOrderById(id);
   if (!order) notFound();
+
+  // Payment status is shown alongside the order status, never merged into it — a
+  // Cash-on-Delivery order is legitimately "processing" while its payment is still
+  // pending, and this page is where that distinction actually matters to someone
+  // deciding whether to dispatch.
+  const payments = await getPaymentsForOrder(order.id);
 
   const boundUpdateTracking = updateOrderTrackingAction.bind(null, order.id);
   const boundCreateAcsShipment = createAcsShipmentAction.bind(null, order.id);
@@ -85,6 +95,12 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
                   <span>{formatMoney(order.totals.giftWrapTotal)}</span>
                 </div>
               ) : null}
+              {order.totals.paymentFeeTotal.amount > 0 ? (
+                <div className="flex justify-between text-luxe-gray-dark">
+                  <span>Payment Fee</span>
+                  <span>{formatMoney(order.totals.paymentFeeTotal)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-luxe-gray-dark">
                 <span>Tax</span>
                 <span>{formatMoney(order.totals.taxTotal)}</span>
@@ -107,6 +123,34 @@ export default async function AdminOrderDetailPage({ params }: AdminOrderDetailP
         </div>
 
         <div className="space-y-6">
+          <div className="border border-border bg-luxe-white p-4">
+            <h3 className="mb-3 text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Payment</h3>
+            {payments.length === 0 ? (
+              <p className="text-sm text-luxe-gray-dark">
+                No payment record — this order was placed before a payment method was selected.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {payments.map((payment) => {
+                  const definition = paymentProviderRegistry.getMethod(payment.methodId);
+                  return (
+                    <li key={payment.id} className="text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <Link href={`/admin/payments/${payment.id}`} className="hover:underline">
+                          {definition?.defaultDisplayName ?? payment.methodId}
+                        </Link>
+                        <PaymentStatusPill status={payment.status} />
+                      </div>
+                      <p className="mt-1 text-xs text-luxe-gray-dark">
+                        {formatMoney(payment.amount)}
+                        {payment.refundedAmount.amount > 0 ? ` · ${formatMoney(payment.refundedAmount)} refunded` : ""}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
           {order.giftWrap ? (
             <div className="border border-border bg-luxe-white p-4">
               <h3 className="mb-3 text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Gift Wrapping</h3>

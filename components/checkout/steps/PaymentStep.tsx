@@ -1,29 +1,84 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowRight, ShieldCheck } from "lucide-react";
-import { cardSchema, addressSchema, type CardFormValues, type AddressFormValues } from "@/lib/validation/checkout";
+import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
+import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
 import { COUNTRIES } from "@/constants/countries";
-import { useCheckout } from "@/components/providers/CheckoutProvider";
-import { ExpressCheckoutButtons } from "@/components/checkout/ExpressCheckoutButtons";
-import { isFeatureEnabled } from "@/lib/feature-flags";
+import { useCheckout, type CheckoutPaymentMethod } from "@/components/providers/CheckoutProvider";
+import { PaymentMethodIcon } from "@/components/checkout/PaymentMethodIcon";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
-type PaymentMethod = "full" | "klarna";
+/**
+ * The one client-side capability gate, read through `useSyncExternalStore` — which
+ * is precisely what it is: a value that lives in an external system (the browser),
+ * differs between the server and client snapshots, and would be a hydration
+ * mismatch if read during render.
+ *
+ * It can only ever REMOVE a method the server already approved. Nothing here can
+ * make an unavailable method available.
+ */
+function readApplePaySupport(): boolean {
+  const session = (window as unknown as { ApplePaySession?: { canMakePayments?: () => boolean } }).ApplePaySession;
+  try {
+    return Boolean(session?.canMakePayments?.());
+  } catch {
+    // Safari throws from canMakePayments() on an insecure origin rather than
+    // returning false — which is a "no", not an error worth surfacing.
+    return false;
+  }
+}
 
+/** Apple Pay availability cannot change within a page's lifetime, so there is nothing to subscribe to. */
+function subscribeToNothing(): () => void {
+  return () => {};
+}
+
+/**
+ * The payment step, rebuilt around the abstraction.
+ *
+ * What this component previously was: a hardcoded card form (name / number /
+ * expiry / CVC) with a "Demo checkout — no payment is charged" note and a
+ * feature-flagged "Pay in 4" button that did nothing. What it is now: a renderer
+ * for whatever `GET /api/payment-methods` returns.
+ *
+ * Two properties are worth stating explicitly, because they're the point of §21:
+ *
+ * - There is **no card form here and there never will be**. Card data is collected
+ *   on the processor's own page (Stripe's hosted checkout today), so this
+ *   application never sees a card number or a CVV and stays out of PCI scope.
+ * - There is **no `if (stripe)` / `if (cod)` anywhere**. The component cannot tell
+ *   which vendor is behind a method — it renders a name, a description, an icon key
+ *   and a server-computed fee. Adding Viva Wallet or PayPal later changes nothing
+ *   in this file.
+ */
 export function PaymentStep() {
-  const { shippingAddress, sameBillingAsShipping, setSameBillingAsShipping, setBillingAddress, confirmPayment } = useCheckout();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("full");
+  const {
+    shippingAddress,
+    sameBillingAsShipping,
+    setSameBillingAsShipping,
+    setBillingAddress,
+    confirmPayment,
+    paymentMethods,
+    isLoadingPaymentMethods,
+    paymentMethodsError,
+    reloadPaymentMethods,
+    selectedPaymentMethodId,
+    selectPaymentMethod,
+  } = useCheckout();
 
-  const cardForm = useForm<CardFormValues>({
-    resolver: zodResolver(cardSchema),
-    defaultValues: { cardName: "", cardNumber: "", expiry: "", cvc: "" },
-  });
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const supportsApplePay = useSyncExternalStore(subscribeToNothing, readApplePaySupport, () => false);
+
+  const visibleMethods = paymentMethods.filter(
+    (method) => method.clientCapability !== "apple-pay" || supportsApplePay
+  );
 
   const billingForm = useForm<AddressFormValues>({
     resolver: zodResolver(addressSchema),
@@ -36,141 +91,87 @@ export function PaymentStep() {
       city: "",
       region: "",
       postalCode: "",
-      countryCode: "US",
+      countryCode: shippingAddress?.countryCode ?? "GR",
       phone: "",
     },
   });
 
-  const onSubmit = cardForm.handleSubmit(async () => {
-    if (!sameBillingAsShipping) {
-      const isBillingValid = await billingForm.trigger();
-      if (!isBillingValid) return;
-      await setBillingAddress(billingForm.getValues());
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    if (!selectedPaymentMethodId) {
+      setError("Please choose a payment method.");
+      return;
     }
-    confirmPayment();
-  });
+    setIsSubmitting(true);
+    try {
+      if (!sameBillingAsShipping) {
+        const isBillingValid = await billingForm.trigger();
+        if (!isBillingValid) return;
+        await setBillingAddress(billingForm.getValues());
+      }
+      confirmPayment();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
       <div>
         <h2 className="font-heading text-xl">Payment</h2>
-        <p className="mt-1 text-sm text-luxe-gray-dark">All transactions are secure and encrypted.</p>
+        <p className="mt-1 text-sm text-luxe-gray-dark">
+          Choose how you&apos;d like to pay. You&apos;ll confirm everything on the next step.
+        </p>
       </div>
 
-      {isFeatureEnabled("express-checkout") ? <ExpressCheckoutButtons /> : null}
-
-      <div role="radiogroup" aria-label="Payment plan" className="grid grid-cols-2 gap-3">
-        {(
-          [
-            { id: "full" as const, label: "Pay in full", hint: "Charged today" },
-            ...(isFeatureEnabled("klarna-payment")
-              ? [{ id: "klarna" as const, label: "Pay in 4", hint: "with Klarna, interest-free" }]
-              : []),
-          ]
-        ).map((option) => {
-          const isSelected = paymentMethod === option.id;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={isSelected}
-              onClick={() => setPaymentMethod(option.id)}
-              className={cn(
-                "flex flex-col items-start gap-0.5 border px-4 py-3 text-left transition-colors",
-                isSelected ? "border-luxe-black" : "border-border hover:border-luxe-black/50"
-              )}
-            >
-              <span className="text-sm font-medium">{option.label}</span>
-              <span className="text-xs text-luxe-gray-dark">{option.hint}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="cardName" className="mb-1.5 block text-eyebrow">
-            Name on card
-          </label>
-          <input
-            id="cardName"
-            autoComplete="cc-name"
-            aria-invalid={Boolean(cardForm.formState.errors.cardName)}
-            aria-describedby={cardForm.formState.errors.cardName ? "cardName-error" : undefined}
-            className={inputClass}
-            {...cardForm.register("cardName")}
-          />
-          {cardForm.formState.errors.cardName ? (
-            <p id="cardName-error" className="mt-1.5 text-xs text-destructive">
-              {cardForm.formState.errors.cardName.message}
-            </p>
-          ) : null}
+      {isLoadingPaymentMethods && paymentMethods.length === 0 ? (
+        <div className="space-y-3" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-[76px] animate-pulse border border-border bg-luxe-gray-light/60" />
+          ))}
         </div>
+      ) : null}
 
-        <div>
-          <label htmlFor="cardNumber" className="mb-1.5 block text-eyebrow">
-            Card number
-          </label>
-          <input
-            id="cardNumber"
-            inputMode="numeric"
-            autoComplete="cc-number"
-            placeholder="1234 1234 1234 1234"
-            aria-invalid={Boolean(cardForm.formState.errors.cardNumber)}
-            aria-describedby={cardForm.formState.errors.cardNumber ? "cardNumber-error" : undefined}
-            className={inputClass}
-            {...cardForm.register("cardNumber")}
-          />
-          {cardForm.formState.errors.cardNumber ? (
-            <p id="cardNumber-error" className="mt-1.5 text-xs text-destructive">
-              {cardForm.formState.errors.cardNumber.message}
-            </p>
-          ) : null}
+      {paymentMethodsError ? (
+        <div className="border border-destructive/40 bg-destructive/5 p-4 text-sm">
+          <p>{paymentMethodsError}</p>
+          <button
+            type="button"
+            onClick={() => void reloadPaymentMethods()}
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-4"
+          >
+            <RefreshCw className="size-3.5" strokeWidth={1.5} />
+            Try again
+          </button>
         </div>
+      ) : null}
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="expiry" className="mb-1.5 block text-eyebrow">
-              Expiry (MM/YY)
-            </label>
-            <input
-              id="expiry"
-              autoComplete="cc-exp"
-              placeholder="MM/YY"
-              aria-invalid={Boolean(cardForm.formState.errors.expiry)}
-              aria-describedby={cardForm.formState.errors.expiry ? "expiry-error" : undefined}
-              className={inputClass}
-              {...cardForm.register("expiry")}
+      {!isLoadingPaymentMethods && !paymentMethodsError && visibleMethods.length === 0 ? (
+        <div className="border border-border bg-luxe-gray-light p-4 text-sm">
+          <p className="font-medium">No payment methods are available right now.</p>
+          <p className="mt-1 text-luxe-gray-dark">
+            This can happen if your order total or delivery country falls outside what the available methods accept.
+            Please contact us and we&apos;ll help you complete your order.
+          </p>
+        </div>
+      ) : null}
+
+      {visibleMethods.length > 0 ? (
+        <div role="radiogroup" aria-label="Payment method" className="space-y-3">
+          {visibleMethods.map((method) => (
+            <PaymentMethodOption
+              key={method.id}
+              method={method}
+              isSelected={selectedPaymentMethodId === method.id}
+              onSelect={() => {
+                setError(null);
+                void selectPaymentMethod(method.id);
+              }}
             />
-            {cardForm.formState.errors.expiry ? (
-              <p id="expiry-error" className="mt-1.5 text-xs text-destructive">
-                {cardForm.formState.errors.expiry.message}
-              </p>
-            ) : null}
-          </div>
-          <div>
-            <label htmlFor="cvc" className="mb-1.5 block text-eyebrow">
-              CVC
-            </label>
-            <input
-              id="cvc"
-              inputMode="numeric"
-              autoComplete="cc-csc"
-              placeholder="123"
-              aria-invalid={Boolean(cardForm.formState.errors.cvc)}
-              aria-describedby={cardForm.formState.errors.cvc ? "cvc-error" : undefined}
-              className={inputClass}
-              {...cardForm.register("cvc")}
-            />
-            {cardForm.formState.errors.cvc ? (
-              <p id="cvc-error" className="mt-1.5 text-xs text-destructive">
-                {cardForm.formState.errors.cvc.message}
-              </p>
-            ) : null}
-          </div>
+          ))}
         </div>
-      </div>
+      ) : null}
 
       <label className="flex items-center gap-2.5 text-sm">
         <input
@@ -186,93 +187,13 @@ export function PaymentStep() {
         <div className="space-y-4 border-t border-border pt-6">
           <p className="text-eyebrow">Billing address</p>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="billingFirstName" className="mb-1.5 block text-eyebrow">
-                First name
-              </label>
-              <input
-                id="billingFirstName"
-                aria-invalid={Boolean(billingForm.formState.errors.firstName)}
-                aria-describedby={billingForm.formState.errors.firstName ? "billingFirstName-error" : undefined}
-                className={inputClass}
-                {...billingForm.register("firstName")}
-              />
-              {billingForm.formState.errors.firstName ? (
-                <p id="billingFirstName-error" className="mt-1.5 text-xs text-destructive">
-                  {billingForm.formState.errors.firstName.message}
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <label htmlFor="billingLastName" className="mb-1.5 block text-eyebrow">
-                Last name
-              </label>
-              <input
-                id="billingLastName"
-                aria-invalid={Boolean(billingForm.formState.errors.lastName)}
-                aria-describedby={billingForm.formState.errors.lastName ? "billingLastName-error" : undefined}
-                className={inputClass}
-                {...billingForm.register("lastName")}
-              />
-              {billingForm.formState.errors.lastName ? (
-                <p id="billingLastName-error" className="mt-1.5 text-xs text-destructive">
-                  {billingForm.formState.errors.lastName.message}
-                </p>
-              ) : null}
-            </div>
+            <Field form={billingForm} name="firstName" id="billingFirstName" label="First name" />
+            <Field form={billingForm} name="lastName" id="billingLastName" label="Last name" />
           </div>
-          <div>
-            <label htmlFor="billingAddress1" className="mb-1.5 block text-eyebrow">
-              Street address
-            </label>
-            <input
-              id="billingAddress1"
-              aria-invalid={Boolean(billingForm.formState.errors.address1)}
-              aria-describedby={billingForm.formState.errors.address1 ? "billingAddress1-error" : undefined}
-              className={inputClass}
-              {...billingForm.register("address1")}
-            />
-            {billingForm.formState.errors.address1 ? (
-              <p id="billingAddress1-error" className="mt-1.5 text-xs text-destructive">
-                {billingForm.formState.errors.address1.message}
-              </p>
-            ) : null}
-          </div>
+          <Field form={billingForm} name="address1" id="billingAddress1" label="Street address" />
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="billingCity" className="mb-1.5 block text-eyebrow">
-                City
-              </label>
-              <input
-                id="billingCity"
-                aria-invalid={Boolean(billingForm.formState.errors.city)}
-                aria-describedby={billingForm.formState.errors.city ? "billingCity-error" : undefined}
-                className={inputClass}
-                {...billingForm.register("city")}
-              />
-              {billingForm.formState.errors.city ? (
-                <p id="billingCity-error" className="mt-1.5 text-xs text-destructive">
-                  {billingForm.formState.errors.city.message}
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <label htmlFor="billingPostalCode" className="mb-1.5 block text-eyebrow">
-                Postal code
-              </label>
-              <input
-                id="billingPostalCode"
-                aria-invalid={Boolean(billingForm.formState.errors.postalCode)}
-                aria-describedby={billingForm.formState.errors.postalCode ? "billingPostalCode-error" : undefined}
-                className={inputClass}
-                {...billingForm.register("postalCode")}
-              />
-              {billingForm.formState.errors.postalCode ? (
-                <p id="billingPostalCode-error" className="mt-1.5 text-xs text-destructive">
-                  {billingForm.formState.errors.postalCode.message}
-                </p>
-              ) : null}
-            </div>
+            <Field form={billingForm} name="city" id="billingCity" label="City" />
+            <Field form={billingForm} name="postalCode" id="billingPostalCode" label="Postal code" />
           </div>
           <div>
             <label htmlFor="billingCountryCode" className="mb-1.5 block text-eyebrow">
@@ -289,19 +210,112 @@ export function PaymentStep() {
         </div>
       ) : null}
 
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
       <p className="flex items-center gap-1.5 text-xs text-luxe-gray-dark">
         <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.5} />
-        Demo checkout — no payment is charged.
+        Card details are entered on your payment provider&apos;s secure page — they never reach this site.
       </p>
 
       <button
         type="submit"
-        disabled={cardForm.formState.isSubmitting}
+        disabled={isSubmitting || !selectedPaymentMethodId}
         className="flex h-12 w-full items-center justify-center gap-2 bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
         Review Order
         <ArrowRight className="size-4" strokeWidth={1.5} />
       </button>
     </form>
+  );
+}
+
+function PaymentMethodOption({
+  method,
+  isSelected,
+  onSelect,
+}: {
+  method: CheckoutPaymentMethod;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={isSelected}
+      onClick={onSelect}
+      className={cn(
+        "flex w-full items-start gap-3 border px-4 py-3.5 text-left transition-colors",
+        isSelected ? "border-luxe-black" : "border-border hover:border-luxe-black/50"
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+          isSelected ? "border-luxe-black" : "border-border"
+        )}
+      >
+        {isSelected ? <span className="size-2 rounded-full bg-luxe-black" /> : null}
+      </span>
+      <PaymentMethodIcon icon={method.icon} className="mt-0.5 text-luxe-gray-dark" />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+          <span className="text-sm font-medium">{method.displayName}</span>
+          {method.fee.amount > 0 ? (
+            <span className="text-sm whitespace-nowrap">+{formatMoney(method.fee)}</span>
+          ) : null}
+        </span>
+        <span className="mt-0.5 block text-xs text-luxe-gray-dark">{method.description}</span>
+        {method.requiresRedirect ? (
+          <span className="mt-1 block text-[11px] text-luxe-gray-dark">
+            You&apos;ll be taken to a secure page to complete your payment.
+          </span>
+        ) : null}
+        {method.requiresManualConfirmation && !method.requiresRedirect ? (
+          <span className="mt-1 block text-[11px] text-luxe-gray-dark">
+            We&apos;ll confirm your payment before dispatching your order.
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
+/** Small local field wrapper — keeps the aria-describedby wiring identical across every input. */
+function Field({
+  form,
+  name,
+  id,
+  label,
+}: {
+  form: ReturnType<typeof useForm<AddressFormValues>>;
+  name: keyof AddressFormValues;
+  id: string;
+  label: string;
+}) {
+  const error = form.formState.errors[name];
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-eyebrow">
+        {label}
+      </label>
+      <input
+        id={id}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={inputClass}
+        {...form.register(name)}
+      />
+      {error ? (
+        <p id={`${id}-error`} className="mt-1.5 text-xs text-destructive">
+          {error.message}
+        </p>
+      ) : null}
+    </div>
   );
 }

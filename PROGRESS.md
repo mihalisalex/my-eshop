@@ -1,5 +1,125 @@
 # ALEXANDRIS — Progress Notes
 
+## Complete payment architecture + admin payment dashboard — COMPLETE, verified clean (tsc + eslint + build + 145 tests + live browser walkthrough incl. a real COD order, manual confirmation, partial refund and the full webhook pipeline)
+
+The last major gap. Payment had been declined three times across previous sessions and was the
+one thing standing between this and a shop that can take money. The explicit brief was to build
+the **architecture**, not a Stripe integration: modular providers that can be enabled, disabled,
+configured, tested and replaced from the admin, working even where the external API isn't
+connected yet.
+
+**The architectural rule, and what it cost to hold:** `Checkout → Payment Abstraction Layer →
+Selected Provider`. The checkout knows only `PaymentMethod` / `PaymentIntent` / `PaymentStatus` /
+`PaymentResult`, and takes exactly ONE behavioural branch — `customerAction.type === "redirect"`
+— which is about the *action*, not the vendor. There is no `if (stripe)` or `if (cod)` anywhere
+in the storefront. Holding that meant deleting things: `PaymentStep.tsx` was a hardcoded fake
+card form ("Demo checkout — no payment is charged") with a feature-flagged "Pay in 4" that did
+nothing, and `ExpressCheckoutButtons` toasted "not connected in this demo" for Apple/Google
+Pay/PayPal. Both deleted, along with `cardSchema` — this app must never accept a PAN or CVV, and
+leaving the schema around invites a future integration to be wired up wrongly. The
+`express-checkout`/`klarna-payment` feature flags went too: wallet visibility now comes from the
+store's own configuration, not from a boolean in source control.
+
+**Domain layer** (`lib/payments/`) — `types.ts` (the whole vocabulary and the `PaymentProvider`
+contract), `status.ts` (ten-state machine, one `assertTransition` chokepoint every caller funnels
+through, so nothing client-side can set a status), `availability.ts` and `fees.ts` (pure, so both
+the "may we offer this" and "what does it cost" questions are unit-testable without a database),
+`idempotency.ts`, `crypto.ts` (AES-256-GCM at rest + constant-time signature comparison),
+`config.ts` (storage, env-var precedence, the masked browser-safe projection), `registry.ts`.
+Providers are **stateless singletons** — configuration arrives per call rather than being
+captured in a constructor, so a credential change takes effect on the next request with no
+restart and no cache to invalidate.
+
+**Five new tables**, deliberately their own rather than columns on `Order`: `payments`,
+`payment_transactions` (append-only audit trail, never updated or deleted),
+`payment_webhook_events` (unique on `(provider, eventId)` — a database constraint, not an
+in-memory set, because serverless instances don't share memory), `payment_provider_configs`,
+`payment_method_settings`. **Capabilities are not in the database**: `supportsRefunds`,
+`requiresWebhook` and friends live in code beside the provider that implements them, where an
+admin cannot toggle them into being true. Two additive migrations, both applied to the shared
+production DB — safe precisely because they're additive (see the destructive-migration warning
+from the 2026-08-14 session).
+
+**Six providers.** Cash on Delivery and Bank Transfer are *real and complete*, need no external
+account, and are enabled by default so a fresh install has a working checkout on day one. COD
+goes through the same contract as Stripe rather than being a checkout special case — which is
+what gives it a real Payment row, a real status machine, a real audit trail and a real place in
+reporting; the `if (method === "cod")` version most shops end up with is exactly what makes COD
+invisible to accounting. Bank Transfer lands in `awaiting_bank_transfer` and the state machine
+has **no** edge from there to `processing`, so there is no automatic path to settlement at all.
+Stripe is real, via **hosted Checkout Sessions over its REST API with `fetch`** (same approach as
+`lib/courier/providers/acs.ts` and `lib/oauth/*`) — Elements would need Stripe.js, which the CSP
+blocks and which pulls PCI scope back toward us; hosted means no card data touches the app and
+Apple Pay/Google Pay appear on Stripe's verified domain automatically. Apple Pay is modelled as a
+*capability*, not an acquirer: it owns the Apple-specific config and delegates every money
+operation to whichever processor `processingProviderIdFor` names, with the service resolving that
+processor's config into `ctx.processingConfig` (resolving it inside the provider would be an
+import cycle and would let any provider read any other's credentials).
+
+**IRIS and Piraeus ship as integration BOUNDARIES, and this is the part worth not misreading.**
+Everything structural is real — registration, configuration UI, encrypted credential storage, a
+routable webhook endpoint, a place in the status machine and the admin. But
+`validateConfiguration` returns `not_implemented` and **never** `connected`, so filling in every
+credential does not turn the badge green; `isConfigured` returns `false` unconditionally, which
+is what keeps the method off the checkout entirely; and payment creation throws
+`PROVIDER_NOT_IMPLEMENTED`. No endpoint, request body, header or signing algorithm was invented.
+The Piraeus field list is *exactly* the one specified and nothing more — adding a field would be
+presenting an invented parameter to a store owner as if the bank required it, and removing one
+might drop something they do need. Both are built from a shared
+`createPendingIntegrationProvider` factory, which doubles as the pattern for any future bank.
+
+**Admin** — `/admin/settings/payments` (overview cards, method table, webhook endpoints) and
+`/admin/settings/payments/[provider]`, written ONCE and resolved against the registry: every
+field comes from the provider's own `configFields`, so registering a future provider produces its
+settings page for free. `/admin/payments` gives the transaction table with real database-side
+filtering (the one admin list that must never assume it fits in memory), and a detail page with
+the timeline, webhook log, refunds and metadata. Four new capabilities — `payments:view`
+(editors get it, since they need to know an order is paid before dispatching), `payments:manage`,
+`payments:refund`, `payments:configure`. Actions use `capabilityDenied()` rather than throwing,
+per the documented lesson that a thrown error inside a Server Action never reaches the caller's
+`if (result.error)` and reads as a broken button.
+
+**Verified live end to end, not just type-checked**: placed a real COD order (€49.18 → €51.18
+with a €2 fee set through the admin), traced the fee through the order summary, review step,
+confirmation page, stored order and confirmation email; marked it received (status → paid,
+`paidAt` set, timeline recorded the admin actor and note); issued a €10 partial refund
+(→ partially_refunded, €41.18 remaining). Exercised the webhook route directly: a correctly
+signed event was accepted and marked verified, the **same signature with a tampered body was
+rejected 400**, an identical replay returned `duplicate` without applying twice, and a forged
+event carrying a real `paymentId` was rejected without touching the payment. Two concurrent
+`/complete` calls plus a third sequential one all returned the same order and payment id.
+Confirmed AES-GCM ciphertext in the database and that no plaintext secret appears in the DOM or
+the RSC flight payload. Every row created was deleted afterwards; a real order placed by the user
+mid-session was left untouched.
+
+**Three real bugs the type checker could never have caught, all found by actually looking:**
+(1) Apple Pay reported "Connected" with no Stripe credentials anywhere — the admin called
+`provider.isConfigured()` directly, which is true for a delegating provider, so the admin now
+reads the same `getProviderStates()` the checkout does; (2) a fresh install had a working
+checkout that offered nothing, because the two internal *methods* defaulted to enabled while
+every *provider* defaulted to disabled and availability requires both (providers now carry their
+own `defaultEnabled`, with a test asserting the two stay in step); (3) the €2 COD fee was charged
+correctly server-side but never overlaid onto the checkout summary, so the shopper would have
+seen one number and paid another — the exact failure the server-side-fee requirement exists to
+prevent. Also: a real COD payment was tagged "Test" because providers with no sandbox/live split
+still defaulted to `sandbox`.
+
+**Tests went 44 → 145.** New suites cover the state machine (including that nothing un-settles
+money and terminal states never revive), availability (every gate, plus that an empty country
+list means "everywhere" not "nowhere"), fees (including that a negative configured fee can't
+become a discount), idempotency-key derivation, secret storage (tamper detection, rotated-key
+messaging, refusal to fall back to a default), the registry's structural guarantees, both
+internal providers, both pending boundaries, and 21 Stripe tests covering status mapping,
+signature verification (wrong secret, tampered body, replay outside tolerance, multi-signature
+rotation headers) and event normalisation. **A live Stripe API call was deliberately not made** —
+no real credentials exist, and firing a live external API unprompted isn't this project's habit.
+
+**Developer documentation** in `PAYMENTS.md`: how the layer works, a full worked example of
+adding a hypothetical Viva Wallet provider (two files, zero changes to checkout/orders/database/
+admin), and how to add a method, a config field, a webhook, refunds and status transitions.
+`.env.example` documents the mechanical `<PROVIDER_ID>_<FIELD_KEY>` env-var convention and the
+required `PAYMENTS_CONFIG_SECRET`.
+
 ## Real WooCommerce catalog migration + Blob image pipeline + menu polish — COMPLETE, verified clean (tsc + eslint + build + live browser + pixel-level image verification)
 
 The user provided a real product export from their actual live business (`alexandrisstores.gr`, a real multi-brand shoe retailer — U.S. Polo Assn., London, Mont Martre Paris, Alexandris' own house line, not a single in-house brand) and asked to bring real inventory into the app. No direct WooCommerce→ALEXANDRIS import path exists (different CSV shapes entirely, and WooCommerce splits variable products into parent+variation rows) — built a one-off converter instead of a reusable feature, since this was framed as a one-time catalog migration, not an ongoing sync.

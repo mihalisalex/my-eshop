@@ -46,3 +46,23 @@ export function applyGiftWrap(totals: CartTotals, giftWrap: boolean): CartTotals
     total: { amount: totalAmount, currencyCode: totals.total.currencyCode },
   };
 }
+
+/**
+ * Overlays the payment-method surcharge for DISPLAY only.
+ *
+ * The fee itself is never computed here: the browser is handed an
+ * already-calculated amount by `GET /api/payment-methods`, whose value came from
+ * `lib/payments/fees.ts` reading the store's own configuration. That separation is
+ * the point of §22 — if the client could derive the fee, a modified request could
+ * show one number and pay another. The server recomputes it from scratch at order
+ * time and that recomputation, not this one, is what is charged.
+ */
+export function applyPaymentFee(totals: CartTotals, feeAmount: number): CartTotals {
+  const fee = totals.subtotal.amount > 0 ? Math.max(feeAmount, 0) : 0;
+  const totalAmount = Math.max(totals.total.amount - totals.paymentFeeTotal.amount + fee, 0);
+  return {
+    ...totals,
+    paymentFeeTotal: { amount: fee, currencyCode: totals.paymentFeeTotal.currencyCode },
+    total: { amount: totalAmount, currencyCode: totals.total.currencyCode },
+  };
+}

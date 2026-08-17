@@ -36,6 +36,12 @@ export function CartTotalsSummary({ totals }: CartTotalsSummaryProps) {
           <span>{formatMoney(totals.giftWrapTotal)}</span>
         </div>
       ) : null}
+      {totals.paymentFeeTotal.amount > 0 ? (
+        <div className="flex justify-between">
+          <span className="text-luxe-gray-dark">{t("paymentFee")}</span>
+          <span>{formatMoney(totals.paymentFeeTotal)}</span>
+        </div>
+      ) : null}
       <div className="flex justify-between">
         <span className="text-luxe-gray-dark">{t("estimatedTax")}</span>
         <span>{formatMoney(totals.taxTotal)}</span>

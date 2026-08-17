@@ -313,6 +313,7 @@ export function toCheckout(row: CheckoutRow): Checkout {
     shippingRate: row.shippingRate ? shippingRateSchema.parse(row.shippingRate) : undefined,
     giftWrap: row.giftWrap,
     giftMessage: row.giftMessage ?? undefined,
+    paymentMethodId: row.paymentMethodId ?? undefined,
     status: row.status as CheckoutStatus,
     createdAt: row.createdAt.toISOString(),
   };
@@ -327,8 +328,12 @@ export function toOrder(row: OrderRow): Order {
     checkoutId: row.checkoutId,
     customerEmail: row.customerEmail,
     lineItems: z.array(cartLineItemSchema).parse(row.lineItems),
-    // Historical snapshots predate gift wrapping — see cartTotalsSchema's comment.
-    totals: { ...totals, giftWrapTotal: totals.giftWrapTotal ?? { amount: 0, currencyCode: totals.total.currencyCode } },
+    // Historical snapshots predate gift wrapping and payment fees — see cartTotalsSchema's comment.
+    totals: {
+      ...totals,
+      giftWrapTotal: totals.giftWrapTotal ?? { amount: 0, currencyCode: totals.total.currencyCode },
+      paymentFeeTotal: totals.paymentFeeTotal ?? { amount: 0, currencyCode: totals.total.currencyCode },
+    },
     shippingAddress: addressSchema.parse(row.shippingAddress),
     billingAddress: addressSchema.parse(row.billingAddress),
     shippingRate: shippingRateSchema.parse(row.shippingRate),

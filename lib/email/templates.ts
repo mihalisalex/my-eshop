@@ -13,6 +13,23 @@ const MUTED = "#8A8A8A";
 const HAIRLINE = "#EDEDED";
 
 /**
+ * Escapes values that reach an email body from a configurable source rather than
+ * from our own code. Payment instructions are admin-authored (bank name, IBAN,
+ * free-text notes), which is the same trust level that produced the stored-XSS
+ * finding in the JSON-LD work — see lib/json-ld.ts. An email client is a weaker
+ * execution context than a browser, but broken markup from an unescaped `&` or `<`
+ * is reason enough on its own.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Table-based layout with inline styles, not a <style> block — the only markup
  * pattern that renders consistently across real email clients (Gmail/Outlook both
  * strip <head> styles). Editorial treatment (black masthead, serif display type,
@@ -117,6 +134,7 @@ function totalsHtml(totals: CartTotals): string {
       ${totals.giftCardTotal.amount > 0 ? row("Gift Card", { amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode }) : ""}
       ${row("Shipping", totals.shippingTotal)}
       ${totals.giftWrapTotal.amount > 0 ? row("Gift Wrapping", totals.giftWrapTotal) : ""}
+      ${totals.paymentFeeTotal.amount > 0 ? row("Payment Fee", totals.paymentFeeTotal) : ""}
       ${row("Tax", totals.taxTotal)}
       <tr><td colspan="2" style="padding-top:10px;border-top:1px solid ${HAIRLINE};"></td></tr>
       ${row("Total", totals.total, true)}
@@ -132,12 +150,36 @@ export function orderConfirmationEmail(input: {
   shippingRate: ShippingRate;
   giftWrap?: boolean;
   giftMessage?: string;
+  /**
+   * Payment instructions for a method that needs the customer to do something after
+   * ordering — bank details for a transfer, the amount to have ready for a courier.
+   * Provided by the payment provider itself (`CustomerAction.instructions`), so this
+   * template never has to know which method produced them.
+   */
+  paymentInstructions?: { label: string; value: string }[] | null;
 }): RenderedEmail {
-  const { siteName, orderId, lineItems, totals, shippingAddress, shippingRate, giftWrap, giftMessage } = input;
+  const { siteName, orderId, lineItems, totals, shippingAddress, shippingRate, giftWrap, giftMessage, paymentInstructions } = input;
   const subject = `Order confirmed — #${orderId.slice(-8).toUpperCase()}`;
   const giftNoteHtml =
     giftWrap && giftMessage
       ? `<p style="color:#555555;font-size:13px;font-style:italic;margin:0 0 24px;">"${giftMessage}"</p>`
+      : "";
+  const paymentHtml =
+    paymentInstructions && paymentInstructions.length > 0
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border:1px solid ${HAIRLINE};">
+          <tr><td style="padding:16px 16px 4px;">
+            <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 12px;">Payment details</p>
+          </td></tr>
+          ${paymentInstructions
+            .map(
+              (line) => `<tr>
+                <td style="padding:4px 16px;color:${MUTED};font-size:12px;">${escapeHtml(line.label)}</td>
+                <td align="right" style="padding:4px 16px;color:${INK};font-size:13px;">${escapeHtml(line.value)}</td>
+              </tr>`
+            )
+            .join("")}
+          <tr><td colspan="2" style="padding:12px 16px 16px;"></td></tr>
+        </table>`
       : "";
   const html = layout(
     siteName,
@@ -149,6 +191,7 @@ export function orderConfirmationEmail(input: {
     ${giftNoteHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
     ${totalsHtml(totals)}
+    ${paymentHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:36px;">
       <tr>
         <td style="width:50%;vertical-align:top;">
@@ -164,7 +207,11 @@ export function orderConfirmationEmail(input: {
   );
   const text = `Thank you for your order\n\nOrder #${orderId.slice(-8).toUpperCase()}\n\n${lineItems
     .map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity} — ${formatMoney({ amount: i.unitPrice.amount * i.quantity, currencyCode: i.unitPrice.currencyCode })}`)
-    .join("\n")}\n\nTotal: ${formatMoney(totals.total)}\n\nShipping to:\n${addressLines(shippingAddress)}\n\nDelivery: ${shippingRate.label} (${shippingRate.estimatedDelivery})`;
+    .join("\n")}\n\nTotal: ${formatMoney(totals.total)}${
+    paymentInstructions && paymentInstructions.length > 0
+      ? `\n\nPayment details:\n${paymentInstructions.map((line) => `${line.label}: ${line.value}`).join("\n")}`
+      : ""
+  }\n\nShipping to:\n${addressLines(shippingAddress)}\n\nDelivery: ${shippingRate.label} (${shippingRate.estimatedDelivery})`;
   return { subject, html, text };
 }
 

@@ -93,6 +93,8 @@ export interface CartTotals {
   shippingTotal: Money;
   /** Flat fee, present (possibly zero) once a checkout has a gift-wrap total to report — always zero on a plain Cart, which has no gift-wrap concept of its own. */
   giftWrapTotal: Money;
+  /** Payment-method surcharge (e.g. a Cash-on-Delivery fee). Always computed server-side by lib/payments/fees.ts — zero on a plain Cart, which has no payment method yet. */
+  paymentFeeTotal: Money;
   taxTotal: Money;
   total: Money;
 }
@@ -159,6 +161,8 @@ export interface Checkout {
   shippingRate?: ShippingRate;
   giftWrap?: boolean;
   giftMessage?: string;
+  /** The method the shopper picked. A stored preference only — availability is re-validated server-side at order time. */
+  paymentMethodId?: string;
   status: CheckoutStatus;
   createdAt: string;
 }
@@ -376,6 +380,34 @@ export interface CartService {
   clearCart(cartId: string): Promise<Cart>;
 }
 
+/**
+ * What the checkout gets back after placing an order. The `payment` half is
+ * deliberately provider-agnostic (§1): the checkout learns that it must redirect,
+ * or show instructions, or nothing at all — never that Stripe, Piraeus or IRIS is
+ * involved. Adding a provider changes nothing about this shape.
+ */
+export interface CompleteCheckoutResult {
+  order: Order;
+  payment: {
+    id: string;
+    status: string;
+    methodId: string;
+    /** Display-only; the storefront never uses this to branch on vendor behaviour. */
+    providerId: string;
+  } | null;
+  /** The next thing the customer has to do, if anything. */
+  customerAction: {
+    type: "none" | "redirect" | "display_instructions" | "display_qr" | "client_confirmation";
+    redirectUrl?: string;
+    clientSecret?: string;
+    qrPayload?: string;
+    qrImageUrl?: string;
+    instructions?: { label: string; value: string }[];
+    message?: string;
+    expiresAt?: string;
+  } | null;
+}
+
 export interface CheckoutService {
   createCheckout(cartId: string): Promise<Checkout>;
   updateEmail(checkoutId: string, email: string): Promise<Checkout>;
@@ -383,7 +415,8 @@ export interface CheckoutService {
   updateBillingAddress(checkoutId: string, address: Address): Promise<Checkout>;
   setShippingRate(checkoutId: string, rateId: string): Promise<Checkout>;
   setGiftWrap(checkoutId: string, input: { giftWrap: boolean; giftMessage?: string }): Promise<Checkout>;
-  completeCheckout(checkoutId: string, cart: Cart): Promise<Order>;
+  setPaymentMethod(checkoutId: string, paymentMethodId: string): Promise<Checkout>;
+  completeCheckout(checkoutId: string, cart: Cart): Promise<CompleteCheckoutResult>;
 }
 
 export interface CustomerService {

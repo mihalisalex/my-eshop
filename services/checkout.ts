@@ -7,10 +7,12 @@ import { addressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema } from "@/lib/validation/commerce";
 import { resolveShippingRate, STANDARD_SHIPPING_RATE } from "@/lib/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
-import { CommerceError, type Address, type Checkout, type Order } from "@/lib/commerce/types";
+import { CommerceError, type Address, type Checkout, type CompleteCheckoutResult, type Order } from "@/lib/commerce/types";
 import { getEmailProvider, orderConfirmationEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
 import { rewardReferralIfPending } from "@/services/referrals";
+import { initiatePayment, resolveSelectedMethod } from "@/services/payments";
+import { getSiteUrl } from "@/lib/site-url";
 
 async function requireCheckoutRow(checkoutId: string) {
   const row = await prisma.checkout.findUnique({ where: { id: checkoutId } });
@@ -80,6 +82,47 @@ export async function setGiftWrap(checkoutId: string, giftWrap: boolean, giftMes
 }
 
 /**
+ * Records which payment method the shopper picked.
+ *
+ * Stored, not trusted: nothing here decides that the method is usable. It's
+ * validated against the live configuration a second time in `completeCheckout`,
+ * because between this call and the order being placed an admin can disable the
+ * method, the cart total can cross a minimum/maximum, or the shopper can change
+ * country. Only the check that happens at the moment money is involved counts.
+ */
+export async function setPaymentMethod(checkoutId: string, paymentMethodId: string): Promise<Checkout> {
+  await requireCheckoutRow(checkoutId);
+  const row = await prisma.checkout.update({ where: { id: checkoutId }, data: { paymentMethodId } });
+  return toCheckout(row);
+}
+
+/**
+ * The authoritative totals for a checkout, including the selected payment
+ * method's surcharge. Shared by the payment-methods API (to quote a total) and by
+ * `completeCheckout` (to charge one) so the number shown and the number charged
+ * are produced by the same code path.
+ */
+export async function resolveCheckoutAmounts(checkoutId: string, paymentFeeOverride?: number) {
+  const checkoutRow = await requireCheckoutRow(checkoutId);
+  const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });
+  if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");
+  const cart = toCart(cartRow);
+  const shippingRate = checkoutRow.shippingRate ? shippingRateSchema.parse(checkoutRow.shippingRate) : STANDARD_SHIPPING_RATE;
+
+  const resolved = resolveCartAmounts({
+    lineItems: cart.lineItems.map((item) => ({ unitPriceAmount: item.unitPrice.amount, quantity: item.quantity, savedForLater: false })),
+    discounts: cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value })),
+    giftCards: cart.giftCards.map((g) => ({ code: g.code, balanceAmount: g.balance.amount })),
+    currencyCode: cart.currencyCode,
+    selectedShippingRate: shippingRate,
+    giftWrap: checkoutRow.giftWrap,
+    paymentFee: paymentFeeOverride,
+  });
+
+  return { checkoutRow, cartRow, cart, shippingRate, ...resolved };
+}
+
+/**
  * Ignores any client-supplied cart data (the interface's `completeCheckout(checkoutId,
  * cart)` shape is preserved at the Route Handler for parity, but the handler discards
  * the body) — always re-fetches the authoritative cart server-side. In one transaction:
@@ -87,7 +130,7 @@ export async function setGiftWrap(checkoutId: string, giftWrap: boolean, giftMes
  * add-to-cart time), decrements applied gift card balances, creates the Order snapshot,
  * marks the checkout completed, and clears the cart's line items/discounts/gift-cards.
  */
-export async function completeCheckout(checkoutId: string): Promise<Order> {
+export async function completeCheckout(checkoutId: string): Promise<CompleteCheckoutResult> {
   const checkoutRow = await requireCheckoutRow(checkoutId);
 
   // Idempotency guard: a double-click, a slow network retry, or a re-submitted request
@@ -98,7 +141,11 @@ export async function completeCheckout(checkoutId: string): Promise<Order> {
   // already-created order instead makes retries safe rather than merely "caught."
   if (checkoutRow.status === "completed") {
     const existingOrder = await prisma.order.findUnique({ where: { checkoutId } });
-    if (existingOrder) return toOrder(existingOrder);
+    // Payment initiation is idempotent on its own key too, so re-running it for an
+    // already-completed checkout returns the SAME payment and, for a redirect
+    // provider, the same redirect URL — which is exactly what a shopper who
+    // refreshed mid-payment needs.
+    if (existingOrder) return resumePaymentForOrder(toOrder(existingOrder), checkoutRow.paymentMethodId);
   }
 
   if (!checkoutRow.shippingAddress || !checkoutRow.email) {
@@ -113,18 +160,46 @@ export async function completeCheckout(checkoutId: string): Promise<Order> {
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");
   const cart = toCart(cartRow);
 
-  // cart.totals reflects the generic standard/free shipping estimate, which ignores
-  // whichever specific rate (e.g. Express) the shopper actually selected during
-  // checkout — recompute with that rate's real price before charging anything.
-  // Gift-card amounts are recalculated too, since how much of the total they cover
-  // depends on this same corrected total.
-  const { totals, giftCards } = resolveCartAmounts({
-    lineItems: cart.lineItems.map((item) => ({ unitPriceAmount: item.unitPrice.amount, quantity: item.quantity, savedForLater: false })),
-    discounts: cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value })),
-    giftCards: cart.giftCards.map((g) => ({ code: g.code, balanceAmount: g.balance.amount })),
+  const lineItemsForTotals = cart.lineItems.map((item) => ({
+    unitPriceAmount: item.unitPrice.amount,
+    quantity: item.quantity,
+    savedForLater: false,
+  }));
+  const discountRules = cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value }));
+  const giftCardRules = cart.giftCards.map((g) => ({ code: g.code, balanceAmount: g.balance.amount }));
+
+  // Two passes, and the order matters. A percentage payment fee is a percentage OF
+  // the order total, so the total has to exist before the fee can be computed — and
+  // then folded back in. Computing it in one pass would either apply the percentage
+  // to the wrong base or require the browser to supply a number, which §22 forbids.
+  const withoutFee = resolveCartAmounts({
+    lineItems: lineItemsForTotals,
+    discounts: discountRules,
+    giftCards: giftCardRules,
     currencyCode: cart.currencyCode,
     selectedShippingRate: shippingRate,
     giftWrap: checkoutRow.giftWrap,
+  });
+
+  // Re-validated here rather than trusted from the checkout row: an admin may have
+  // disabled the method, or the cart may have changed, since it was chosen.
+  const selectedMethod = checkoutRow.paymentMethodId
+    ? await resolveSelectedMethod(checkoutRow.paymentMethodId, {
+        amount: withoutFee.totals.total.amount,
+        currencyCode: cart.currencyCode,
+        countryCode: shippingAddress.countryCode,
+        shippingRateId: shippingRate.id,
+      })
+    : null;
+
+  const { totals, giftCards } = resolveCartAmounts({
+    lineItems: lineItemsForTotals,
+    discounts: discountRules,
+    giftCards: giftCardRules,
+    currencyCode: cart.currencyCode,
+    selectedShippingRate: shippingRate,
+    giftWrap: checkoutRow.giftWrap,
+    paymentFee: selectedMethod?.fee ?? 0,
   });
 
   let orderRow;
@@ -206,19 +281,115 @@ export async function completeCheckout(checkoutId: string): Promise<Order> {
     // the winner's order instead of surfacing a raw 500 for an order that did succeed.
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const existingOrder = await prisma.order.findUnique({ where: { checkoutId } });
-      if (existingOrder) return toOrder(existingOrder);
+      if (existingOrder) return resumePaymentForOrder(toOrder(existingOrder), checkoutRow.paymentMethodId);
     }
     throw error;
   }
 
   const order = toOrder(orderRow);
 
+  // The payment is started AFTER the order exists, because a payment must reference
+  // an order id — and the order's totals are what it charges. If the provider
+  // refuses (misconfigured, API down), the order still exists with a `failed`
+  // payment attached and the shopper can retry from the confirmation page, which is
+  // recoverable. Losing the order instead would strand the stock decrement and the
+  // gift-card debit that already committed in the transaction above.
+  const paymentOutcome = await startPaymentForOrder(order, checkoutRow.paymentMethodId);
+
+  // Sent now only when nothing further is expected of the customer. For a
+  // redirect-based method the shopper hasn't paid yet, so "thanks for your order"
+  // would be premature and, worse, indistinguishable from a real confirmation —
+  // that email goes out from markOrderConfirmationSent() once the payment settles.
+  const shouldEmailNow =
+    !paymentOutcome.customerAction || paymentOutcome.customerAction.type !== "redirect";
+  if (shouldEmailNow) {
+    await sendOrderConfirmationEmail(order, paymentOutcome.customerAction?.instructions ?? null);
+  }
+
+  // Best-effort, same reasoning as the confirmation email — a signed-in
+  // customer's first completed order may be the one a referral was waiting on.
+  if (cartRow.customerId) {
+    try {
+      await rewardReferralIfPending(cartRow.customerId);
+    } catch (referralError) {
+      console.error("Failed to process referral reward", referralError);
+    }
+  }
+
+  return { order, ...paymentOutcome };
+}
+
+/**
+ * Starts (or recovers) the payment for an order and normalises the result into the
+ * provider-agnostic shape the checkout consumes. A checkout with no method selected
+ * still produces an order — the shop simply has no payment record for it, which is
+ * the honest representation of "nobody chose how to pay".
+ */
+async function startPaymentForOrder(
+  order: Order,
+  paymentMethodId: string | null
+): Promise<Omit<CompleteCheckoutResult, "order">> {
+  if (!paymentMethodId) return { payment: null, customerAction: null };
+
+  const siteUrl = getSiteUrl().replace(/\/$/, "");
+  try {
+    const { payment, customerAction } = await initiatePayment({
+      order: {
+        orderId: order.id,
+        customerEmail: order.customerEmail,
+        customerId: null,
+        lineItems: order.lineItems,
+        totals: order.totals,
+        shippingAddress: order.shippingAddress,
+        billingAddress: order.billingAddress,
+      },
+      methodId: paymentMethodId,
+      returnUrls: {
+        // The success URL is where the browser lands, NOT proof of anything — the
+        // confirmation page re-verifies server-side before showing a paid state.
+        success: `${siteUrl}/checkout/confirmation?order=${order.id}&verify=1`,
+        cancel: `${siteUrl}/checkout/confirmation?order=${order.id}&cancelled=1`,
+      },
+    });
+    return {
+      payment: { id: payment.id, status: payment.status, methodId: payment.methodId, providerId: payment.providerId },
+      customerAction,
+    };
+  } catch (error) {
+    // Already recorded against the payment row by services/payments.ts. Swallowed
+    // here so the shopper sees their real order with a clear "payment didn't
+    // start" state rather than a 500 that implies the whole purchase failed.
+    console.error("Failed to start payment for order", order.id, error);
+    return { payment: null, customerAction: null };
+  }
+}
+
+/** The retry/refresh path — `initiatePayment` is idempotent, so this returns the existing payment. */
+async function resumePaymentForOrder(order: Order, paymentMethodId: string | null): Promise<CompleteCheckoutResult> {
+  const outcome = await startPaymentForOrder(order, paymentMethodId);
+  return { order, ...outcome };
+}
+
+/**
+ * Sends the order-confirmation email at most once per order, whichever code path
+ * gets there first (checkout, the return-path verification, or a webhook). The
+ * timestamp is set BEFORE sending and only from a null state, so two concurrent
+ * senders can't both pass the check.
+ */
+export async function sendOrderConfirmationEmail(
+  order: Order,
+  paymentInstructions: { label: string; value: string }[] | null
+): Promise<void> {
+  const claimed = await prisma.order.updateMany({
+    where: { id: order.id, confirmationEmailSentAt: null },
+    data: { confirmationEmailSentAt: new Date() },
+  });
+  if (claimed.count === 0) return;
+
   // Best-effort and awaited, not fire-and-forget: an un-awaited promise here could
   // be killed mid-flight the moment this function returns and the route handler's
   // response is sent (real risk on serverless runtimes). Wrapped in try/catch so a
-  // failed send never fails an order that has already been charged and committed.
-  // Only reached on a fresh order — the two idempotent-return paths above skip
-  // this, so a retry doesn't re-send the confirmation the first attempt already sent.
+  // failed send never fails an order that has already been committed.
   try {
     const settings = await getSiteSettings();
     const message = orderConfirmationEmail({
@@ -230,21 +401,13 @@ export async function completeCheckout(checkoutId: string): Promise<Order> {
       shippingRate: order.shippingRate,
       giftWrap: order.giftWrap,
       giftMessage: order.giftMessage,
+      paymentInstructions,
     });
     await getEmailProvider().send({ to: order.customerEmail, template: "order-confirmation", ...message });
   } catch (emailError) {
+    // Release the claim so a later attempt (a webhook, an admin resend) can retry
+    // rather than the order being permanently marked as notified.
+    await prisma.order.update({ where: { id: order.id }, data: { confirmationEmailSentAt: null } }).catch(() => {});
     console.error("Failed to send order confirmation email", emailError);
   }
-
-  // Best-effort, same reasoning as the confirmation email above — a signed-in
-  // customer's first completed order may be the one a referral was waiting on.
-  if (cartRow.customerId) {
-    try {
-      await rewardReferralIfPending(cartRow.customerId);
-    } catch (referralError) {
-      console.error("Failed to process referral reward", referralError);
-    }
-  }
-
-  return order;
 }

@@ -24,6 +24,10 @@ export type Capability =
   | "orders:view"
   | "orders:manage"
   | "orders:returns"
+  | "payments:view"
+  | "payments:manage"
+  | "payments:refund"
+  | "payments:configure"
   | "admin:users"
   | "admin:settings"
   | "admin:activity";
@@ -63,6 +67,25 @@ export const CAPABILITIES: CapabilityDefinition[] = [
   { key: "orders:view", group: "Customers & Orders", label: "View orders and customers" },
   { key: "orders:manage", group: "Customers & Orders", label: "Update order status and answer concierge requests" },
   { key: "orders:returns", group: "Customers & Orders", label: "Approve and process returns" },
+  { key: "payments:view", group: "Payments", label: "View payments and their transaction history" },
+  {
+    key: "payments:manage",
+    group: "Payments",
+    label: "Confirm and cancel payments",
+    note: "Marking a Cash-on-Delivery or bank-transfer payment as received is an accounting statement, not an order update — it says the shop has the money.",
+  },
+  {
+    key: "payments:refund",
+    group: "Payments",
+    label: "Issue refunds",
+    note: "Separate from confirming a payment because it moves money back out, often through a live provider API, and can't be undone.",
+  },
+  {
+    key: "payments:configure",
+    group: "Payments",
+    label: "Configure providers, credentials and fees",
+    note: "Grants access to payment API credentials and controls what customers can pay with. Kept to owners for the same reason as user management.",
+  },
   { key: "admin:users", group: "Administration", label: "Manage users and roles" },
   { key: "admin:settings", group: "Administration", label: "Edit site settings and SEO" },
   { key: "admin:activity", group: "Administration", label: "View the activity log" },
@@ -81,6 +104,10 @@ const EDITOR_CAPABILITIES: Capability[] = [
   "content:media",
   "orders:view",
   "orders:manage",
+  // Editors can SEE payments — they need to know whether an order has been paid for
+  // before dispatching it. Confirming, refunding and configuring are all withheld:
+  // each of those either moves money or exposes live payment credentials.
+  "payments:view",
   "admin:activity",
 ];
 

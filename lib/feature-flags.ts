@@ -6,11 +6,18 @@
  * no call site changes. A/B testing hooks are the same shape one level up — an
  * experiment returns a variant key instead of a boolean.
  */
-export type FeatureFlag = "express-checkout" | "klarna-payment" | "magic-link-auth";
+/*
+ * "express-checkout" and "klarna-payment" were removed when the real payment
+ * architecture landed. Both gated placeholder UI (buttons that toasted "not
+ * connected in this demo", a "Pay in 4" option with no provider behind it) —
+ * exactly the kind of thing a payment method registry is supposed to replace.
+ * Wallets and BNPL are now real payment methods whose visibility comes from the
+ * admin's own configuration via GET /api/payment-methods, not from a flag in
+ * source control.
+ */
+export type FeatureFlag = "magic-link-auth";
 
 const FLAGS: Record<FeatureFlag, boolean> = {
-  "express-checkout": true,
-  "klarna-payment": true,
   "magic-link-auth": true,
 };
 

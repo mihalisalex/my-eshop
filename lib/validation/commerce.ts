@@ -40,6 +40,12 @@ export const cartTotalsSchema = z.object({
   // zero (in the same currency as the rest of the snapshot) is the correct value,
   // not a placeholder.
   giftWrapTotal: moneySchema.optional(),
+  // Optional for exactly the same reason, and it is the same trap: every Order
+  // written before payment methods existed has no payment fee in its snapshot, and
+  // a required field here would fail `toOrder` on every historical order — which
+  // previously broke /admin/orders at BUILD time, not at runtime. Zero is the
+  // historically correct value, not a placeholder.
+  paymentFeeTotal: moneySchema.optional(),
   taxTotal: moneySchema,
   total: moneySchema,
 });

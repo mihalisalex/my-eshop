@@ -1,6 +1,164 @@
-# Session Summary — 2026-08-14 (full codebase audit; the five-part admin dashboard build, complete; mobile Core Web Vitals)
+# Session Summary — 2026-08-17 (the complete payment architecture + admin payment dashboard)
 
 Quick-reference recap of the LATEST session only — this file gets replaced each session, it's the fast catch-up, not the archive. See `PROGRESS.md` for the detailed batch-by-batch build log.
+
+## Where things stand right now
+
+**The payment architecture is built, verified locally, and committed to `main` — but NOT pushed.**
+Production is therefore unchanged apart from the two migrations, which are additive and invisible
+to the running build. Push when ready; Vercel deploys production on every push to `main`.
+
+Toolchain at session end: **build ✅ · tsc ✅ · eslint ✅ · 145 tests ✅** (was 44).
+
+Live site: **https://shopalexandris.vercel.app** (Vercel project `my-eshop`, team `alexandris`).
+Same shared Neon DB for local dev and production — both migrations this session hit production.
+
+> **⚠️ Before deploying, set `PAYMENTS_CONFIG_SECRET` in Vercel.** It's the AES-256-GCM key for
+> provider credentials at rest. Without it, Cash on Delivery and Bank Transfer still work (they
+> store no secrets), but saving a Stripe/Piraeus/IRIS credential fails with a clear error.
+> `openssl rand -base64 32`. It is already in the local `.env`.
+
+> **Bank Transfer is enabled but unconfigured on purpose.** Verification used an invented IBAN,
+> which was deleted afterwards rather than left in place — a fake IBAN shown to real customers
+> is worse than no bank transfer at all. Enter the real bank details at
+> `/admin/settings/payments/bank-transfer` before it can appear at checkout.
+
+## What was built
+
+`Checkout → Payment Abstraction Layer → Selected Provider`. The checkout has no vendor knowledge
+at all: it renders whatever `GET /api/payment-methods` returns and takes exactly one behavioural
+branch, `customerAction.type === "redirect"`, which is about the *action*, not the vendor. Full
+developer guide in **`PAYMENTS.md`** (how to add a provider, a method, a config field, a webhook;
+how refunds and status transitions work).
+
+- **Domain + state machine** — `lib/payments/types.ts`, `status.ts`. Ten statuses, transitions
+  validated server-side at one chokepoint. Nothing un-settles money; `cancelled`/`refunded`/
+  `expired` are terminal; there is deliberately **no** `awaiting_bank_transfer → processing`
+  edge, so nothing automatic can settle a transfer.
+- **Five new tables** — `payments`, `payment_transactions` (append-only audit trail),
+  `payment_webhook_events` (unique on `(provider, eventId)`), `payment_provider_configs`
+  (secrets encrypted), `payment_method_settings`. Payment status is kept entirely separate from
+  order status and shown side by side in the admin.
+- **Six providers** — Cash on Delivery and Bank Transfer are *real and complete* (no external
+  account needed, enabled by default). Stripe is real via hosted Checkout Sessions over its REST
+  API. Apple Pay is a capability that delegates to its processor. **IRIS and Piraeus are
+  boundaries only** — see below.
+- **Admin** — `/admin/settings/payments` (control panel, method table, per-provider pages
+  rendered from each provider's own `configFields`) and `/admin/payments` (transactions, filters,
+  timeline, webhook log, refunds). Four new capabilities: `payments:view` (editors get this),
+  `payments:manage`, `payments:refund`, `payments:configure`.
+- **Checkout** — `PaymentStep.tsx` was a hardcoded fake card form with "Demo checkout — no
+  payment is charged". It is now a pure renderer of the backend's answer. `cardSchema` and the
+  fake `ExpressCheckoutButtons` were **deleted**: this app must never accept a PAN or CVV.
+
+## Verified live in the browser, end to end
+
+Placed a real COD order (€49.18 → **€51.18** with a €2 fee configured in the admin), confirmed
+the fee appeared in the order summary, the review step, the confirmation page, the stored order
+and the confirmation email. Marked it received from `/admin/payments` (status → paid, `paidAt`
+set, timeline recorded the admin actor and note), then issued a **€10 partial refund**
+(status → partially_refunded, €41.18 remaining). Every row created was deleted afterwards.
+
+**Webhook pipeline, exercised against the live route:**
+
+| Case | Result |
+|---|---|
+| Correctly signed event | 200, `verified: true`, ignored (no matching payment) |
+| Same signature, tampered body | **400**, "signature did not match", stored unverified |
+| Identical event replayed | 200 `duplicate`, not applied twice |
+| Forged event carrying a real `paymentId` | **400**, payment unchanged |
+| Piraeus (integration pending) | **400**, payload stored with the pending-integration reason |
+
+**Idempotency:** two concurrent `/complete` calls plus a third sequential one all returned the
+same order id and the same payment id. **Secrets:** confirmed AES-GCM ciphertext in the DB
+(`v1.<iv>.<tag>.<ct>`), and the plaintext appears nowhere in the DOM or the RSC flight payload.
+**Piraeus "Test Connection"** returned `not_implemented` with "No request was made to the
+provider" — never a green tick.
+
+## Three real bugs found by verifying rather than by the type checker
+
+1. **Apple Pay reported "Connected" with no Stripe credentials anywhere.** The admin called
+   `provider.isConfigured()` directly, which is true for a delegating provider — it is
+   configured, it just has nothing to settle through. The admin now reads the same
+   `getProviderStates()` the checkout uses. Generally: **if the admin and the storefront answer
+   the same question, they must call the same function.**
+2. **A fresh install had a working checkout that offered nothing.** The two internal *methods*
+   defaulted to enabled while every *provider* defaulted to disabled, and availability requires
+   both. Providers now carry their own `defaultEnabled`, and a test asserts the two stay in step.
+3. **The €2 COD fee never reached the checkout summary.** It was charged correctly server-side
+   but `OrderSummary` didn't overlay it, so the shopper would have seen one number and paid
+   another — the exact failure mode the fee requirement exists to prevent. Same overlay pattern
+   as gift wrap.
+
+Also fixed while verifying: a real COD payment was tagged **"Test"** because providers with no
+sandbox/live split still defaulted to `sandbox`. Cash genuinely changed hands, so those providers
+now always resolve to `production`.
+
+## What is deliberately NOT connected
+
+**IRIS and Piraeus Bank ship as integration boundaries, not integrations.** Everything structural
+is real — registration, configuration UI, encrypted credential storage, a routable webhook
+endpoint, a place in the status machine and the admin. But `validateConfiguration` returns
+`not_implemented` and **never** `connected` (filling in every credential does not turn the badge
+green), `isConfigured` returns `false` unconditionally so the method can never reach checkout,
+and payment creation throws `PROVIDER_NOT_IMPLEMENTED`. No endpoint, request body, header or
+signing algorithm was guessed. Supply the acquirer's / bank's official integration guide and each
+becomes one file's worth of work with nothing else changing.
+
+**Stripe uses hosted Checkout Sessions, not Elements.** Elements needs Stripe.js in the browser,
+which this app's CSP blocks and which pulls PCI scope back toward us. Hosted means no card data
+touches the app and Apple Pay / Google Pay appear on Stripe's verified domain automatically. A
+live Stripe API call was **not** made — no real credentials exist, and firing a live external API
+unprompted isn't this project's habit. The signature verification, status mapping and event
+normalisation are covered by 21 unit tests instead.
+
+## Payment gotchas for next time
+
+- **A payment fee is a two-pass calculation.** A percentage fee is a percentage *of* the order
+  total, so the total has to exist before the fee can be computed and then folded back in.
+  `completeCheckout` resolves totals twice for exactly this reason.
+- **`cartTotalsSchema` needs `.optional()` for every new total field.** `paymentFeeTotal` is the
+  second field to hit this (after `giftWrapTotal`): every historical `Order.totals` snapshot
+  predates it, and a required field fails `toOrder` on every old order — which previously broke
+  `/admin/orders` at **build** time, not runtime.
+- **The confirmation page had to become a Server Component.** It read the order from
+  `sessionStorage`, which cannot survive a redirect-based payment (the shopper leaves and comes
+  back on a fresh navigation), and a browser-held order object can never show whether payment
+  settled. It now loads the order server-side and re-verifies with the provider before showing a
+  paid state.
+- **The order-confirmation email is no longer always sent at checkout.** For a redirect method
+  the shopper hasn't paid yet, so it goes out when the payment settles — from whichever of the
+  return-path check or the webhook wins. `Order.confirmationEmailSentAt` is claimed *before*
+  sending, from a null state, so the loser can't send a second copy.
+- **`react-hooks/set-state-in-effect` blocks an obvious data-fetching effect.** The Apple Pay
+  device check was rewritten with `useSyncExternalStore` (which is genuinely what it is); the
+  payment-methods fetch keeps a narrow, commented `eslint-disable`. Note the directive must be a
+  single-line comment immediately above the line — a block comment silently doesn't apply.
+- **One-off DB scripts: use `node` with `pg` from the project root.** The Prisma client still
+  doesn't resolve outside Next's module system, and a script placed outside the project can't
+  resolve `node_modules` either.
+- **Don't splice this file with PowerShell `Get-Content -Raw` + `Set-Content`.** It read the
+  UTF-8 source as ANSI and turned every em-dash and € into mojibake. `git checkout --` undid it;
+  use the editing tools instead.
+- **A real order from `mihalisalex@gmail.com` (€92.84, COD, `pending`) was placed mid-session**
+  and is untouched — cleanup filtered on the test address only. It's independent confirmation
+  the flow works for a real shopper.
+
+## Payment roadmap — configuration, not architecture
+
+Payment is no longer the blocker it was: the storefront can take Cash on Delivery and Bank
+Transfer today. What's left:
+
+1. **Enter the real bank details** for Bank Transfer (see the warning above).
+2. **Connect Stripe** — add keys at `/admin/settings/payments/stripe`, register the webhook at
+   `/api/payments/webhooks/stripe`, hit Test Connection. Then enable Apple Pay, which needs no
+   further credentials on the hosted-checkout path.
+3. **IRIS and Piraeus** need their official integration documentation and merchant credentials.
+4. Decide whether COD should carry a fee, and its order-value/country/delivery limits.
+
+---
+
+# Previous session — 2026-08-14 (full codebase audit; the five-part admin dashboard build, complete; mobile Core Web Vitals)
 
 ## Where things stand right now
 
@@ -95,7 +253,7 @@ Found while working, verified, deliberately not fixed — each is real but none 
 - **Preview deployments have never worked** — every branch build errors while production succeeds. Most likely missing env vars in Vercel's Preview scope. Only worth fixing if the PR flow is ever wanted back.
 
 Longer-standing, unchanged from previous sessions:
-- **Payment/Stripe** — still the biggest blocker to a real checkout. Declined three times now; ask rather than assume.
+- ~~**Payment/Stripe** — still the biggest blocker to a real checkout.~~ **Superseded 2026-08-17** — the full payment architecture was built; see the top of this file and `PAYMENTS.md`.
 - Connect real credentials for Resend / ACS Courier / OAuth. Custom domain (still `*.vercel.app`).
 - The 5 collections + homepage Best Sellers/New Arrivals are still **empty** — user chose to curate these themselves via `/admin`.
 

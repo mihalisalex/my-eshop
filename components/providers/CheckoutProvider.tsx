@@ -11,9 +11,34 @@ import {
   type ReactNode,
 } from "react";
 import { getCommerceProvider } from "@/lib/commerce";
-import type { Address, Checkout, Order, ShippingRate } from "@/lib/commerce/types";
+import type { Address, Checkout, CompleteCheckoutResult, ShippingRate } from "@/lib/commerce/types";
+import type { Money } from "@/types";
 import { useCart } from "@/components/providers/CartProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+
+/**
+ * Mirrors `AvailablePaymentMethod` in services/payments.ts — the JSON the backend
+ * sends. Deliberately structural rather than a shared import: this is a Client
+ * Component, and the service module is `server-only`.
+ *
+ * Note what's absent. There is no provider-specific field, no credential, and no
+ * capability flag the client could act on beyond `clientCapability`. The checkout
+ * genuinely cannot tell whether a method is Stripe, Piraeus, IRIS or cash.
+ */
+export interface CheckoutPaymentMethod {
+  id: string;
+  providerId: string;
+  displayName: string;
+  description: string;
+  type: string;
+  icon: string;
+  fee: Money;
+  feeLabel: string | null;
+  requiresRedirect: boolean;
+  requiresManualConfirmation: boolean;
+  clientCapability?: string;
+  sortOrder: number;
+}
 
 export type CheckoutStep = "contact" | "shipping" | "delivery" | "payment" | "review";
 const STEP_ORDER: CheckoutStep[] = ["contact", "shipping", "delivery", "payment", "review"];
@@ -38,8 +63,16 @@ interface CheckoutContextValue {
   giftWrap: boolean;
   giftMessage: string;
   setGiftWrap: (giftWrap: boolean, giftMessage?: string) => Promise<void>;
+  paymentMethods: CheckoutPaymentMethod[];
+  isLoadingPaymentMethods: boolean;
+  paymentMethodsError: string | null;
+  reloadPaymentMethods: () => Promise<void>;
+  selectedPaymentMethodId: string | null;
+  selectPaymentMethod: (methodId: string) => Promise<void>;
+  /** Server-computed surcharge for the selected method. Never derived here. */
+  selectedPaymentFee: Money | null;
   confirmPayment: () => void;
-  placeOrder: () => Promise<Order | null>;
+  placeOrder: () => Promise<CompleteCheckoutResult | null>;
   isPlacingOrder: boolean;
   orderPlaced: boolean;
 }
@@ -62,6 +95,10 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [giftWrap, setGiftWrapState] = useState(false);
   const [giftMessage, setGiftMessageState] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [paymentMethodsError, setPaymentMethodsError] = useState<string | null>(null);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
@@ -156,11 +193,74 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     [checkout, commerce]
   );
 
+  /**
+   * The whole of §20/§21 on the client: ask the backend what's available and render
+   * it. This component contains no rule about which method is valid — it can't, and
+   * shouldn't be able to.
+   */
+  const reloadPaymentMethods = useCallback(async () => {
+    if (!checkout) return;
+    setIsLoadingPaymentMethods(true);
+    setPaymentMethodsError(null);
+    try {
+      const response = await fetch(`/api/payment-methods?checkoutId=${encodeURIComponent(checkout.id)}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Request failed with ${response.status}`);
+      const data = (await response.json()) as { methods: CheckoutPaymentMethod[]; selectedMethodId: string | null };
+      setPaymentMethods(data.methods);
+      setSelectedPaymentMethodId((current) => {
+        // Keep an existing choice only while it's still on offer — a method an
+        // admin disabled mid-checkout must not stay selected.
+        if (current && data.methods.some((m) => m.id === current)) return current;
+        return data.selectedMethodId && data.methods.some((m) => m.id === data.selectedMethodId)
+          ? data.selectedMethodId
+          : null;
+      });
+    } catch (error) {
+      console.error("Failed to load payment methods", error);
+      setPaymentMethodsError("We couldn't load the available payment methods. Please try again.");
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  }, [checkout]);
+
+  // Re-fetched whenever anything the backend uses to decide availability changes —
+  // the total (gift wrap), the destination, or the delivery method. A COD limit or
+  // a country restriction therefore takes effect the moment it becomes relevant.
+  useEffect(() => {
+    if (!checkout) return;
+    /*
+     * Genuine async data fetching keyed on server-derived state. The availability
+     * rules live entirely on the backend — that is the whole point of §20 — so this
+     * cannot be derived during render, and the loading flag it sets synchronously is
+     * what the payment step renders its skeleton from. The rule can't distinguish
+     * this from a derived-state mistake, so it's suppressed here specifically.
+     */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void reloadPaymentMethods();
+  }, [checkout, selectedRateId, giftWrap, shippingAddress, reloadPaymentMethods]);
+
+  const selectPaymentMethod = useCallback(
+    async (methodId: string) => {
+      if (!checkout) return;
+      setSelectedPaymentMethodId(methodId);
+      const updated = await commerce.checkout.setPaymentMethod(checkout.id, methodId);
+      setCheckout(updated);
+    },
+    [checkout, commerce]
+  );
+
+  const selectedPaymentFee = useMemo(() => {
+    const method = paymentMethods.find((m) => m.id === selectedPaymentMethodId);
+    return method ? method.fee : null;
+  }, [paymentMethods, selectedPaymentMethodId]);
+
   const confirmPayment = useCallback(() => {
     advanceTo("review");
   }, [advanceTo]);
 
-  const placeOrder = useCallback(async (): Promise<Order | null> => {
+  const placeOrder = useCallback(async (): Promise<CompleteCheckoutResult | null> => {
     if (!checkout || !cart) return null;
     setIsPlacingOrder(true);
     try {
@@ -168,13 +268,27 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
       if (finalBilling && finalBilling !== billingAddress) {
         await commerce.checkout.updateBillingAddress(checkout.id, finalBilling);
       }
-      const order = await commerce.checkout.completeCheckout(checkout.id, cart);
+      const result = await commerce.checkout.completeCheckout(checkout.id, cart);
       setOrderPlaced(true);
+
+      // A redirect-based payment hasn't been made yet, so the cart is cleared but
+      // the analytics purchase event is not fired here — that would count an
+      // abandoned redirect as revenue. It fires on the confirmation page once the
+      // payment is verified as settled.
       await clearCart();
-      commerce.analytics.track({ name: "purchase", properties: { orderId: order.id, total: order.totals.total.amount } });
-      return order;
-    } catch {
-      toast({ title: "Couldn't place your order", description: "Please check your details and try again.", tone: "error" });
+      if (!result.customerAction || result.customerAction.type !== "redirect") {
+        commerce.analytics.track({
+          name: "purchase",
+          properties: { orderId: result.order.id, total: result.order.totals.total.amount },
+        });
+      }
+      return result;
+    } catch (error) {
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : "Please check your details and try again.";
+      toast({ title: "Couldn't place your order", description, tone: "error" });
       return null;
     } finally {
       setIsPlacingOrder(false);
@@ -201,6 +315,13 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
     giftWrap,
     giftMessage,
     setGiftWrap,
+    paymentMethods,
+    isLoadingPaymentMethods,
+    paymentMethodsError,
+    reloadPaymentMethods,
+    selectedPaymentMethodId,
+    selectPaymentMethod,
+    selectedPaymentFee,
     confirmPayment,
     placeOrder,
     isPlacingOrder,

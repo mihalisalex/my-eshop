@@ -28,7 +28,21 @@ function formatAddress(address: { firstName: string; lastName: string; company?:
 
 export function ReviewStep() {
   const t = useTranslations("Checkout");
-  const { email, shippingAddress, billingAddress, sameBillingAsShipping, shippingRates, selectedRateId, giftWrap, giftMessage, placeOrder, isPlacingOrder } = useCheckout();
+  const {
+    email,
+    shippingAddress,
+    billingAddress,
+    sameBillingAsShipping,
+    shippingRates,
+    selectedRateId,
+    giftWrap,
+    giftMessage,
+    paymentMethods,
+    selectedPaymentMethodId,
+    placeOrder,
+    isPlacingOrder,
+  } = useCheckout();
+  const selectedPaymentMethod = paymentMethods.find((method) => method.id === selectedPaymentMethodId) ?? null;
   const { cart } = useCart();
   const router = useRouter();
 
@@ -40,10 +54,18 @@ export function ReviewStep() {
   const shippingCharge = selectedRate ? computeShippingChargeForRate(selectedRate, taxableAmount, (cart?.totals.subtotal.amount ?? 0) > 0) : null;
 
   const onPlaceOrder = async () => {
-    const order = await placeOrder();
-    if (!order) return;
-    sessionStorage.setItem("alexandris_last_order", JSON.stringify(order));
-    router.push("/checkout/confirmation");
+    const result = await placeOrder();
+    if (!result) return;
+
+    // The one branch the storefront takes on payment behaviour, and it is
+    // deliberately about the ACTION, not the vendor: "this method wants the
+    // customer somewhere else" versus "it doesn't". Stripe, Piraeus, IRIS and a
+    // provider that doesn't exist yet all travel this same path.
+    if (result.customerAction?.type === "redirect" && result.customerAction.redirectUrl) {
+      window.location.href = result.customerAction.redirectUrl;
+      return;
+    }
+    router.push(`/checkout/confirmation?order=${encodeURIComponent(result.order.id)}`);
   };
 
   return (
@@ -79,6 +101,15 @@ export function ReviewStep() {
             </p>
           ) : null}
         </div>
+        {selectedPaymentMethod ? (
+          <div className="py-4">
+            <p className="text-eyebrow mb-1.5">{t("paymentMethod")}</p>
+            <p className="text-sm text-luxe-gray-dark">
+              {selectedPaymentMethod.displayName}
+              {selectedPaymentMethod.fee.amount > 0 ? ` · +${formatMoney(selectedPaymentMethod.fee)}` : ""}
+            </p>
+          </div>
+        ) : null}
         {giftWrap ? (
           <div className="py-4">
             <p className="text-eyebrow mb-1.5">{t("giftWrapping")}</p>
