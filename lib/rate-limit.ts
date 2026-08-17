@@ -1,5 +1,7 @@
 import "server-only";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimitedResponse } from "@/lib/commerce/http-errors";
 
 interface RateLimitWindow {
   /** Scopes the limit — e.g. "sign-in:{ip}", "sign-in:{email}", "sign-up:{ip}". */
@@ -54,4 +56,27 @@ export function getClientIp(headers: Headers): string {
   const forwardedFor = headers.get("x-forwarded-for");
   if (forwardedFor) return forwardedFor.split(",")[0]?.trim() || "unknown";
   return headers.get("x-real-ip") ?? "unknown";
+}
+
+/**
+ * Check-and-record in one call, returning a 429 response when the caller should stop.
+ *
+ * The auth routes deliberately keep the two-step peek/record form because they only want
+ * FAILED attempts to count. Everything else — cart writes, checkout creation, order
+ * completion, the catalog endpoint — is limiting request volume itself, where every call
+ * counts and the split was just six lines of ceremony repeated per route. Of 47 API
+ * routes only ten had any limit at all, and the ones that could create rows or run the
+ * heaviest queries were among those that didn't.
+ *
+ * Usage: `const limited = await enforceRateLimit(request, {...}); if (limited) return limited;`
+ */
+export async function enforceRateLimit(
+  request: Request,
+  { name, limit, windowMs }: { name: string; limit: number; windowMs: number }
+): Promise<NextResponse | null> {
+  const key = `${name}:ip:${getClientIp(request.headers)}`;
+  const status = await isRateLimited({ key, limit, windowMs });
+  if (status.limited) return rateLimitedResponse(status.retryAfterSeconds);
+  await recordAttempt(key);
+  return null;
 }

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   getAllProducts,
   getProductBySlug,
@@ -14,6 +15,10 @@ import {
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
+    // Unauthenticated and unpaginated — an unfiltered call returns the whole catalog (~323 KB).
+    const limited = await enforceRateLimit(request, { name: "products", limit: 240, windowMs: 600000 });
+    if (limited) return limited;
+
 
   const slug = searchParams.get("slug");
   if (slug) {
