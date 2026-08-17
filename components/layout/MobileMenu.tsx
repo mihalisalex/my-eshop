@@ -19,12 +19,14 @@ import type { NavItem } from "@/types";
 
 interface MobileMenuProps {
   items: NavItem[];
+  /** The footer's Support column, so a phone user can reach Contact/FAQ/Size Guide from the menu. */
+  supportLinks?: { label: string; href: string }[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   triggerLight: boolean;
 }
 
-export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMenuProps) {
+export function MobileMenu({ items, supportLinks = [], open, onOpenChange, triggerLight }: MobileMenuProps) {
   const t = useTranslations("MobileMenu");
   const close = () => onOpenChange(false);
 
@@ -112,6 +114,18 @@ export function MobileMenu({ items, open, onOpenChange, triggerLight }: MobileMe
               </Link>
             </li>
           </ul>
+
+          {supportLinks.length > 0 ? (
+            <ul className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm text-luxe-gray-dark">
+              {supportLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} onClick={close} className="no-underline">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>

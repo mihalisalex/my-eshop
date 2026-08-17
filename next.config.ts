@@ -2,19 +2,32 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { REMOTE_IMAGE_HOSTS } from "./lib/image-hosts";
 
-// Baseline, not hardened: unsafe-inline/unsafe-eval are here because Next.js dev/hydration
-// and Framer Motion's inline transform styles need them without a nonce-based CSP wired
-// through middleware. Before shipping this for real, replace this CSP with a nonce or hash
-// strategy and drop unsafe-inline/unsafe-eval — that's a bigger change (a proxy.ts nonce
-// generator + every inline script/style tagged) than fits alongside the rest of this header.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
+/**
+ * Still a baseline rather than a hardened policy, but no longer identical in dev and prod.
+ *
+ * "unsafe-eval" is required by the DEV bundler only (fast refresh evaluates modules at
+ * runtime); a production Next build never needs it, and leaving it on was handing back the
+ * single most valuable thing a CSP buys you. It is now dev-only.
+ *
+ * "unsafe-inline" stays in both. Next emits inline bootstrap/flight scripts and this app
+ * has its own pre-paint consent script, while Framer Motion writes inline transform styles
+ * — removing it needs a nonce generated per request in proxy.ts and threaded through every
+ * inline script and style, which is a real change rather than a config tweak. That remains
+ * the next step for anyone hardening this further (audit QA-057).
+ */
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline'" + (IS_DEV ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://images.unsplash.com",
   "font-src 'self' data:",
   "connect-src 'self'",
   "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
 ].join("; ");
 
 const SECURITY_HEADERS = [

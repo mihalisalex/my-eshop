@@ -26,26 +26,30 @@ export function VariantSelector({
 }: VariantSelectorProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-eyebrow mb-2">Color — {selectedColor}</p>
-        <div className="flex items-center gap-2">
-          {product.colors.map((color) => (
-            <button
-              key={color.name}
-              type="button"
-              aria-label={color.name}
-              aria-pressed={selectedColor === color.name}
-              onClick={() => onSelectColor(color.name)}
-              className={cn(
-                "flex size-9 items-center justify-center rounded-full border-2 transition-colors",
-                selectedColor === color.name ? "border-luxe-black" : "border-transparent"
-              )}
-            >
-              <span className="block size-6 rounded-full border border-border" style={{ backgroundColor: color.hex }} />
-            </button>
-          ))}
+      {/* Omitted entirely for a product with no colour variants, which previously still
+          rendered the label as a dangling "COLOR —" above an empty row of swatches. */}
+      {product.colors.length > 0 ? (
+        <div>
+          <p className="text-eyebrow mb-2">Color — {selectedColor}</p>
+          <div className="flex items-center gap-2">
+            {product.colors.map((color) => (
+              <button
+                key={color.name}
+                type="button"
+                aria-label={color.name}
+                aria-pressed={selectedColor === color.name}
+                onClick={() => onSelectColor(color.name)}
+                className={cn(
+                  "flex size-9 items-center justify-center rounded-full border-2 transition-colors",
+                  selectedColor === color.name ? "border-luxe-black" : "border-transparent"
+                )}
+              >
+                <span className="block size-6 rounded-full border border-border" style={{ backgroundColor: color.hex }} />
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div>
         <div className="mb-2 flex items-center justify-between">

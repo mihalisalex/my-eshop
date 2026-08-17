@@ -28,6 +28,16 @@ type SearchEntry =
 
 const MIN_QUERY_LENGTH = 2;
 
+/**
+ * The query is echoed back verbatim in the no-results message, so a very long one (a
+ * pasted paragraph, or an accidental key-repeat) filled the panel with the shopper own
+ * text instead of a readable message. React escapes it, so this is legibility rather
+ * than safety.
+ */
+function truncateForDisplay(query: string): string {
+  return query.length > 60 ? query.slice(0, 60) + "…" : query;
+}
+
 export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
   const t = useTranslations("Search");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -247,7 +257,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
               ) : isSearching ? (
                 <p className="py-8 text-sm text-luxe-gray-dark">{t("searching")}</p>
               ) : showNoResults ? (
-                <p className="py-8 text-sm text-luxe-gray-dark">{t("noResults", { query: debouncedQuery.trim() })}</p>
+                <p className="py-8 text-sm text-luxe-gray-dark">{t("noResults", { query: truncateForDisplay(debouncedQuery.trim()) })}</p>
               ) : (
                 <div className="space-y-6">
                   {products.length > 0 ? (

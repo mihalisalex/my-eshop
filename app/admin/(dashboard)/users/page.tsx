@@ -10,17 +10,12 @@ export default async function AdminUsersPage() {
   // Reaching this page at all already requires admin:users, so role editing is enabled —
   // updateAdminRole re-checks server-side regardless.
   const [session, users] = await Promise.all([requireCapabilityOrRedirect("admin:users"), getAdminUsers()]);
-  const canManageUsers = true;
 
   return (
     <div>
       <AdminPageHeader
         title="Users"
-        description={
-          canManageUsers
-            ? "People with access to this dashboard."
-            : "People with access to this dashboard. Your role can't change roles."
-        }
+        description="People with access to this dashboard."
         actions={
           <Link
             href="/admin/roles"
@@ -47,7 +42,7 @@ export default async function AdminUsersPage() {
           },
           {
             header: "Role",
-            cell: (row) => <RoleSelect userId={row.id} defaultRole={row.role} disabled={!canManageUsers} />,
+            cell: (row) => <RoleSelect userId={row.id} defaultRole={row.role} />,
           },
         ]}
         rows={users}

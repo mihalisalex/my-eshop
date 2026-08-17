@@ -54,6 +54,10 @@ export function Header({
             <div className="flex items-center gap-4">
               <MobileMenu
                 items={navigation.primary}
+                // The Support column from the footer, reused rather than duplicated — a
+                // shopper on a phone had no route to Contact, FAQ, Size Guide or
+                // Shipping & Returns short of scrolling to the very bottom of the page.
+                supportLinks={navigation.footer.find((column) => column.title === "Support")?.links ?? []}
                 open={mobileOpen}
                 onOpenChange={setMobileOpen}
                 triggerLight={isLight}
