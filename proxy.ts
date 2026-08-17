@@ -81,6 +81,13 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/account")) {
+    // Reachable in BOTH states, which is why it isn't simply "public": signed out, it's
+    // the page an emailed reset link lands on (gating it behind a session made the whole
+    // forgot-password flow unreachable — the link bounced straight to /account/login);
+    // signed in, someone who requested a reset before logging in elsewhere must still be
+    // able to finish it rather than be bounced to /account with their token discarded.
+    if (pathname === "/account/reset-password") return NextResponse.next();
+
     const isPublicRoute = pathname === "/account/login" || pathname === "/account/register";
     const token = request.cookies.get(CUSTOMER_SESSION_COOKIE)?.value;
     const session = token ? await verifyCustomerSession(token) : null;

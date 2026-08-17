@@ -71,12 +71,15 @@ export function getProductBadges(product: Product): ProductBadge[] {
   return badges;
 }
 
-/**
- * Deterministic "N people bought this recently" social-proof count, derived from the
- * SKU rather than `Math.random()` so server and client render the same number.
- * A real adapter would source this from actual order analytics.
+/*
+ * `getRecentPurchaseCount` was here: a hash of the SKU (`6 + hash % 24`) rendered on
+ * every PDP as "N people bought this in the last 48 hours". It was REMOVED, not
+ * relocated or disabled behind a flag, because it stated a fact about other customers'
+ * behaviour that was never true — a product created with zero sales displayed "27
+ * people bought this". Fabricated consumer statements of that kind are a banned
+ * practice under Annex I of the EU Unfair Commercial Practices Directive as amended by
+ * the Omnibus Directive, so this is a legal exposure rather than a UX choice.
+ *
+ * If real social proof is wanted later it has to be derived from `Order.lineItems`
+ * within a genuine time window, and rendered only when the real count is non-zero.
  */
-export function getRecentPurchaseCount(product: Product): number {
-  const hash = product.sku.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return 6 + (hash % 24);
-}

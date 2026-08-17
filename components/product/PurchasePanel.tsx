@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Flame, Heart, Minus, Plus, Ruler, Truck } from "lucide-react";
+import { Heart, Minus, Plus, Ruler, Truck } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   findSizeVariant,
   getEffectivePrice,
   getProductBadges,
-  getRecentPurchaseCount,
   isOnSale,
 } from "@/lib/product";
 import { getDeliveryEstimate } from "@/lib/delivery";
@@ -66,7 +65,6 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
   const wishlisted = isInWishlist(product.id);
   const sizeVariant = selectedSize ? findSizeVariant(product, selectedSize) : undefined;
   const maxQuantity = sizeVariant ? (sizeVariant.quantity > 0 ? sizeVariant.quantity : 99) : 10;
-  const recentPurchaseCount = getRecentPurchaseCount(product);
 
   const canAdd = product.availableForSale && Boolean(selectedSize) && !isMutating;
 
@@ -166,13 +164,6 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
           <Heart className={cn("size-5", wishlisted ? "fill-luxe-black" : "")} strokeWidth={1.5} />
         </button>
       </div>
-
-      {recentPurchaseCount > 0 ? (
-        <p className="mt-4 flex items-center gap-1.5 text-xs text-luxe-gray-dark">
-          <Flame className="size-3.5" strokeWidth={1.5} />
-          {recentPurchaseCount} people bought this in the last 48 hours
-        </p>
-      ) : null}
 
       <div className="mt-6 flex items-start gap-2 border-t border-border pt-4 text-sm text-luxe-gray-dark">
         <Truck className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />

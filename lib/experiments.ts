@@ -4,8 +4,8 @@ import { generateId, readStorage, writeStorage } from "@/lib/client-storage";
  * Extends `lib/feature-flags.ts`'s local-registry pattern one level up — an
  * experiment returns a variant key instead of a boolean, per that file's own doc
  * comment. Assignment is deterministic (hash of experiment key + visitor id), not
- * `Math.random()` — same reasoning as `lib/product.ts`'s `getRecentPurchaseCount`:
- * a real assignment must stay stable for a given visitor across renders/reloads,
+ * `Math.random()`, because a real assignment must stay stable for a given visitor
+ * across renders and reloads,
  * which a per-call random draw can't guarantee. A real experimentation platform
  * (GrowthBook, Statsig, LaunchDarkly) would replace this file's internals with a
  * fetch against that provider while keeping the same `getVariant` signature.
