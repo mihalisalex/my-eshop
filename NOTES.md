@@ -4,19 +4,37 @@ Quick-reference recap of the LATEST session only — this file gets replaced eac
 
 ## Where things stand right now
 
-**The payment architecture is built, verified locally, and committed to `main` — but NOT pushed.**
-Production is therefore unchanged apart from the two migrations, which are additive and invisible
-to the running build. Push when ready; Vercel deploys production on every push to `main`.
+**The payment architecture is built, pushed and LIVE in production** — commit `24e8ce2`,
+deployment `dpl_D2haRwUbjkynJVtsL4iNFm4uxfuf`, holding the `shopalexandris.vercel.app` alias.
+Nothing is pending.
+
+A **redeploy of the previous commit (`7baada2`) was building at the same time** and could have
+taken the production alias after mine, silently rolling the site back — the exact hazard recorded
+from an earlier session. It didn't win, but the lesson stands: after pushing, confirm the live
+site is serving the NEW code rather than just that a deployment went green. The check used here
+was polling for a route that only exists in the new build
+(`/api/payments/webhooks/stripe`), which detects a rollback directly.
+
+Production smoke checks after deploy (read-only, no test orders created): homepage and `/checkout`
+200; `/admin/payments` 307s to login when unauthenticated; `/api/payment-methods` with no checkout
+returns a clean `INVALID_INPUT` rather than a 500; and **an unsigned webhook POST claiming
+`payment_intent.succeeded` was refused with 400**.
 
 Toolchain at session end: **build ✅ · tsc ✅ · eslint ✅ · 145 tests ✅** (was 44).
 
 Live site: **https://shopalexandris.vercel.app** (Vercel project `my-eshop`, team `alexandris`).
 Same shared Neon DB for local dev and production — both migrations this session hit production.
 
-> **⚠️ Before deploying, set `PAYMENTS_CONFIG_SECRET` in Vercel.** It's the AES-256-GCM key for
-> provider credentials at rest. Without it, Cash on Delivery and Bank Transfer still work (they
-> store no secrets), but saving a Stripe/Piraeus/IRIS credential fails with a clear error.
-> `openssl rand -base64 32`. It is already in the local `.env`.
+> **⚠️ `PAYMENTS_CONFIG_SECRET` must stay identical in `.env` and Vercel.** It's the AES-256-GCM
+> key for provider credentials at rest, and local dev and production share one Neon database —
+> different keys would make a locally-saved credential undecryptable in production. Both are set.
+>
+> It was **rotated after the commit**: the first value was a placeholder I had invented for local
+> testing (`local-dev-only-…`), which is not a secret — low entropy, and it had appeared in a chat
+> transcript. Replaced with a real 32-byte random value. Rotating cost nothing because zero rows
+> existed in `payment_provider_configs` at the time; **rotating it later invalidates every stored
+> credential** and they must be re-entered. Nothing verifies this from outside the app — if it's
+> ever wrong, `/admin/settings/payments` shows an amber banner saying credentials can't be stored.
 
 > **Bank Transfer is enabled but unconfigured on purpose.** Verification used an invented IBAN,
 > which was deleted afterwards rather than left in place — a fake IBAN shown to real customers
