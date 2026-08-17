@@ -124,6 +124,33 @@ export async function getProviderStates(): Promise<Map<PaymentProviderId, Provid
 }
 
 /**
+ * The methods this store can accept AT ALL — enabled, and their provider both switched
+ * on and configured — ignoring order-specific rules like minimums, destination country
+ * or the chosen delivery rate.
+ *
+ * Deliberately separate from `getAvailablePaymentMethods`, which answers a narrower
+ * question ("what may this particular order be paid with"). This one exists for the
+ * footer's accepted-payment badges, which previously hardcoded
+ * ["Visa","Mastercard","Amex","PayPal"] — advertising four card brands on every page of
+ * a shop that could only take cash on delivery, one of which (PayPal) is not implemented
+ * anywhere in the codebase.
+ */
+export async function getAcceptedPaymentMethodNames(): Promise<string[]> {
+  const [settingsList, states] = await Promise.all([getAllMethodSettings(), loadProviderStates()]);
+  const settingsById = new Map(settingsList.map((settings) => [settings.methodId, settings]));
+
+  return paymentProviderRegistry
+    .listMethods()
+    .filter((definition) => {
+      const settings = settingsById.get(definition.id);
+      const state = states.get(definition.providerId);
+      return Boolean(settings?.enabled && state?.enabled && state?.configured);
+    })
+    .sort((a, b) => (settingsById.get(a.id)?.sortOrder ?? 0) - (settingsById.get(b.id)?.sortOrder ?? 0))
+    .map((definition) => settingsById.get(definition.id)?.displayName || definition.defaultDisplayName);
+}
+
+/**
  * What the checkout is allowed to show (§20/§21). The backend decides — the
  * storefront renders whatever comes back and nothing else, so enabling or
  * disabling a method in the admin changes checkout immediately with no deploy.

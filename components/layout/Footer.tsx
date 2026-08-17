@@ -2,16 +2,27 @@ import Link from "next/link";
 import type { NavigationConfig, SiteSettings } from "@/types";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { getAcceptedPaymentMethodNames } from "@/services/payments";
 
 interface FooterProps {
   navigation: NavigationConfig;
   settings: SiteSettings;
 }
 
-const PAYMENT_METHODS = ["Visa", "Mastercard", "Amex", "PayPal"];
-
-export function Footer({ navigation, settings }: FooterProps) {
+/**
+ * The accepted-payment badges used to be a hardcoded
+ * ["Visa","Mastercard","Amex","PayPal"] — four claims on every page of a shop that could
+ * only take cash on delivery, one of them (PayPal) not implemented anywhere. They are now
+ * read from the same configuration the checkout uses, so the footer cannot advertise
+ * something the checkout won't offer, and renders nothing at all when no method is live
+ * rather than falling back to a plausible-looking list.
+ *
+ * Resolved here rather than passed in as a prop: the Footer already has ~30 call sites,
+ * all of which would otherwise need threading a value none of them care about.
+ */
+export async function Footer({ navigation, settings }: FooterProps) {
   const year = new Date().getFullYear();
+  const paymentMethods = await getAcceptedPaymentMethodNames();
 
   return (
     <footer className="border-t border-border bg-luxe-white">
@@ -65,16 +76,18 @@ export function Footer({ navigation, settings }: FooterProps) {
             </p>
             <LanguageSwitcher />
           </div>
-          <ul className="flex items-center gap-2">
-            {PAYMENT_METHODS.map((method) => (
-              <li
-                key={method}
-                className="rounded-none border border-border px-2.5 py-1 text-[10px] tracking-[0.05em] text-luxe-gray-dark uppercase"
-              >
-                {method}
-              </li>
-            ))}
-          </ul>
+          {paymentMethods.length > 0 ? (
+            <ul className="flex flex-wrap items-center gap-2">
+              {paymentMethods.map((method) => (
+                <li
+                  key={method}
+                  className="rounded-none border border-border px-2.5 py-1 text-[10px] tracking-[0.05em] text-luxe-gray-dark uppercase"
+                >
+                  {method}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </footer>
