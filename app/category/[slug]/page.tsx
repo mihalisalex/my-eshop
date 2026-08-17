@@ -34,12 +34,13 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   const { slug } = await params;
   const [category, seo] = await Promise.all([getCategoryBySlug(slug), getSeoDefaults()]);
   if (!category || !category.isVisible) return {};
+  // `||`, not `??` — same empty-string-is-not-absent reasoning as the product page.
   return buildMetadata({
     seo,
-    title: category.seo?.title ?? category.name,
-    description: category.seo?.description ?? category.description,
+    title: category.seo?.title || category.name,
+    description: category.seo?.description || category.description,
     path: ROUTES.category(category.slug),
-    image: category.seo?.ogImage ?? category.bannerImage?.src ?? category.image?.src,
+    image: category.seo?.ogImage || category.bannerImage?.src || category.image?.src,
   });
 }
 

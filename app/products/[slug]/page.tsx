@@ -42,12 +42,17 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   if (!rawProduct) return {};
   const product = localizeProduct(rawProduct, locale as Locale);
 
+  // `||`, not `??`: an override saved through the admin form with its optional SEO
+  // block left blank is stored as "" rather than absent, and `??` would hand that
+  // empty string straight to the <title>. See normalizeSeoOverride in
+  // lib/validation/product.ts — that stops NEW rows being written this way, this
+  // makes rows already written that way render their real name.
   return buildMetadata({
     seo,
-    title: product.seo?.title ?? product.name,
-    description: product.seo?.description ?? product.description,
+    title: product.seo?.title || product.name,
+    description: product.seo?.description || product.description,
     path: `/products/${product.slug}`,
-    image: product.seo?.ogImage ?? product.images[0]?.src,
+    image: product.seo?.ogImage || product.images[0]?.src,
     locale: locale as "en" | "el",
   });
 }

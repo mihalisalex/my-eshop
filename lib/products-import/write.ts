@@ -1,8 +1,9 @@
 import "server-only";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notifyBackInStockIfNeeded } from "@/lib/products-import/back-in-stock";
 import { findOrCreateCategoryBySlug } from "@/services/categories";
-import type { ProductFormValues } from "@/lib/validation/product";
+import { normalizeSeoOverride, type ProductFormValues } from "@/lib/validation/product";
 
 /**
  * `categoryId` is resolved once, outside `toProductWriteData`, and threaded in — the
@@ -36,7 +37,12 @@ function toProductWriteData(data: ProductFormValues, categoryId: string, previou
     costPriceAmount: data.costPrice ?? null,
     currencyCode: data.currencyCode,
     images: data.images,
-    videos: data.videos ?? undefined,
+    // `Prisma.DbNull`, NOT `undefined`, for these two nullable Json columns. `undefined`
+    // is Prisma's "leave this column alone" (see resolveArchivedAt above, which relies on
+    // exactly that), so on an UPDATE it silently preserves the previous value instead of
+    // clearing it — removing every video from a product, or blanking its SEO override,
+    // would appear to save and change nothing. Only the create path was ever correct.
+    videos: data.videos?.length ? data.videos : Prisma.DbNull,
     categoryId,
     tags: data.tags,
     gender: data.gender,
@@ -58,7 +64,10 @@ function toProductWriteData(data: ProductFormValues, categoryId: string, previou
     archivedAt: resolveArchivedAt(data.status, previousStatus),
     brand: data.brand ?? null,
     vendor: data.vendor ?? null,
-    seo: data.seo ?? undefined,
+    // Blank-but-present SEO fields are collapsed away here rather than stored as empty
+    // strings — see normalizeSeoOverride for why "" is not the same as absent, and the
+    // note on `videos` above for why the empty case must be DbNull rather than undefined.
+    seo: normalizeSeoOverride(data.seo) ?? Prisma.DbNull,
   };
 }
 

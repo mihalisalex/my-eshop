@@ -28,6 +28,37 @@ export const productSeoOverrideSchema = z.object({
   ogImage: z.string().optional(),
 });
 
+export type ProductSeoOverride = z.infer<typeof productSeoOverrideSchema>;
+
+/**
+ * Collapses a SEO override to `undefined` when every field is blank, and drops
+ * individual blank fields.
+ *
+ * This exists because of the same react-hook-form trap already documented for
+ * categories: registering `seo.title`/`seo.description` makes RHF materialise the
+ * PARENT as `{ title: "", description: "" }` rather than leaving it undefined, so a
+ * product saved with the optional SEO block untouched stored empty strings. Every
+ * consumer then read them with `product.seo?.title ?? product.name` — and `??` only
+ * falls back on null/undefined, never on "". The result was a product page whose
+ * `<title>` rendered as " | Alexandris Stores" with no meta description, appearing
+ * one product at a time as the catalog got edited, with nothing in the UI to
+ * indicate it had happened.
+ *
+ * Normalising at the write boundary is what stops new rows being created that way;
+ * the read-side fallbacks were made truthiness-based in the same change so rows
+ * already written like this render correctly too.
+ */
+export function normalizeSeoOverride(
+  seo: ProductSeoOverride | null | undefined
+): ProductSeoOverride | undefined {
+  if (!seo) return undefined;
+  const cleaned: ProductSeoOverride = {};
+  if (seo.title?.trim()) cleaned.title = seo.title.trim();
+  if (seo.description?.trim()) cleaned.description = seo.description.trim();
+  if (seo.ogImage?.trim()) cleaned.ogImage = seo.ogImage.trim();
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
+
 export const colorVariantSchema = z.object({
   name: z.string().min(1),
   hex: z
