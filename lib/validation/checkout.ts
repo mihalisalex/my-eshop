@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isSupportedCountryCode } from "@/constants/countries";
 
 export const contactSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Enter a valid email address"),
@@ -14,8 +15,30 @@ export const addressSchema = z.object({
   city: z.string().trim().min(1, "City is required"),
   region: z.string().trim().optional(),
   postalCode: z.string().trim().min(2, "Enter a valid postal code"),
-  countryCode: z.string().trim().min(2, "Select a country"),
-  phone: z.string().trim().optional(),
+  // Checked against the list the shop actually ships to, not just "at least two
+  // characters" — the previous rule accepted any string, so a crafted request could
+  // put an arbitrary value on the order and every downstream country-based rule
+  // (payment-method availability, future shipping zones) would silently not match it.
+  countryCode: z
+    .string({ error: "Select a country" })
+    .trim()
+    .transform((value) => value.toUpperCase())
+    .refine(isSupportedCountryCode, "We don't ship to that country yet"),
+  // Required, not optional. Every order this shop can currently take is Cash on
+  // Delivery, and a courier delivering to a Greek address needs a number to call. It
+  // was optional and format-free, so an order could reach the courier with no way to
+  // contact the customer. Kept deliberately loose on format: real numbers arrive with
+  // spaces, dashes, brackets and an optional +country prefix, and rejecting a valid
+  // number is worse than accepting a slightly odd one.
+  // The `error` argument covers the MISSING-key case as well as a wrong type. Without
+  // it an omitted phone surfaced Zod's own "expected string, received undefined" to the
+  // shopper — a type error dressed up as a validation message.
+  phone: z
+    .string({ error: "Phone number is required so the courier can reach you" })
+    .trim()
+    .min(1, "Phone number is required so the courier can reach you")
+    .refine((value) => (value.match(/\d/g)?.length ?? 0) >= 8, "Enter a valid phone number")
+    .refine((value) => /^[+\d][\d\s()./-]*$/.test(value), "Phone number can only contain digits, spaces and + ( ) - . /"),
 });
 export type AddressFormValues = z.infer<typeof addressSchema>;
 

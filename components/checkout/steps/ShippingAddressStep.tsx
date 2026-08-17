@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight } from "lucide-react";
 import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
-import { COUNTRIES } from "@/constants/countries";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { useCheckout } from "@/components/providers/CheckoutProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { AddressAutocompleteInput } from "@/components/checkout/AddressAutocompleteInput";
@@ -35,7 +35,7 @@ export function ShippingAddressStep() {
       city: "",
       region: "",
       postalCode: "",
-      countryCode: "US",
+      countryCode: DEFAULT_COUNTRY_CODE,
       phone: "",
     },
   });
@@ -202,9 +202,26 @@ export function ShippingAddressStep() {
 
       <div>
         <label htmlFor="phone" className="mb-1.5 block text-eyebrow">
-          Phone (optional)
+          Phone
         </label>
-        <input id="phone" type="tel" autoComplete="tel" className={inputClass} {...register("phone")} />
+        <input
+          id="phone"
+          type="tel"
+          autoComplete="tel"
+          aria-invalid={Boolean(errors.phone)}
+          aria-describedby={errors.phone ? "phone-error" : "phone-hint"}
+          className={inputClass}
+          {...register("phone")}
+        />
+        {errors.phone ? (
+          <p id="phone-error" className="mt-1.5 text-xs text-destructive">
+            {errors.phone.message}
+          </p>
+        ) : (
+          <p id="phone-hint" className="mt-1.5 text-xs text-luxe-gray-dark">
+            So the courier can reach you about your delivery.
+          </p>
+        )}
       </div>
 
       <button

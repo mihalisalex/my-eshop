@@ -65,7 +65,9 @@
     "noMessageAdded": "No message added",
     "placeOrder": "Place Order",
     "placingOrder": "Placing Order...",
-    "demoDisclaimer": "By placing your order you agree to our Terms of Service."
+    "termsAgreement": "By placing your order you agree to our",
+    "termsLink": "Terms of Service",
+    "termsAgreementSuffix": "."
   },
   "Plp": {
     "filter": "Filter",

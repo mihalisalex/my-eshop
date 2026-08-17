@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ROUTES } from "@/constants/routes";
 import { formatMoney } from "@/lib/format";
 import { computeShippingChargeForRate } from "@/lib/shipping";
 import { useCart } from "@/components/providers/CartProvider";
@@ -126,7 +128,21 @@ export function ReviewStep() {
       >
         {isPlacingOrder ? t("placingOrder") : t("placeOrder")}
       </button>
-      <p className="text-center text-[11px] text-luxe-gray-dark">{t("demoDisclaimer")}</p>
+      {/* "Terms of Service" was plain text with no anchor anywhere on the page — the
+          shopper was asked to agree to a document they had no way to open. The
+          translation key was even called `demoDisclaimer`. */}
+      <p className="text-center text-[11px] text-luxe-gray-dark">
+        {t("termsAgreement")}{" "}
+        <Link
+          href={ROUTES.legal("terms-of-service")}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-luxe-black underline underline-offset-2"
+        >
+          {t("termsLink")}
+        </Link>
+        {t("termsAgreementSuffix")}
+      </p>
     </div>
   );
 }

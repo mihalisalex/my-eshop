@@ -69,7 +69,10 @@ export default function AccountAddressesPage() {
             editState?.mode === "edit" && editState.addressId === address.id ? (
               <AddressForm
                 key={address.id}
-                defaultValues={address}
+                // Phone became required, but addresses saved before that change may not
+                // have one — seed the field empty so the form asks for it rather than
+                // failing to render an address the customer already has.
+                defaultValues={{ ...address, phone: address.phone ?? "" }}
                 onSubmit={(values) => handleUpdate(address.id, values)}
                 onCancel={() => setEditState(null)}
                 submitLabel="Update Address"

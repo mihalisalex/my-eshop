@@ -3,7 +3,7 @@
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addressSchema, type AddressFormValues } from "@/lib/validation/checkout";
-import { COUNTRIES } from "@/constants/countries";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/constants/countries";
 import { AddressAutocompleteInput } from "@/components/checkout/AddressAutocompleteInput";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
       city: "",
       region: "",
       postalCode: "",
-      countryCode: "US",
+      countryCode: DEFAULT_COUNTRY_CODE,
       phone: "",
     },
   });
@@ -174,9 +174,21 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
 
       <div>
         <label htmlFor="af-phone" className="mb-1.5 block text-eyebrow">
-          Phone (optional)
+          Phone
         </label>
-        <input id="af-phone" type="tel" className={inputClass} {...register("phone")} />
+        <input
+          id="af-phone"
+          type="tel"
+          aria-invalid={Boolean(errors.phone)}
+          aria-describedby={errors.phone ? "af-phone-error" : undefined}
+          className={inputClass}
+          {...register("phone")}
+        />
+        {errors.phone ? (
+          <p id="af-phone-error" className="mt-1.5 text-xs text-destructive">
+            {errors.phone.message}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex gap-3">
