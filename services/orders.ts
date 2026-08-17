@@ -1,5 +1,7 @@
 import "server-only";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_PAGE_SIZE, resolvePage, toPaged, type Paged } from "@/lib/pagination";
 import { toOrder } from "@/lib/commerce/postgres/mappers";
 import { getEmailProvider, shippingUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
@@ -15,10 +17,70 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
   return rows.map(toOrder);
 }
 
+/**
+ * Every order, unpaged — kept for the two screens that genuinely aggregate over the whole
+ * set (the dashboard's recent-orders strip and revenue figures, and Analytics). The
+ * orders LIST no longer uses it; see `listOrdersForAdmin`. This is the next thing to
+ * revisit when order volume grows, since both callers really want SQL aggregates rather
+ * than every row in memory.
+ */
 export async function getAllOrdersForAdmin(): Promise<Order[]> {
   const rows = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
   return rows.map(toOrder);
 }
+
+export interface AdminOrderQuery {
+  search?: string;
+  status?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * The admin orders list: filtered, searched and paged in SQL.
+ *
+ * It used to render every order ever placed, with no search and no status filter, so
+ * finding one order meant Ctrl-F over the whole table. Fine at nine orders and unusable
+ * at nine hundred — and the fix has to be server-side, because the point is not fetching
+ * them all in the first place.
+ *
+ * Search covers the three things someone actually has to hand: the short order reference
+ * a customer quotes (matched against the tail of the id, which is what
+ * `orderReference()` renders), the email address, and the name on the shipping label.
+ * The name lives inside a Json column, so it is matched with Prisma's `string_contains`
+ * on the specific paths rather than by casting the whole document to text — that would
+ * also match street names and gift messages, which is a surprising place for a search
+ * for "Anna" to land.
+ */
+export async function listOrdersForAdmin(query: AdminOrderQuery = {}): Promise<Paged<Order>> {
+  const pageSize = query.pageSize ?? DEFAULT_PAGE_SIZE;
+  const search = query.search?.trim();
+
+  const where: Prisma.OrderWhereInput = {
+    ...(query.status ? { status: query.status } : {}),
+    ...(search
+      ? {
+          OR: [
+            // A customer quotes "#38QLUMG3"; the stored id is the full cuid.
+            { id: { endsWith: search.replace(/^#/, "").toLowerCase() } },
+            { customerEmail: { contains: search, mode: "insensitive" } },
+            { shippingAddress: { path: ["firstName"], string_contains: search, mode: "insensitive" } },
+            { shippingAddress: { path: ["lastName"], string_contains: search, mode: "insensitive" } },
+            { trackingNumber: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
+  const total = await prisma.order.count({ where });
+  const { page, skip, take } = resolvePage(total, { page: query.page ?? 1, pageSize });
+  const rows = await prisma.order.findMany({ where, orderBy: { createdAt: "desc" }, skip, take });
+
+  return toPaged(rows.map(toOrder), total, page, pageSize);
+}
+
+/** Status values the filter offers, in fulfilment order. */
+export const ORDER_STATUS_FILTERS = ["confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"] as const;
 
 /** The statuses that mean the goods are not going out, so their units belong back on the shelf. */
 const STOCK_RETURNING_STATUSES = new Set(["cancelled", "refunded"]);
