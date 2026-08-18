@@ -1,5 +1,175 @@
 # ALEXANDRIS — Progress Notes
 
+## Full pre-launch audit, then 40 of 63 findings fixed — COMPLETE, verified clean (tsc + eslint + build + 186 tests + production-build walkthrough), 18 commits pushed, HEAD `ebcd82b`
+
+The brief was a complete page-by-page, feature-by-feature functional audit of the whole shop and
+admin — not a design review — followed by fixing what it found. The audit ran against the live
+Neon database: routes requested, forms submitted, API requests crafted, database rows inspected
+before and after, a real order placed end to end and then removed.
+
+**63 findings. 40 fixed and verified, 1 partly fixed, 1 withdrawn as wrong, 21 open, 4 launch
+blockers remaining — and none of the four is code.** Two live artifacts hold the detail:
+Launch Readiness (current) at `https://claude.ai/code/artifact/0795b30b-6cca-4921-a074-cefb8ff50ff4`
+and the original 63-finding audit at `https://claude.ai/code/artifact/bd90ab98-6680-4c70-9d1b-7a0f7d532160`.
+
+### The commercially serious ones
+
+**VAT was being added to VAT-inclusive prices, at a rate that isn't Greek.** `VAT_RATE` was 0.21
+and applied on top of the displayed price, so a €59 shoe billed at €78.34 — while the shop's own
+Terms of Service said "all prices ... include VAT". Now inclusive at 24%. The critical distinction
+is that `vatIncludedIn()` is `gross × rate / (1 + rate)`, not `gross × rate`; confusing those two
+IS the original bug, so it is one named function with a comment saying which is which. VAT is
+extracted from the pre-gift-card total on purpose — a gift card is a means of payment, not a price
+reduction, so redeeming one must not change the VAT the sale bore. The three client-side display
+overlays (shipping rate, gift wrap, payment fee) had to start recomputing the tax line, which was
+correct to skip under the old exclusive model and wrong under this one.
+
+**Every missing page returned HTTP 200 with 404 content.** The cause was `app/loading.tsx`: a ROOT
+`loading.tsx` wraps every route in a Suspense boundary, so Next flushes the shell — committing 200 —
+before the page component resolves, and by the time `notFound()` ran the status had gone out. Now
+scoped to an `app/(listing)/` route group covering only `/women`, `/men`, `/new-in`, `/sale`, which
+cannot 404 and are the only pages a product-grid skeleton ever suited. `/collections` deliberately
+stays outside the group because it contains `/collections/[slug]`, which can. **Adding a
+`loading.tsx` to any route that calls `notFound()` reintroduces this bug.**
+
+**Password reset was completely dead.** `proxy.ts` treated only `/account/login` and
+`/account/register` as reachable without a session, so the emailed reset link 307'd to the login
+page and no customer could ever set a new password. It is now allowed in BOTH states, not simply
+added to the public list: signed out it is where the email lands, and signed in someone who
+requested a reset elsewhere must still be able to finish rather than be bounced with their token
+discarded.
+
+**Two pieces of fabricated content were shipped to customers.** "N people bought this in the last
+48 hours" was `6 + (hash of SKU % 24)` — a product created with zero sales displayed "27 people".
+Deleted, not disabled behind a flag. And the Privacy Policy still ended with a section headed
+"This Is a Demo".
+
+### Storefront search moved into Postgres
+
+Listing pages downloaded the whole scoped catalog before showing a card: `/women` pulled 205 KB
+from `/api/products`, filtered/sorted/faceted/paginated it in JavaScript, and issued a SECOND
+500-product request purely to read the price-slider bounds. **`/women` is now 13,278 bytes, from
+one request instead of two — a 94% cut.**
+
+Written as raw SQL rather than the query builder for one specific reason: every price rule here
+operates on the EFFECTIVE price, `COALESCE(salePrice, price)`, which Prisma cannot express in
+`where` or `orderBy` — and 172 of 175 products carry a sale price, so sorting on
+`salePriceAmount` alone puts every full-price product in the wrong place. Values go through
+`Prisma.sql`; the raw query only decides WHICH products, and rows are hydrated through Prisma and
+the existing `toProduct` mapper. Two details that would have been silent bugs: facets are counted
+over the SCOPE rather than the refined results (otherwise choosing "black" zeroes every other
+colour and strands the shopper), and every sort carries `p.id` as a tiebreaker (without a total
+order, two equally-priced products swap between pages and one is never seen).
+
+### Data integrity and validation
+
+- **Cart quantity was clamped only on the update path.** A first add of 9999 against a size holding
+  one unit stored 9999 and produced a €713,900 cart. Both branches now share one clamp.
+- **Colour was never validated** — any string was accepted, stored on the line item, and
+  snapshotted into `Order.lineItems` for the admin to read while picking. It also broke the dedupe
+  key, letting the per-line stock cap be bypassed.
+- **An order could be created with no payment method at all** — stock decremented, gift cards
+  debited, status `confirmed`, and the confirmation page's `isSettled || !payment` branch showed
+  the green success tick. Now refused; the confirmation page treats a missing payment as failure.
+- **Stock never came back on cancel or refund.** Claimed via a null-guarded new
+  `Order.restockedAt` before any stock is written, so two concurrent status changes can't both
+  credit. Only `deny`-policy lines are restored: for a `continue` product the original decrement
+  was `min(ordered, available)`, so crediting the full amount could invent stock.
+- **Admin product saves silently destroyed page titles.** RHF materialises
+  `seo: {title:"", description:""}`, and `??` doesn't fall back on `""`. **The first fix silently
+  did nothing** — `undefined` is Prisma's "leave this column alone", so nullable JSON columns need
+  `Prisma.DbNull`. The identical latent bug in `videos` was fixed alongside.
+
+### Admin
+
+Server-side paging, search and filters for **orders** (by short reference with or without the `#`,
+email, customer name, tracking, plus status) and **inventory** (25 of 1,050 rows, lowest stock
+first, search + stock-level filter). Shared `lib/pagination.ts` + `Pagination`/`ListFilterBar`
+render as plain links and a GET form, so filters live in the URL and survive a refresh.
+`/admin/products` (175) and `/admin/media` (317) deliberately still filter client-side — their
+filter/sort/bulk-selection state is interdependent, and paging them means first deciding what
+select-all means across pages.
+
+**Admin user management now exists at all** — create, delete, and self-service password change.
+Previously the Users page could only change a role, so adding a colleague or creating a second
+admin meant a direct database write. Deleting yourself is refused (it would invalidate the session
+making the request); deleting the last admin is refused; password change requires the current
+password and clears the session cookie afterwards, since a password changed *because* it may be
+compromised has to actually end the sessions using it.
+
+### Content, legal and merchandising
+
+Trader identity now lives in `constants/company.ts` and feeds the footer, contact page, all three
+legal documents and the Organization JSON-LD — **Alexandris Michail, Arthur Evans 9, 71201
+Heraklion, Crete, ΑΦΜ 146214557, alexandrisstores@gmail.com, 2814 001 031**. `legalName` and
+`brandName` are separate fields on purpose: legal documents must name the registered trader.
+The contact address was replaced in `data/settings.json` AND in the live `SiteContent` row — the
+JSON is only the fallback, which is exactly why the `.example` placeholder survived so long.
+
+All three legal documents were rewritten for a Greek distance seller: lawful bases, processors,
+retention, GDPR rights and the Hellenic DPA, the 14-day withdrawal right alongside the existing
+30-day returns offer, the ODR platform, the Consumer's Ombudsman, governing law.
+
+Merchandising: collections filled from each product's category via a re-runnable
+`scripts/merchandise.ts`; homepage Featured Collections, New Arrivals and editorial banner
+re-enabled; `/new-in` switched from an `isNew` flag nobody had ever set to sorting by `createdAt`
+(which also fixed "Newest" being a **no-op on every listing page**); six seeded test orders purged,
+dropping dashboard revenue from €1,196.43 to €146.52.
+
+**"Best Sellers" was deliberately left OFF** — with 2 real payments, any list under that heading
+would be a claim about sales that never happened, the same class of thing as the purchase counter
+just removed.
+
+### Two corrections to the audit's own findings
+
+The audit reported the homepage `collectionIds` `c1`–`c5` as stale demo values. **They are the
+real IDs** — the section only looked broken because every collection it pointed at was empty.
+
+The audit reported ~1 pair per size as an inventory defect. **That is the real stock and it is
+normal for an independent footwear retailer** — a warehouse model read onto a small shop. The
+useful part survived correction: the scarcity badge counted total UNITS, so it fired on 147 of 164
+products, which is not a signal. It now counts available SIZES and appears on the 27% where that
+means something, saying "Last size" or "Few sizes left" where "Low Stock" had been one word for two
+different messages.
+
+### One regression shipped and then fixed
+
+Making `phone` required broke reading every order placed while it was optional: `addressSchema`
+doubled as an input validator AND as the parser for stored JSON in `toOrder`/`toCheckout`, so the
+admin dashboard and orders list both 500'd on a ZodError. Split into a strict `addressSchema` for
+input and a lenient `storedAddressSchema` for persisted data. It was caught by reading the server
+log — `tsc`, `eslint` and the full test suite stayed green throughout, because none of them touch
+stored rows. **Tightening what an app accepts must never retroactively invalidate what it already
+wrote.**
+
+### Also fixed
+
+Greek public holidays (including 15 August and the Orthodox Easter cluster, computed per year) in
+delivery estimates; production CSP dropped `unsafe-eval` and gained `base-uri`/`form-action`/
+`object-src`; password policy now screens common passwords rather than only counting characters;
+rate limits on order completion, checkout/cart creation, cart writes and the catalog endpoint; CSV
+import routes moved from authentication-only to `catalog:edit`; the 320px horizontal overflow
+(a `<select>`'s intrinsic width — a flex item never shrinks below its intrinsic minimum unless
+`min-width` is cleared); Instagram tiles that linked to `#`; the footer advertising Visa/Mastercard/
+Amex/PayPal on a shop that could only take cash; checkout defaulting to United States; phone
+optional on a cash-on-delivery shop; "Terms of Service" being plain text with no anchor anywhere on
+the page; empty Materials/Care accordions and a "wearing size M" fit note on footwear; admin prices
+showing pre-discount figures on 172 of 175 rows; structured data advertising a `/search` page that
+doesn't exist; "0 items" flashing before results load; size facets in insertion order.
+
+### Testing traps discovered (recorded in NOTES.md — they cost hours)
+
+`pkill -f "next start"` does not kill the process in this environment: every rebuilt server after
+the first failed to bind with `EADDRINUSE` and silently kept serving the OLD build, which made
+byte-identical code appear to behave differently at two paths. Kill by port and check the log.
+Folders named `__something` are PRIVATE in the App Router and never routed, so probe routes named
+`__probe*` returned 404 because the route didn't exist. The dev server must be restarted after a
+Prisma schema change. And deleting an order does not restock it — five units silently went missing
+from the live catalog during testing before that was noticed.
+
+Tests went **145 → 186**. All test data created during the audit was removed and re-verified:
+175 products, 2 orders, 1 admin, stock restored to audit-start values.
+
 ## Complete payment architecture + admin payment dashboard — COMPLETE, verified clean (tsc + eslint + build + 145 tests + live browser walkthrough incl. a real COD order, manual confirmation, partial refund and the full webhook pipeline)
 
 The last major gap. Payment had been declined three times across previous sessions and was the
