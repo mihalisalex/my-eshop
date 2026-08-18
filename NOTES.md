@@ -134,9 +134,17 @@ Confirmed against the live database: **exactly one `AdminUser` row**, `alexandri
 and its password is **not** the seeded `admin123`. The demo account is gone. But one account is
 still one lost password away from lockout — **create a second admin** at `/admin/users`.
 
-`README.md` still advertises `admin@alexandris-demo.example` / `admin123` as the demo login, in a
-**public** GitHub repo. That account no longer exists so it is not a live risk, but the README is
-now wrong and should be corrected.
+**The published admin password is gone (fixed, `6ac548c`).** `README.md` had advertised
+`admin@alexandris-demo.example` / `admin123` in a **public** repo — a working login to the account
+that edits prices and reads customer addresses, had anyone ever seeded it against a real database.
+Fixed at the root, not in the prose: `lib/auth.ts` no longer exports `DEMO_ADMIN_*`, and
+`scripts/seed.ts` reads `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, generating a random password
+and printing it **once** when unset.
+
+Two guards on the seed, because seed scripts get run against production eventually: it **skips
+entirely** when admins already exist and no `SEED_ADMIN_EMAIL` was given (otherwise re-seeding the
+live database silently adds an `admin@example.com` with admin rights), and it **creates rather than
+upserts**, so a re-run can never reset an existing admin's password or role.
 
 ## Still open below blocker level
 
@@ -193,5 +201,8 @@ call about which browsers can shop here).
 3. **Resend key + `EMAIL_FROM`** — until then no order confirmation, password reset or
    back-in-stock mail is actually sent; it only logs to `EmailLog`.
 4. Real social profile URLs, or leave them empty.
-5. Fix the `README.md` demo-login line.
-6. A real domain, when there is one — then re-run `apply-site-url.ts` and redeploy.
+5. A real domain, when there is one — then re-run `apply-site-url.ts` and redeploy.
+
+`README.md` was rewritten in `6ac548c` — it had still described the pre-Postgres prototype
+("payment is cosmetic only", "no API routes exist yet to rate-limit", mock auth, `data/*.json` as
+the content source). It now describes what is actually deployed.
