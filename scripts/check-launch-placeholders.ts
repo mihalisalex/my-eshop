@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { COMPANY } from "@/constants/company";
 
 /**
  * Fails if content that must be replaced before launch is still in the repo.
@@ -23,7 +24,7 @@ const CHECKS: { file: string; markers: { marker: string; why: string }[] }[] = [
   {
     file: "data/legal.json",
     markers: [
-      { marker: "COMPANY_DETAILS_PENDING", why: "Registered name, address, VAT (ΑΦΜ) and ΓΕΜΗ number are legally required on a Greek e-shop." },
+      { marker: "COMPANY_DETAILS_PENDING", why: "Trader identity placeholder — should have been replaced from constants/company.ts." },
       { marker: "This Is a Demo", why: "Demo disclaimer must not appear in a live legal document." },
       { marker: "demo storefront", why: "Demo disclaimer must not appear in a live legal document." },
     ],
@@ -47,6 +48,20 @@ const CHECKS: { file: string; markers: { marker: string; why: string }[] }[] = [
 ];
 
 const findings: Finding[] = [];
+
+/**
+ * Not every launch blocker is a string in a file. The ΓΕΜΗ number is mandatory on a
+ * Greek commercial site and is simply absent rather than wrong, so it needs its own
+ * check — a grep would never find it.
+ */
+if (!COMPANY.gemiNumber) {
+  findings.push({
+    file: "constants/company.ts",
+    marker: "COMPANY.gemiNumber is null",
+    count: 1,
+    why: "The ΓΕΜΗ registry number is legally required on a Greek commercial website. It is omitted from the trader identity line until set.",
+  });
+}
 
 for (const check of CHECKS) {
   let contents: string;

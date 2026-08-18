@@ -3,6 +3,7 @@ import type { NavigationConfig, SiteSettings } from "@/types";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { getAcceptedPaymentMethodNames } from "@/services/payments";
+import { COMPANY, traderIdentityLine } from "@/constants/company";
 
 interface FooterProps {
   navigation: NavigationConfig;
@@ -66,6 +67,20 @@ export async function Footer({ navigation, settings }: FooterProps) {
             </ul>
           </div>
         ))}
+      </div>
+
+      {/* Greek and EU law require the trader’s identity, registered address and VAT number
+          to be reachable from any page of a commercial site — the footer is where a shopper
+          looks for it, and it costs one line. */}
+      <div className="border-t border-border">
+        <div className="container-luxe py-4">
+          <p className="text-xs text-luxe-gray-dark">{traderIdentityLine()}</p>
+          <p className="mt-1 text-xs text-luxe-gray-dark">
+            <a href={`mailto:${COMPANY.email}`} className="underline underline-offset-2">{COMPANY.email}</a>
+            {" · "}
+            <a href={`tel:${COMPANY.phoneE164}`} className="underline underline-offset-2">{COMPANY.phone}</a>
+          </p>
+        </div>
       </div>
 
       <div className="border-t border-border">

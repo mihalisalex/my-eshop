@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { COMPANY, formattedAddress } from "@/constants/company";
 
 /**
  * Rewrites data/legal.json for a real Greek e-shop (QA-007).
@@ -15,12 +16,14 @@ import { resolve } from "node:path";
  * the storefront really states, and the 14-day statutory withdrawal right that sits
  * alongside it. Nothing describes a feature that does not exist.
  *
- * Trader identity is deliberately left as a single, obvious placeholder token rather than
- * invented. `COMPANY_DETAILS_PENDING` appears wherever a registered name, address, VAT
- * (ΑΦΜ) or ΓΕΜΗ number belongs — see scripts/check-legal-placeholders.ts, which fails if
- * any survives, so this cannot reach production unnoticed.
+ * Trader identity comes from constants/company.ts so the registered name, address, ΑΦΜ
+ * and contact details exist in exactly one place. The ΓΕΜΗ number is still outstanding:
+ * COMPANY.gemiNumber is null, the identity line simply omits it rather than printing an
+ * empty label, and scripts/check-launch-placeholders.ts fails while it stays null.
  */
-const PENDING = "COMPANY_DETAILS_PENDING";
+const IDENTITY = `${COMPANY.legalName}, ${formattedAddress()}, VAT (ΑΦΜ) ${COMPANY.vatNumber}${COMPANY.gemiNumber ? `, ΓΕΜΗ ${COMPANY.gemiNumber}` : ""}`;
+const EMAIL = COMPANY.email;
+const PHONE = COMPANY.phone;
 const UPDATED = "2026-08-18";
 
 interface Section {
@@ -42,7 +45,7 @@ const pages: LegalPage[] = [
     sections: [
       {
         heading: "Who We Are",
-        body: `This shop is operated by ${PENDING} ("we", "us"), registered in Greece at ${PENDING}, VAT (ΑΦΜ) ${PENDING}, ΓΕΜΗ ${PENDING}. We are the data controller for the personal data described here. For any privacy question, or to exercise the rights set out below, contact us at ${PENDING}.`,
+        body: `This shop is operated by ${IDENTITY}. We are the data controller for the personal data described here. For any privacy question, or to exercise the rights set out below, write to ${EMAIL} or call ${PHONE}.`,
       },
       {
         heading: "What We Collect",
@@ -78,7 +81,7 @@ const pages: LegalPage[] = [
         heading: "Your Rights",
         body:
           `Under the GDPR you may ask us for a copy of your data, ask us to correct it, ask us to delete it, ask us to restrict or stop a particular use, object to processing based on our legitimate interests, and ask for your data in a portable form. Where processing relies on consent you can withdraw it at any time.\n\n` +
-          `Write to ${PENDING} and we will respond within one month. If you believe we have handled your data improperly you can complain to the Hellenic Data Protection Authority (Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα), Kifissias 1-3, 115 23 Athens, www.dpa.gr.`,
+          `Write to ${EMAIL} and we will respond within one month. If you believe we have handled your data improperly you can complain to the Hellenic Data Protection Authority (Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα), Kifissias 1-3, 115 23 Athens, www.dpa.gr.`,
       },
       {
         heading: "Cookies",
@@ -93,7 +96,7 @@ const pages: LegalPage[] = [
     sections: [
       {
         heading: "Who You Are Buying From",
-        body: `Purchases on this site are a distance contract with ${PENDING}, registered in Greece at ${PENDING}, VAT (ΑΦΜ) ${PENDING}, ΓΕΜΗ ${PENDING}, contactable at ${PENDING}. These terms apply to every order placed here.`,
+        body: `Purchases on this site are a distance contract with ${IDENTITY}. You can reach us at ${EMAIL} or ${PHONE}. These terms apply to every order placed here.`,
       },
       {
         heading: "Prices and VAT",
@@ -135,7 +138,7 @@ const pages: LegalPage[] = [
       {
         heading: "Complaints and Dispute Resolution",
         body:
-          `Please contact us first at ${PENDING} — most things are resolved quickly.\n\n` +
+          `Please contact us first at ${EMAIL} or ${PHONE} — most things are resolved quickly.\n\n` +
           "If we cannot resolve it between us, you may use the European Commission's Online Dispute Resolution platform at ec.europa.eu/consumers/odr, or refer the matter to the Hellenic Consumer's Ombudsman (Συνήγορος του Καταναλωτή), www.synigoroskatanaloti.gr.",
       },
       { heading: "Governing Law", body: "These terms are governed by Greek law, and the courts of Greece have jurisdiction. This does not deprive you of the protection of mandatory consumer rules in your country of residence." },
@@ -166,6 +169,5 @@ const pages: LegalPage[] = [
 const target = resolve(process.cwd(), "data/legal.json");
 writeFileSync(target, `${JSON.stringify(pages, null, 2)}\n`, "utf8");
 
-const placeholders = JSON.stringify(pages).split(PENDING).length - 1;
 console.log(`Wrote ${pages.length} legal pages to data/legal.json`);
-console.log(`${placeholders} ${PENDING} tokens remain — replace them before launch.`);
+console.log(COMPANY.gemiNumber ? "Trader identity complete." : "NOTE: COMPANY.gemiNumber is still null — the ΓΕΜΗ number is legally required and is omitted from the identity line until it is set.");

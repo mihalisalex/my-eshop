@@ -3,14 +3,26 @@
   "tagline": "Modern Luxury, Underfoot.",
   "logo": "/logo.svg",
   "favicon": "/favicon.ico",
-  "contactEmail": "hello@alexandris-demo.example",
+  "contactEmail": "alexandrisstores@gmail.com",
   "currency": "EUR",
   "locale": "en-US",
   "socialLinks": [
-    { "platform": "instagram", "url": "https://instagram.com/alexandris" },
-    { "platform": "facebook", "url": "https://facebook.com/alexandris" },
-    { "platform": "tiktok", "url": "https://tiktok.com/@alexandris" },
-    { "platform": "pinterest", "url": "https://pinterest.com/alexandris" }
+    {
+      "platform": "instagram",
+      "url": "https://instagram.com/alexandris"
+    },
+    {
+      "platform": "facebook",
+      "url": "https://facebook.com/alexandris"
+    },
+    {
+      "platform": "tiktok",
+      "url": "https://tiktok.com/@alexandris"
+    },
+    {
+      "platform": "pinterest",
+      "url": "https://pinterest.com/alexandris"
+    }
   ],
   "announcementMessages": [
     "Free shipping on all orders over €150",

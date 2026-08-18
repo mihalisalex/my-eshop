@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { BreadcrumbItem, FaqItem, Product, SiteSeoDefaults } from "@/types";
+import { COMPANY } from "@/constants/company";
 
 interface PageMetadataInput {
   seo: SiteSeoDefaults;
@@ -53,14 +54,31 @@ export function buildMetadata({
   };
 }
 
+/**
+ * Now carries the real registered address, VAT number and contact points from
+ * constants/company.ts. For a single-location Greek shop that is what lets search
+ * engines associate the site with an actual business rather than a name and a logo.
+ */
 export function organizationSchema(seo: SiteSeoDefaults) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: seo.organization.name,
+    legalName: COMPANY.legalName,
     url: seo.siteUrl,
     logo: seo.organization.logo,
     sameAs: seo.organization.sameAs,
+    vatID: COMPANY.vatNumber,
+    email: COMPANY.email,
+    telephone: COMPANY.phoneE164,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: COMPANY.address.street,
+      postalCode: COMPANY.address.postalCode,
+      addressLocality: COMPANY.address.city,
+      addressRegion: COMPANY.address.region,
+      addressCountry: COMPANY.address.countryCode,
+    },
   };
 }
 
