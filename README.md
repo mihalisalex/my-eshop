@@ -1,91 +1,182 @@
 # ALEXANDRIS
 
-A luxury fashion ecommerce platform foundation — Zara/COS-inspired minimal editorial design, built on a vendor-neutral commerce abstraction so a real backend (Shopify, WooCommerce, Medusa, Commerce Layer, a custom API) can be plugged in by writing adapters, not by rewriting the app. Storefront, admin dashboard, product detail pages, and a fully working cart are all in place; checkout, real payment, and real auth are the deliberate edge of "foundation" (see "Not Yet Built").
+A luxury footwear ecommerce shop — Zara/COS-inspired minimal editorial design — **live in production** at [shopalexandris.vercel.app](https://shopalexandris.vercel.app), selling a real catalogue and taking real orders.
+
+Storefront, checkout, payments, transactional email, courier integration and a full admin dashboard are all real and Postgres-backed. It is built on a vendor-neutral commerce abstraction, so a different backend (Shopify, WooCommerce, Medusa, Commerce Layer) could be swapped in by writing adapters rather than rewriting the app.
+
+Two things are deliberately not connected yet, and the shop is honest about both rather than faking them: **card payments** (Stripe is code-complete and unit-tested but has no keys, so checkout offers Cash on Delivery only) and **outbound email** (no `EMAIL_PROVIDER` is set, so mail is written to the `EmailLog` table and never delivered).
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui (Base UI) · Framer Motion · Lucide Icons · React Hook Form + Zod · Next.js Metadata API
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui (Base UI) · Prisma 7 + Neon Postgres · Framer Motion · React Hook Form + Zod · next-intl · Vercel Blob · Resend · Vitest
 
 ## Getting Started
 
 ```bash
 npm install
+```
+
+Copy `.env.example` to `.env` and fill it in. `DATABASE_URL` (a Neon pooled connection string), `ADMIN_SESSION_SECRET` and `CUSTOMER_SESSION_SECRET` are the minimum needed to boot; everything else degrades gracefully when unset, which is the point — an unconfigured provider hides its UI or falls back to a safe local default rather than erroring.
+
+```bash
+npx prisma migrate deploy
+npx tsx scripts/seed.ts
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) for the storefront, or [http://localhost:3000/admin](http://localhost:3000/admin) for the dashboard.
 
-**Admin demo login:** `admin@alexandris-demo.example` / `admin123` (pre-filled on the login form). This is real authentication (a Postgres-backed `AdminUser` row, bcrypt-hashed password, a signed JWT session cookie checked by `proxy.ts`) — the demo account is just seeded data, not a mocked auth mechanism.
+**Admin access.** Authentication is real: an `AdminUser` row in Postgres, a bcrypt-hashed password, and a `jose`-signed JWT session cookie enforced by `proxy.ts`.
+
+There are **no demo credentials** and nothing is pre-filled on the login form. `scripts/seed.ts` creates the first admin from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, and if those are unset it generates a random password and prints it once:
+
+```
+Created admin user admin@example.com.
+Password: kW3f9Qx7_pR2vNc1LtYbHs4A
+This is shown ONCE and is not stored anywhere in plaintext.
+```
+
+This used to be a hardcoded `admin123` exported from `lib/auth.ts` and published here. In a public repository that is a working login to the account that can edit prices, read customer addresses and delete orders — it only had to be seeded once against a real database to become real.
+
+Re-running the seed never touches an existing admin. After the first one, manage admins at `/admin/users` (create, delete, self-service password change, with guards against deleting yourself or the last remaining admin).
+
+### Before deploying
+
+```bash
+npx tsx scripts/check-launch-placeholders.ts
+```
+
+Fails loudly if placeholder content is still in the repo. It exists because a "This Is a Demo" Privacy Policy section and an unreachable `.example` contact address both survived on the live storefront long enough to stop being noticed — the failure mode is that nobody looks.
 
 ## Architecture
 
 Nothing renders hardcoded content. Every component is prop-driven and reads through one seam:
 
 ```
-data/*.json        → mock content, shaped like a future API response
-services/*.ts       → CMS/content-layer functions (products, collections, nav,
-                       homepage, blog, settings) reading data/ today
-lib/commerce/       → the vendor-neutral commerce abstraction (see below) —
+Postgres            → the source of truth (Prisma, prisma/schema.prisma)
+data/*.json         → FALLBACKS only, used when a SiteContent row is missing,
+                       and the seed input for scripts/seed.ts
+services/*.ts       → content + domain functions (products, collections, nav,
+                       homepage, blog, settings, search, payments)
+lib/commerce/       → the vendor-neutral commerce abstraction —
                        Cart, Checkout, Customer, Wishlist, Search, Auth, Analytics
-components/         → ui/ (shadcn primitives), layout/ (header, footer, nav),
-                       sections/ (homepage blocks), product/, cart/, admin/, shared/
+components/         → ui/ (shadcn primitives), layout/, sections/, product/,
+                       cart/, admin/, shared/
 types/              → the domain model (Product, Collection, HomepageSection
-                       as a discriminated union, etc.) — the contract
-                       everything else is built against
+                       as a discriminated union, etc.)
 ```
 
-### CMS abstraction
-
-`CMSService` (part of the same `lib/commerce/types.ts` interface set) covers Homepage, Navigation, Settings, Blog/Journal, About, Campaigns, Lookbooks, and Landing Pages — each with its own `data/*.json` + `services/*.ts`, wired through the one mock adapter in `lib/commerce/providers/mock/cms.service.ts`. Swapping in a real headless CMS (Sanity, Strapi, Contentful) means writing one new adapter file against this same interface — no component changes. Landing pages (`/landing/[slug]`) are the clearest proof this works end-to-end: a landing page is just a `HomepageSection[]` at an arbitrary slug, rendered by the exact same `SectionRenderer` the homepage uses, so a whole new page type costs nothing beyond a route and a data file. Collections deliberately stay under the separate `CollectionService` rather than folding into CMS — they're a merchandising concern (pricing, availability, product membership), not editorial content.
+**The `data/*.json` files are fallbacks, not content.** The running shop reads the database. Editing one of them changes nothing a visitor sees unless the corresponding `SiteContent` row is missing — which is exactly how a demo domain once survived in every canonical URL while the repo looked correct. The `scripts/apply-*.ts` scripts exist to write these values into the live rows.
 
 ### Commerce Provider abstraction
 
-`lib/commerce/types.ts` defines ten vendor-neutral service interfaces (`ProductService`, `CollectionService`, `CartService`, `CheckoutService`, `CustomerService`, `WishlistService`, `SearchService`, `CMSService`, `AuthenticationService`, `AnalyticsService`) aggregated into one `CommerceProvider`. `lib/commerce/providers/mock/` implements all ten against `services/*.ts` and `localStorage` — no component ever imports a vendor SDK. `lib/commerce/index.ts` is the single factory (`getCommerceProvider()`, env-driven via `NEXT_PUBLIC_COMMERCE_PROVIDER`) — adding a real backend means implementing the same interfaces under `lib/commerce/providers/<name>/` and adding one case there. Dependency injection is used throughout (e.g. `CartService` and `SearchService` both take `ProductService` as a constructor argument rather than reaching into storage themselves).
+`lib/commerce/types.ts` defines ten vendor-neutral service interfaces (`ProductService`, `CollectionService`, `CartService`, `CheckoutService`, `CustomerService`, `WishlistService`, `SearchService`, `CMSService`, `AuthenticationService`, `AnalyticsService`) aggregated into one `CommerceProvider`. No component ever imports a vendor SDK. `lib/commerce/index.ts` is the single factory (`getCommerceProvider()`), and it is the only switch statement in the codebase that knows adapters exist.
 
-Cart and Wishlist state is bridged into React via `components/providers/CartProvider.tsx` and `WishlistProvider.tsx` (optimistic updates, undo-on-remove, a small custom toast system in `components/providers/ToastProvider.tsx`). Both are mounted once in the root layout.
+Eight of the ten — Products, Collections, Cart, Checkout, Customer, Wishlist, Auth and Search — are **Postgres-backed** through Route Handler facades, because this factory only ever runs in the browser and so cannot import Prisma-backed services directly. Only CMS and Analytics remain locally implemented. The exported name `createMockCommerceProvider` is legacy from when all ten were mocks; renaming it touches every import site and has been deferred.
 
-### Product model (Phase 2)
+Dependency injection throughout: `SearchService` takes `ProductService` as a constructor argument rather than reaching into storage itself.
 
-`types/product.ts` covers multi-image galleries, product video, per-size inventory (`quantity`, SKU, barcode), preorder/backorder, gender/season/materials/care instructions, explicit or category-derived related products, and an SEO override. `lib/product.ts` centralizes the derived logic (`getEffectivePrice`, `getProductBadges`, `isSizePurchasable`, low-stock detection) so pricing/badge rules live in exactly one place.
+### Payments
 
-### Product Detail Page
+See **`PAYMENTS.md`** for the full guide. Checkout → payment abstraction → selected provider. The checkout knows only `PaymentMethod` / `PaymentIntent` / `PaymentStatus` / `PaymentResult` and takes exactly one behavioural branch (`customerAction.type === "redirect"`), which is about the action, not the vendor. Adding a provider is a new file plus one registry line.
 
-`app/products/[slug]/page.tsx` (statically generated via `generateStaticParams`) composes a zoomable/video-capable `Gallery`, a sticky `PurchasePanel` (variant selectors, size guide, quantity, recently-purchased indicator, delivery estimate), a `ProductAccordion` (fit, care, shipping, returns), reviews (`data/reviews.json`, future-ready for real submissions), related products, and a `RecentlyViewedSection` backed by `hooks/use-recently-viewed.ts`. Product + Breadcrumb JSON-LD included.
+- **Cash on Delivery** and **Direct Bank Transfer** — real and complete, no external account needed. Bank transfer deliberately has no `awaiting_bank_transfer → processing` edge in its state machine: creating the order does not mark it paid, because there is no automatic path to settlement.
+- **Stripe** — code-complete and unit-tested against its hosted checkout. Needs keys.
+- **IRIS** and **Piraeus Bank** — deliberate integration *boundaries*. The provider, config screen, webhook endpoint and registry entry all exist, but payment creation refuses rather than guessing an undocumented bank API. They cannot reach checkout in this state.
 
-### Cart system
+Provider credentials are AES-256-GCM encrypted at rest with a key derived from `PAYMENTS_CONFIG_SECRET`; a missing key is a hard error at the point of use rather than a silent fallback to a hardcoded default. Every provider can also be configured entirely through environment variables (`<PROVIDER_ID>_<FIELD_KEY>`, upper-snake-cased), which is the right choice in production — an env var always wins over an admin-saved value, and the admin shows such a field as read-only rather than pretending a write took effect.
 
-Persistent, localStorage-backed guest cart with promo codes (validated against the same `data/discounts.json` the admin manages), mock gift cards, automatic VAT + free-shipping-threshold calculation, saved-for-later, cart recommendations, and stock-aware quantity limits. `components/cart/CartDrawer.tsx` (slide-in, opens on add) and `app/cart/page.tsx` (full page) share the same `useCart()` hook, which also exposes `clearCart()` — used by checkout on order completion so cart UI state stays in sync everywhere.
-
-The homepage is a config-driven list of sections (`data/homepage.json`), rendered by `components/sections/SectionRenderer.tsx`. The admin's Homepage Sections editor (`/admin/homepage`) edits that same shape. Changes are in-memory only; wire `services/homepage.ts` to a real persistence layer to make Save/Publish real.
-
-### Search
-
-The header's search overlay (`components/layout/SearchOverlay.tsx`) is instant search, not a static input: debounced (250ms) live queries against `SearchService`, inline product and collection preview results, trending searches (`data/trending-searches.json`) and localStorage-backed recent searches shown when the query is empty, and full keyboard navigation (arrow keys, Enter, Escape). Matching covers name, description, category, tags, materials, SKU, color, and size. There's no separate `/search` results page by design — results render inline in the overlay.
-
-### Product listing pages
-
-`/women`, `/men`, `/new-in`, `/sale`, `/collections`, and `/collections/[slug]` all share one template, `components/plp/ProductListingPage.tsx`: color/size/price/availability filters with faceted counts, sort, and infinite scroll — all driven by the URL (`?color=&size=&minPrice=&sort=&page=`), so any filtered view is a shareable link. Filtering runs through the same `SearchService` the header's search overlay uses, just scoped by `gender`/`isNew`/`isSale`/`collectionId` instead of a text query.
-
-### Authentication & account
-
-`components/providers/AuthProvider.tsx` (`useAuth()`) wraps the mock `AuthenticationService` — email/password, a cosmetic "magic link" mode, and Google/Apple/Facebook buttons that are honest visual placeholders (same pattern as Express Checkout). `/account/login` and `/account/register` are public; everything else (`/account`, `/orders`, `/addresses`, `/returns`, `/profile`, `/preferences`, `/security`) lives under a route-group layout that redirects signed-out visitors to login. `/wishlist` stays a top-level, guest-accessible route. Addresses saved in the account carry over into checkout as a prefill for signed-in shoppers; guest checkout is untouched.
+Payment status is tracked separately from order status, with an append-only `payment_transactions` audit trail and a single server-side `assertTransition` chokepoint.
 
 ### Checkout
 
-`/checkout` is a multi-step guest checkout (contact → shipping → delivery → payment → review) driven by `components/providers/CheckoutProvider.tsx` and `CheckoutService`. Address autocomplete (`lib/address-autocomplete.ts`) is a mock Places-style dataset — swap that one module for a real provider. Payment is cosmetic only: card fields validate client-side (Luhn-length regex, no real card network), Apple Pay/Google Pay/PayPal/Klarna are visual placeholders that toast "not connected in this demo," and the Payment step carries a small disclaimer that no payment is charged. Placing an order clears the cart, hands the `Order` to `/checkout/confirmation` via `sessionStorage` (a one-off UI handoff, not a persisted lookup), and shows the order recap.
+`/checkout` is a multi-step guest checkout (contact → shipping → delivery → payment → review). Orders, carts and checkouts are all persisted in Postgres. VAT is **inclusive** at the Greek 24% — `vatIncludedIn()` is `gross × rate / (1 + rate)`, not `gross × rate`; confusing those two is a real bug this codebase has already had, which is why it is one named function. VAT is computed on the pre-gift-card total, because a gift card is a means of payment rather than a price reduction.
+
+Delivery estimates skip Greek public holidays, including the Orthodox Easter cluster.
+
+### Authentication & account
+
+Customers get real email/password auth plus **Google, Facebook and Apple OAuth** (`lib/oauth/`). Each provider's button simply doesn't render until its credentials are set, so an unconfigured provider degrades rather than erroring. Sessions are signed JWTs in cookies, with `CUSTOMER_SESSION_SECRET` deliberately separate from `ADMIN_SESSION_SECRET` so compromising one doesn't compromise the other. Password reset works end to end (request → emailed token → single-use redemption).
+
+`/account/login` and `/account/register` are public; the rest of `/account` is behind a route-group layout that redirects signed-out visitors. `/wishlist` stays guest-accessible.
+
+### Search
+
+Storefront search and all listing-page filtering run **in Postgres** (`services/search.ts`, `/api/search`). One request returns a page of results, the facet counts and the price bounds together.
+
+It uses raw SQL rather than the query builder for a specific reason: every price rule operates on the effective price, `COALESCE(salePrice, price)`, which Prisma cannot express in `where`/`orderBy` — and almost every product carries a sale price. Facets count the *scope*, not the refined set, so picking one colour doesn't zero every other. Every sort carries `p.id` as a tiebreaker; without a total order, equal-priced products swap between pages and one is never seen.
+
+The header overlay is instant search — debounced live queries, inline product and collection previews, keyboard navigation. There is no `/search` results page, so results are not currently linkable or shareable.
+
+### Product listing pages
+
+`/women`, `/men`, `/new-in`, `/sale`, `/collections` and `/collections/[slug]` share one template, `components/plp/ProductListingPage.tsx`: colour/size/price/availability filters with faceted counts, sort and infinite scroll, all driven by the URL (`?color=&size=&minPrice=&sort=&page=`) so any filtered view is a shareable link.
+
+`/new-in` sorts by when a product was actually added rather than filtering on a badge, so it stays correct on its own as stock arrives.
+
+### Product model & detail page
+
+`types/product.ts` covers multi-image galleries, product video, per-size inventory (`quantity`, SKU, barcode), preorder/backorder, gender/season/materials/care, related products and an SEO override. `lib/product.ts` centralises derived logic (`getEffectivePrice`, `getProductBadges`, `isSizePurchasable`) so pricing and badge rules live in exactly one place.
+
+Scarcity badges count **sizes remaining, not total units**. This shop carries roughly one pair per size, so counting units made the badge fire on 90% of the catalogue, which tells a shopper nothing. "Last size" and "Few sizes left" are also distinguished, because they are different messages to someone deciding whether to buy now.
+
+There is no "N people bought this recently" indicator. There was one; it was a hash of the SKU rather than a fact, so it was deleted rather than flagged off.
+
+### Cart
+
+Postgres-backed, with promo codes, gift cards, automatic VAT and free-shipping-threshold calculation, saved-for-later, recommendations and stock-aware quantity limits. `CartDrawer` and `/cart` share one `useCart()` hook.
 
 ### Admin dashboard
 
-`/admin` (mock-authenticated, see below) covers product management, a variant editor (colors and per-size inventory — the real data model tracks stock per size, not per color×size combination), inventory, collections/categories, discounts, gift cards, orders, customers, returns, an analytics view (revenue/AOV/orders-by-status/top customers derived from the mock data, no chart library), the homepage sections builder (with a real draft/publish workflow), hero management, media library, navigation menu, blog posts, SEO/site settings, and users with a roles & permissions reference matrix. Every admin form saves to local component state only ("Saved" confirmation, no persistence) — that's a deliberate, consistent placeholder across the whole section, not a per-page oversight; wiring real persistence means picking one pattern (a backend, or e.g. `services/*.ts` writing through an API) and applying it everywhere at once.
+`/admin` covers products, a variant editor (stock is tracked per size, not per colour×size), inventory, collections and categories, discounts, gift cards, orders, customers, returns, analytics, the homepage sections builder with a real draft/publish workflow, hero management, a media library with real uploads to Vercel Blob, navigation, blog posts, SEO and site settings, and users. **Everything persists to Postgres.**
 
-### Enterprise polish
+Roles are enforced, not decorative: `constants/permissions.ts` holds 13 keyed capabilities used by both the UI and the server-side guard on every mutation. Orders and inventory page, search and filter in SQL rather than shipping the whole table to the browser.
 
-Branded `error.tsx`/`global-error.tsx`/`not-found.tsx` (replacing Next's defaults), a generic `loading.tsx` skeleton, shimmer blur placeholders on product images, a local feature-flag registry (`lib/feature-flags.ts`, gating Express Checkout, Klarna, and magic-link sign-in as live proof-of-concept), a structured `lib/logger.ts`, and real security response headers (`next.config.ts` — X-Frame-Options, CSP, HSTS, etc., `curl`-verified). Explicitly **not** implemented, by design, rather than faked: a service worker/offline support, i18n/RTL, Sentry, real A/B testing, rate-limiting (no API routes exist yet to rate-limit), a dedicated image CDN, and edge caching (nearly the entire app is already static/SSG since all "backend" state is `localStorage`-based) — see `PROGRESS.md` for why each is a deliberate gap, not an oversight.
+Renaming a category records its outgoing slug in the same transaction, so old URLs 308 rather than 404 — the redirect lives in `proxy.ts`, not the page, because `permanentRedirect` in a streaming context emits a client-side meta refresh rather than a real 308.
+
+Stock is restored when an order is cancelled or refunded, claimed via a null-guarded `Order.restockedAt` so a re-save cannot double-credit. **Returns do not yet restock** — that is a separate path needing its own per-item claim column.
+
+### Integrations
+
+All follow the same pattern: an interface, a safe default, and a real implementation that activates only once credentials exist.
+
+| Integration | Default | Real |
+|---|---|---|
+| Email | `dev` — writes to `EmailLog`, sends nothing | Resend |
+| Courier | `manual` — admin types a tracking number | ACS Courier |
+| Image storage | disabled, with a clear "not configured" error | Vercel Blob |
+| OAuth | button hidden | Google, Facebook, Apple |
+
+### Security & polish
+
+Rate limiting on write endpoints and the catalogue query. Real security response headers, with no `unsafe-eval` in the production CSP, plus `base-uri`, `form-action` and `object-src`. Branded `error.tsx` / `global-error.tsx` / `not-found.tsx`. A structured `lib/logger.ts`. Cookie consent with a real gate.
+
+**Do not add a `loading.tsx` to any route that calls `notFound()`.** A Suspense boundary commits HTTP 200 before `notFound()` can run, which turned every missing product, category, collection and legal page into a soft 404 across the whole app. The root loader is scoped to an `app/(listing)/` route group covering only pages that cannot 404.
 
 ## SEO
 
-Metadata API (per-page `generateMetadata`), JSON-LD (Organization + WebSite site-wide; Product/Breadcrumb live on product pages, FAQ helper in `lib/seo.ts` ready), `app/robots.ts`, `app/sitemap.ts` (products/collections/journal posts included), `app/manifest.ts`, `app/icon.svg`, `app/opengraph-image.tsx` (dynamic OG card via `next/og`).
+Metadata API with per-page `generateMetadata`, JSON-LD (Organization with real trader identity + WebSite site-wide; Product and Breadcrumb on product pages), `app/robots.ts`, `app/sitemap.ts`, `app/manifest.ts`, `app/opengraph-image.tsx`.
+
+`robots.txt` and `sitemap.xml` are **statically prerendered** — they bake database values at build time, so changing the site URL in the database needs a redeploy before they update. Canonical tags are dynamic and change immediately.
+
+The site URL lives in three places that must agree: the live `SiteContent` "seo" row, `data/seo.json` as its fallback, and `NEXT_PUBLIC_SITE_URL` for links inside emails sent from contexts with no incoming request. `scripts/apply-site-url.ts` handles the database half.
+
+## Legal
+
+`data/legal.json` is generated by `scripts/rewrite-legal.ts` from `constants/company.ts`, so the registered trader identity exists in exactly one place and cannot drift between the footer, the contact page, three legal documents and the structured data. The documents are written for a Greek distance seller: lawful bases, processors, retention, GDPR rights and the Hellenic DPA, the 14-day statutory withdrawal right alongside the shop's own 30-day returns policy, the ODR platform and the Consumer's Ombudsman.
+
+`legalName` and `brandName` are deliberately separate fields — legal documents must name the trader as registered, since using the trading name in a Privacy Policy defeats the point of naming the data controller.
+
+## Testing
+
+```bash
+npm test          # vitest, 186 tests
+npx tsc --noEmit
+npx eslint
+```
 
 ## Not Yet Built
 
-By design, and only these: **real payment processing** (checkout UI exists, gateway is cosmetic — this is the one deliberately-deferred piece) and real multi-currency conversion (totals are currency-aware but only ever computed in EUR today). Everything else the storefront needs — transactional email, courier/tracking, returns, cookie consent, a working Contact form, loyalty, gift wrapping, wishlist sharing, referrals, an "Ask a Stylist" flow, an A/B-test seam, English+Greek, real Google/Apple/Facebook OAuth login, and an admin CSV bulk product-import tool — is real, not mocked. See `PROGRESS.md` for the full build log, including real external integrations (Resend email, ACS Courier, Google/Facebook/Apple OAuth, Vercel Blob image storage) that are code-complete but need the account owner's own credentials/store connections before they do anything beyond their safe defaults (a provider's login button simply doesn't render until its credentials are set).
+By design: **card payments** (Stripe needs keys, not code), **outbound email** (Resend needs a key), real multi-currency conversion (totals are currency-aware but only ever computed in EUR), restocking on returns, and full Greek localisation — `messages/el.json` covers the UI strings but there are no locale URLs or `hreflang`, so only one language is indexable.
+
+See `PROGRESS.md` for the full build log and `NOTES.md` for the current session's state.

@@ -25,9 +25,20 @@ import type { AdminRole } from "@/types/admin";
 
 export const ADMIN_SESSION_COOKIE = "alexandris_admin_session";
 
-/** Seeded by scripts/seed.ts for local/dev use only — never import this into client-reachable code (see the server-only guard above). */
-export const DEMO_ADMIN_EMAIL = "admin@alexandris-demo.example";
-export const DEMO_ADMIN_PASSWORD = "admin123";
+/**
+ * Removed deliberately — do not reintroduce.
+ *
+ * This module used to export DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD
+ * ("admin@alexandris-demo.example" / "admin123"), which scripts/seed.ts wrote into the
+ * database and README.md published. This repository is public and the shop is live, so a
+ * fixed, well-known password for the account that can edit prices, read customer addresses
+ * and delete orders is a credential leak by design rather than by accident — the seed only
+ * had to run once against a real database for it to be real.
+ *
+ * The first admin's credentials now come from SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD, and
+ * seed.ts generates a random password and prints it once when they are unset. Nothing that
+ * grants access should be a constant in source control.
+ */
 
 export interface AdminSession {
   name: string;

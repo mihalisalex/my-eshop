@@ -1,8 +1,8 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
-import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from "@/lib/auth";
 import {
   productImagesSchema,
   productVideosSchema,
@@ -257,19 +257,63 @@ async function seedGiftCards(giftCards: SeedGiftCard[]) {
   console.log(`Seeded ${giftCards.length} gift cards.`);
 }
 
+/**
+ * Creates the first admin, and only the first — `update: {}` means re-running this never
+ * touches an existing account's password or role.
+ *
+ * The credentials are NOT constants. They used to be ("admin@alexandris-demo.example" /
+ * "admin123", exported from lib/auth.ts and published in README.md), which in a public
+ * repository is a working password for the account that can edit prices, read customer
+ * addresses and delete orders. It only had to be seeded once against a real database to
+ * become real.
+ *
+ * With no env vars set this generates a random password and prints it once, so the
+ * bootstrap path stays a single command without a known password ever existing.
+ */
 async function seedAdminUser() {
-  const passwordHash = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 12);
-  await prisma.adminUser.upsert({
-    where: { email: DEMO_ADMIN_EMAIL.toLowerCase() },
-    create: {
-      email: DEMO_ADMIN_EMAIL.toLowerCase(),
-      passwordHash,
+  const configuredEmail = process.env.SEED_ADMIN_EMAIL;
+
+  // Bootstrap only. Re-running the seed against a database that already has admins must not
+  // quietly add another one under a default address — on the live shop that is a new account
+  // with admin rights that nobody asked for. With SEED_ADMIN_EMAIL set the intent is explicit,
+  // so that case is still allowed through to the per-email check below.
+  if (!configuredEmail) {
+    const adminCount = await prisma.adminUser.count();
+    if (adminCount > 0) {
+      console.log(`Skipped admin seeding — ${adminCount} admin user(s) already exist.`);
+      console.log("Set SEED_ADMIN_EMAIL to add a specific one, or use /admin/users.");
+      return;
+    }
+  }
+
+  const email = (configuredEmail ?? "admin@example.com").toLowerCase();
+  const suppliedPassword = process.env.SEED_ADMIN_PASSWORD;
+  // 24 bytes of CSPRNG, base64url — not Math.random(), which is not seeded for secrecy and
+  // would make every "random" password reproducible from the process start time.
+  const password = suppliedPassword ?? randomBytes(24).toString("base64url");
+
+  const existing = await prisma.adminUser.findUnique({ where: { email } });
+  if (existing) {
+    console.log(`Admin user ${email} already exists — left untouched.`);
+    return;
+  }
+
+  await prisma.adminUser.create({
+    data: {
+      email,
+      passwordHash: await bcrypt.hash(password, 12),
       name: "Alexandris Admin",
       role: "admin",
     },
-    update: {},
   });
-  console.log(`Seeded admin user ${DEMO_ADMIN_EMAIL}.`);
+
+  console.log(`Created admin user ${email}.`);
+  if (suppliedPassword) {
+    console.log("Password: taken from SEED_ADMIN_PASSWORD.");
+  } else {
+    console.log(`Password: ${password}`);
+    console.log("This is shown ONCE and is not stored anywhere in plaintext. Save it now, then change it at /admin/users.");
+  }
 }
 
 /**
