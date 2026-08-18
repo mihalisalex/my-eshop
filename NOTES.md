@@ -1,138 +1,197 @@
-# Session Summary — 2026-08-18 (full pre-launch audit, then 40 of 63 findings fixed)
+# Session Summary — 2026-08-18 (go-live: the shop is now publicly launched)
 
 Quick-reference recap of the LATEST session only — this file gets replaced each session, it's the fast catch-up, not the archive. See `PROGRESS.md` for the detailed batch-by-batch build log.
 
 ## Where things stand right now
 
-A complete page-by-page, feature-by-feature pre-launch audit was run against the live Neon
-database, then most of what it found was fixed. **18 commits, all pushed to `origin/main`,
-HEAD is `ebcd82b`.** Working tree clean, `next build` / `tsc` / `eslint` / **186 tests** all green.
+**The shop is live and open for business at https://shopalexandris.vercel.app.** Two commits
+this session, both pushed to `origin/main`, HEAD is `0229648`. Working tree clean,
+`next build` / `tsc` / `eslint` / **186 tests** all green, and
+`npx tsx scripts/check-launch-placeholders.ts` **passes for the first time**.
 
-**63 findings. 40 fixed and verified, 1 partly fixed, 1 withdrawn, 21 open, 4 launch blockers.**
+Of the 4 launch blockers carried in from the audit session, **all 4 are resolved** — two by
+fixing them, two by an explicit decision to launch without them.
 
-Two live audit documents (Claude artifacts, private until shared):
-- **Current — Launch Readiness:** https://claude.ai/code/artifact/0795b30b-6cca-4921-a074-cefb8ff50ff4
-- Original full audit (historical, 63 findings in detail): https://claude.ai/code/artifact/bd90ab98-6680-4c70-9d1b-7a0f7d532160
-
-### The 4 remaining blockers — none of them is code
-
-| | Needs |
+| Blocker | Outcome |
 |---|---|
-| **QA-002** No card payment. `/api/payment-methods` returns only `cash-on-delivery`; both payment config tables are empty. Stripe is code-complete and unit-tested. | Stripe keys |
-| **QA-003** No email is sent by anything. `EMAIL_PROVIDER` unset → dev provider logs to `EmailLog` and sends nothing. | Resend key + `EMAIL_FROM` |
-| **QA-006** Canonical URLs, `robots.txt` and all ~190 sitemap entries still say `alexandris-demo.example`. | The real domain, set in **both** `NEXT_PUBLIC_SITE_URL` and the SEO `siteUrl` SiteContent row |
-| **QA-024** The four footer social links are seeded handles, very likely other people's profiles. | Four real URLs |
+| **QA-006** demo domain in canonicals, robots.txt, ~190 sitemap entries | **Fixed.** Now `shopalexandris.vercel.app` everywhere. 207 sitemap URLs, zero demo references. |
+| **QA-024** four seeded social links, likely strangers' profiles | **Fixed**, and it was worse than filed — see below. |
+| **QA-002** no card payment | **Deferred by decision.** Launching cash-on-delivery only. |
+| **QA-003** no email is sent | **Deferred by decision.** Resend key still to come. |
 
-Plus **the ΓΕΜΗ registry number** — legally required on a Greek commercial site. The user supplied
-the ΓΕΜΗ-registered *name* but not the number. `COMPANY.gemiNumber` is `null`,
-`traderIdentityLine()` omits the label rather than printing an empty one, and
-`scripts/check-launch-placeholders.ts` fails while it stays null.
+## What went live
 
-Run `npx tsx scripts/check-launch-placeholders.ts` before any deploy — it currently reports
-exactly those two gaps (ΓΕΜΗ number, demo domain in `seo.json`) and nothing else.
+### The domain, and why it takes three places
 
-## Real business details are now in the app
+`alexandris-demo.example` is a reserved domain that does not exist. It was in canonical tags, in
+`robots.txt` and in every sitemap entry. Three different things read the site URL and **all three
+had to be set** — this is the trap:
 
-`constants/company.ts` is the single source of truth, feeding the footer, contact page, all three
-legal documents and the Organization JSON-LD:
+- the live `SiteContent` **"seo" row** → canonicals, OG tags, robots.txt, sitemap
+- **`data/seo.json`** → only the fallback used when that row is missing
+- **`NEXT_PUBLIC_SITE_URL`** → links inside emails sent with no incoming request to derive a host from
 
-- Legal name (as in ΓΕΜΗ): **Alexandris Michail** — deliberately a separate field from
-  `brandName` (`ALEXANDRIS`). Legal documents must name the registered trader; using the
-  shopfront name defeats the point of naming the data controller.
-- Address: Arthur Evans 9, 71201 Heraklion, Crete, Greece
-- ΑΦΜ: 146214557 · email: alexandrisstores@gmail.com · phone: 2814 001 031
+**Editing the JSON alone changes nothing a visitor sees**, because the running shop reads the
+database. That is exactly how the demo domain survived as long as it did.
+`scripts/apply-site-url.ts` does the database half and is what you re-run the day a real domain
+lands: `npx tsx scripts/apply-site-url.ts https://example.gr`.
 
-## The big fixes, and why they mattered
+`NEXT_PUBLIC_SITE_URL` is set on **Production only** on purpose. Setting it for Preview too would
+make every preview deployment advertise the production URL.
 
-- **VAT was being ADDED to prices that already included it** at a non-Greek 21% — a €59 shoe
-  billed at €78.34, contradicting the shop's own Terms. Now inclusive at the Greek 24%:
-  `vatIncludedIn()` is `gross × rate / (1 + rate)`, NOT `gross × rate`. Confusing those two is the
-  original bug, so it's one named function. VAT is computed on the pre-gift-card total — a gift
-  card is a means of payment, not a price reduction.
-- **Storefront search moved into Postgres** (`services/search.ts` + `/api/search`). `/women` went
-  from **205,636 bytes to 13,278** (94%) and from two full-catalog requests to one. Raw SQL, not
-  the query builder, because every price rule uses the EFFECTIVE price
-  `COALESCE(salePrice, price)` which Prisma can't express in `where`/`orderBy` — and 172 of 175
-  products carry a sale price. Facets count the SCOPE not the refined set (otherwise picking
-  "black" zeroes every other colour), and every sort carries `p.id` as a tiebreaker (without a
-  total order, equal-priced products swap between pages and one is never seen).
-- **Soft 404s**: the root `app/loading.tsx` wrapped every route in a Suspense boundary that
-  committed HTTP 200 before `notFound()` could run, so every missing product/category/collection/
-  journal/legal page returned 200. Now scoped to an `app/(listing)/` route group covering only
-  pages that can't 404. **Adding a `loading.tsx` to any route that calls `notFound()` reintroduces this.**
-- **Password reset was entirely dead** — `proxy.ts` gated `/account/reset-password` behind a
-  session, so the emailed link bounced to login. It's now reachable in BOTH states.
-- **Fabricated content removed**: "N people bought this in the last 48 hours" was a hash of the
-  SKU (a zero-sales product showed "27 people"). Deleted, not flagged off.
-- **Admin edits silently destroyed page titles**: RHF submits `seo: {title:"",description:""}` and
-  `??` doesn't fall back on `""`. Fixed at both ends. **The first attempt silently did nothing** —
-  `undefined` is Prisma's "leave this column alone"; nullable JSON needs `Prisma.DbNull`.
-- **Stock never came back on cancel/refund.** Now claimed via a null-guarded `Order.restockedAt`
-  so a re-save can't double-credit. **Returns still don't restock (QA-063)** — separate path,
-  needs its own per-item claim column.
-- **Admin user management** now exists (create/delete/self-password-change). Previously the only
-  way to add an admin was a direct DB write. **There is still only ONE admin account** — the page
-  warns about it in place; create a second.
+### One handle, four copies, three of them wrong
 
-## Merchandising decisions worth not undoing
+The audit filed this as "four footer social links". It was bigger. The unverified `@alexandris`
+identity sat in **four** places serving three audiences:
 
-- Collections were filled from each product's category (`scripts/merchandise.ts`, re-runnable):
-  Sneaker Edit 33, Evening Heels 30, Boots & Booties 17, Everyday Essentials 82, New Arrivals 24.
-- **"Best Sellers" is deliberately left OFF.** There are 2 real payments; any list under that
-  heading would be a claim about sales that never happened — the same class of thing as the fake
-  purchase counter that was just removed. Turn it on when there's order history.
-- The homepage's `collectionIds` `c1`–`c5` were **never stale** — they are the real IDs. The
-  original audit was wrong about that; the section only looked broken because the collections were empty.
-- `/new-in` no longer filters on `isNew` (no product has ever had it) — it sorts by `createdAt`.
-  That also fixed the "Newest" sort being a **no-op on every listing page**.
-- **Stock levels (~1 pair per size) are REAL and correct** — an audit finding claiming otherwise
-  was withdrawn. What was wrong was the badge: it counted total units, so it fired on 147 of 164
-  products. It now counts available SIZES and says "Last size" / "Few sizes left".
-- Six seeded test orders were purged; dashboard revenue went €1,196.43 → **€146.52** (2 real orders).
+| Where | Audience |
+|---|---|
+| `settings.socialLinks` | the footer links, for people |
+| `seo.organization.sameAs` | Organization JSON-LD, for search engines |
+| `seo.twitterHandle` | the `twitter:creator` meta tag on **every page** |
+| homepage `socialGrid.handle` | the "@…" under the homepage "Follow Along" heading |
 
-## Traps that cost real time this session — don't repeat them
+`sameAs` and `twitter:creator` are the strong claims — they assert those accounts *are* this
+business. None were ever verified as belonging to this trader, so the shop was pointing customers
+at strangers and telling Google and X that the strangers were the shop. All four are now empty.
 
-- **`pkill -f "next start"` does NOT kill the process here.** Every rebuilt server after the first
-  failed to bind with `EADDRINUSE` and silently kept serving the OLD build, which made
-  byte-identical code appear to behave differently at two paths. Kill by port
-  (`netstat -ano | grep :PORT` → `taskkill //PID <pid> //F`) and **check the server log for
-  `EADDRINUSE` before trusting any result.**
-- **Folders named `__something` are PRIVATE in the App Router** and are never routed. Probe routes
-  named `__probe*` returned 404 because the route didn't exist, not because `notFound()` worked.
-- **Restart the dev server after a Prisma schema change.** The running server holds a stale client;
-  the first restock test silently did nothing because of it.
-- **Tightening an input schema can break reading existing rows.** Making `phone` required broke the
-  admin dashboard with a 500, because `addressSchema` doubled as the parser for stored JSON in
-  `toOrder`/`toCheckout`. Split into strict `addressSchema` (input) and lenient
-  `storedAddressSchema` (persisted data). `tsc`, `eslint` and all tests stayed green throughout —
-  none of them touch stored rows. **Historical records are facts, not submissions.**
-- **Deleting an order does NOT restock it.** Five units silently went missing from the live catalog
-  during testing before this was noticed. Restore stock as part of cleanup.
-- Bash heredocs/`node -e` mangle UTF-8 Greek and eat backticks — drive UTF-8 payloads from the
-  browser (`javascript_tool`) or write files with the Write tool instead.
-- Files in this repo are **mixed LF and CRLF** — detect the line ending before doing anchored
-  string replacements in scripts.
+**The three derived copies are now computed, not maintained.** `scripts/apply-social-links.ts`
+owns all four and derives the X handle from the `x` link and the homepage handle from the
+`instagram` link. Four hand-kept copies of one fact is how three of them came to be wrong. To add
+the real profiles: edit `data/settings.json`, run `npx tsx scripts/apply-social-links.ts`.
 
-## Useful scripts added this session
+Handles are **deleted, not blanked** — `buildMetadata` passes `twitterHandle` straight to
+`twitter.creator`, and an empty string still emits the tag, pointing at nobody rather than at a
+stranger. `organizationSchema` omits `sameAs` entirely when empty, because a visible `[]` invites
+someone to "fix" it by putting the seeded handles back.
+
+### ΓΕΜΗ: recorded as a decision, not left as an absence
+
+The trader states they are **not ΓΕΜΗ-registered**. That is now recorded rather than looking like
+a missing value, because a null number means two different things and only one is safe to launch
+on. `COMPANY.gemiRegistration` distinguishes:
+
+- `"unknown"` — nobody has answered. **The launch check fails on this.**
+- `"not-registered"` — a decision. Check passes, and **prints the decision on every run** so a
+  provisional answer doesn't become permanent just by ceasing to fail.
+- `"registered"` — requires `gemiNumber`; the check fails if the two disagree.
+
+**This is worth re-confirming with an accountant.** A Greek trader selling at distance is normally
+required to register, and the number must then appear on the site. On the day it exists: set
+`gemiRegistration` to `"registered"`, fill `gemiNumber`, re-run `scripts/rewrite-legal.ts`.
+
+## Production environment — two problems found, one still open
+
+Neither was on the audit's list. Both were found by reading the actual Vercel production env.
+
+- **`PAYMENT_CONFIG_SECRET` is misspelled.** The code reads **`PAYMENTS_CONFIG_SECRET`** (with the
+  S). So credential encryption is unconfigured in production: the admin payments page shows its
+  warning banner, and **saving any Stripe key there would fail**. Nothing breaks today — cash on
+  delivery and bank transfer store no secrets. **STILL OPEN — the user is renaming it in the
+  dashboard.**
+- **`BLOB_READ_WRITE_TOKEN` was absent in production**, so Media Library uploads and CSV
+  product-image imports would have failed on the live site. **Fixed** — copied from local `.env`
+  to Production. Note it is **Production only**; preview deployments still have no Blob token.
+
+Vercel env changes only take effect on the **next deployment**. Both new variables landed with the
+`0229648` deploy.
+
+## Deliberate decisions this session — don't undo these by "fixing" them
+
+- **Cash on delivery is the only payment method**, and the footer correctly advertises exactly
+  that. Bank transfer is real and complete but has **no config row**, so it never reaches checkout.
+  Turning it on is only: bank name, account holder, IBAN in
+  `/admin/settings/payments/bank-transfer`. No code needed.
+- **No social profiles at all** beats four wrong ones. The footer's social `<ul>` is now not
+  rendered when the list is empty — it collapsed to zero height but kept its `mt-6`, leaving 24px
+  of dead space under the newsletter form.
+- The homepage **"Follow Along" section is still enabled** — it is real lifestyle photography and
+  stands on its own. It just no longer claims a handle, and its tiles aren't links until an
+  Instagram URL exists.
+- **Deployment protection**: Vercel SSO is on for `all_except_custom_domains`. Only
+  `shopalexandris.vercel.app` is public; `my-eshop-alexandris.vercel.app` 302s to a Vercel login.
+  Don't advertise the other aliases.
+
+## Verified against the live deployment
+
+- 207 sitemap URLs, **zero** references to the old demo domain; robots.txt points at the right host
+- canonical tag correct; **no** `twitter:creator`; **no** `@alexandris` anywhere on the homepage
+- Organization JSON-LD carries the real legal name, address, ΑΦΜ, email and phone, with **no**
+  `sameAs`
+- footer identity line renders correctly and omits the ΓΕΜΗ label rather than showing an empty one
+- catalogue browses, product page selects sizes, **add-to-cart works**, cart totals correct:
+  €34.90 + €6.95 shipping = €41.85 with €8.10 VAT, which is 24% **inclusive**
+  (`41.85 × 0.24/1.24`), not added on top
+- the footer's accepted-payment list resolves through the real availability pipeline and shows
+  exactly **Cash on Delivery**
+
+Checkout was **not** driven past the contact step — that means submitting forms on production, and
+a completed order decrements stock which deleting it does not restore.
+
+## The one admin account
+
+Confirmed against the live database: **exactly one `AdminUser` row**, `alexandrisstores@gmail.com`,
+and its password is **not** the seeded `admin123`. The demo account is gone. But one account is
+still one lost password away from lockout — **create a second admin** at `/admin/users`.
+
+`README.md` still advertises `admin@alexandris-demo.example` / `admin123` as the demo login, in a
+**public** GitHub repo. That account no longer exists so it is not a live risk, but the README is
+now wrong and should be corrected.
+
+## Still open below blocker level
+
+QA-017 (create a 2nd admin — UI exists), QA-018 (Greek covers ~88 UI strings only; no `hreflang`,
+no locale URLs, so only one language is indexable), QA-028 (OG image is Unsplash stock), QA-029
+(no analytics connected; consent gate exists but nothing calls it), QA-030 (`npm audit`: 3 high via
+`prisma → @prisma/config → deepmerge-ts`, build-time reach, no clean upgrade), QA-046 (partly —
+`/admin/products` 175 and `/admin/media` 317 still render client-side), QA-063 (returns don't
+restock), plus the medium/low tail.
+
+Deliberately NOT changed: `/admin/appearance` (read-only, honest) and `browserslist` (a business
+call about which browsers can shop here).
+
+## Traps that cost real time — still true, don't repeat them
+
+- **Bash `grep -r` over this repo times out** (it walks `node_modules`). Use the ripgrep-backed
+  Grep tool instead.
+- **`pkill -f "next start"` does NOT kill the process here.** Kill by port
+  (`netstat -ano | grep :PORT` → `taskkill //PID <pid> //F`) and **check the log for `EADDRINUSE`
+  before trusting any result** — a rebuilt server that failed to bind keeps serving the OLD build.
+- **`robots.txt` and `sitemap.xml` are statically prerendered.** They bake the database values at
+  **build** time, so a DB change needs a redeploy. Canonicals are dynamic and update immediately —
+  which is why the two disagreed mid-session and it was not a bug.
+- **Folders named `__something` are PRIVATE in the App Router** and are never routed.
+- **Restart the dev server after a Prisma schema change** — the running server holds a stale client.
+- **`undefined` is Prisma's "leave this column alone"**; clearing a nullable Json column needs
+  `Prisma.DbNull`.
+- **A `loading.tsx` on any route that calls `notFound()` reintroduces app-wide soft 404s.**
+- **Tightening an input schema can break reading rows already written.** `tsc`, `eslint` and tests
+  all stay green while it happens — none of them touch stored rows.
+- **Deleting an order does NOT restock it.**
+- **Emptying a JSON array changes its inferred type.** `socialLinks: []` infers as `never[]`, so
+  `typeof settingsFallback` made putting a real link back a type error. Type these scripts from the
+  declared interfaces, not from the JSON.
+- Bash heredocs/`node -e` mangle UTF-8 Greek and eat backticks — use the Write tool for those files.
+- Files here are **mixed LF and CRLF** — detect the line ending before anchored replacements.
+
+## Scripts (all re-runnable, all print before/after)
 
 | Script | Purpose |
 |---|---|
-| `scripts/check-launch-placeholders.ts` | **Run before every deploy.** Fails on demo domain / missing ΓΕΜΗ. |
-| `scripts/merchandise.ts` | Re-runnable: fills collections from categories, enables homepage sections. `--dry-run` supported. |
+| `scripts/check-launch-placeholders.ts` | **Run before every deploy.** Now passes. |
+| `scripts/apply-site-url.ts` | **New.** Sets the canonical URL in the live seo row. Run when the real domain lands. |
+| `scripts/apply-social-links.ts` | **New.** Owns all four social identity fields, derived from `data/settings.json`. |
+| `scripts/merchandise.ts` | Fills collections from categories, enables homepage sections. `--dry-run` supported. |
 | `scripts/purge-test-orders.ts` | Explicit id allow-list, `--dry-run` first. Never pattern-match orders for deletion. |
-| `scripts/rewrite-legal.ts` | Regenerates `data/legal.json` from `constants/company.ts`. Re-run after setting the ΓΕΜΗ number. |
-| `scripts/apply-company-details.ts` | Writes contact details into the live `SiteContent` row (the JSON is only a fallback). |
+| `scripts/rewrite-legal.ts` | Regenerates `data/legal.json` from `constants/company.ts`. |
+| `scripts/apply-company-details.ts` | Writes contact details into the live `SiteContent` row. |
 
-## What's open below blocker level
+## The obvious next steps
 
-QA-017 (create a 2nd admin — the UI now exists), QA-018 (Greek covers ~88 UI strings only; no
-`hreflang`, no locale URLs, so only one language is indexable), QA-028 (OG image is Unsplash
-stock), QA-029 (no analytics connected; consent gate exists but nothing calls it), QA-030
-(`npm audit`: 3 high via `prisma → @prisma/config → deepmerge-ts`, build-time reach, no clean
-upgrade), QA-046 (**partly fixed** — orders and inventory are server-paged and searchable;
-`/admin/products` 175 and `/admin/media` 317 still render everything client-side, because their
-filter/sort/bulk-selection state is interdependent and paging them means first deciding what
-select-all means across pages), QA-063 (returns don't restock), plus the medium/low tail.
-
-Deliberately NOT changed: `/admin/appearance` (read-only, honest, documents design tokens) and
-`browserslist` (decides which browsers can shop here — a business call).
+1. **Rename `PAYMENT_CONFIG_SECRET` → `PAYMENTS_CONFIG_SECRET`** in the Vercel dashboard.
+2. **Create a second admin account.**
+3. **Resend key + `EMAIL_FROM`** — until then no order confirmation, password reset or
+   back-in-stock mail is actually sent; it only logs to `EmailLog`.
+4. Real social profile URLs, or leave them empty.
+5. Fix the `README.md` demo-login line.
+6. A real domain, when there is one — then re-run `apply-site-url.ts` and redeploy.

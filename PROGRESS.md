@@ -1,5 +1,145 @@
 # ALEXANDRIS — Progress Notes
 
+## Go-live — COMPLETE, the shop is publicly open at https://shopalexandris.vercel.app, 2 commits pushed, HEAD `0229648`
+
+All 4 launch blockers from the audit session are closed: two fixed, two deferred by an explicit
+decision. `scripts/check-launch-placeholders.ts` passes for the first time. tsc, eslint,
+`next build` and 186 tests green, and every claim below was verified against the live deployment
+rather than the local build.
+
+### The canonical domain (QA-006)
+
+Canonical tags, `robots.txt` and all ~190 sitemap entries pointed at `alexandris-demo.example`, a
+reserved domain that cannot exist. The shop is served publicly from `shopalexandris.vercel.app`,
+so that became the canonical origin. Now 207 sitemap URLs with zero demo references.
+
+The reason this took three separate writes is the part worth remembering. Three different things
+read the site URL: the live `SiteContent` "seo" row drives canonicals, OG tags, robots.txt and the
+sitemap; `data/seo.json` is only the fallback for when that row is missing; and
+`NEXT_PUBLIC_SITE_URL` builds links inside emails sent from contexts with no incoming request (the
+back-in-stock notification, the daily follow-up cron). **Editing the JSON alone changes nothing a
+visitor sees**, because the running shop reads the database — which is precisely how the demo
+domain survived so long.
+
+`scripts/apply-site-url.ts` does the database half and is the piece needed again the day a real
+domain lands. It parses the URL with `new URL()` rather than string-checking it, so a typo fails at
+the script instead of becoming a canonical tag on 207 pages, and it refuses a non-HTTPS origin. It
+preserves the logo's **path** and swaps only its host, so a logo moved or renamed through the admin
+isn't silently reset to whatever the JSON happens to say.
+
+`NEXT_PUBLIC_SITE_URL` is Production-only on purpose: setting it for Preview would make every
+preview deployment advertise the production URL as its canonical.
+
+A mid-session discrepancy that looked like a bug and wasn't: after updating the database, the
+canonical tag was immediately correct while `robots.txt` still showed the old domain. `robots.txt`
+and `sitemap.xml` are **statically prerendered** — they bake database values at build time — while
+canonicals are dynamic. A redeploy resolved it. Worth knowing before debugging the same "impossible"
+state again.
+
+### One identity, four copies, three of them wrong (QA-024)
+
+The audit filed this as "the four footer social links are seeded handles". It was larger than that.
+The unverified `@alexandris` identity existed in four places serving three audiences:
+`settings.socialLinks` (footer links, for people), `seo.organization.sameAs` (Organization JSON-LD,
+for search engines), `seo.twitterHandle` (the `twitter:creator` meta tag on **every page**), and the
+homepage `socialGrid.handle` (the "@…" under "Follow Along").
+
+`sameAs` and `twitter:creator` are the strong claims — they assert those accounts *are* this
+business. Since none were verified as belonging to this trader, the shop was pointing customers at
+strangers' profiles and simultaneously telling Google and X that the strangers were the shop. All
+four are now empty, which is the honest state until real profiles exist.
+
+The structural fix matters more than the deletion: **the three derived copies are now computed
+rather than maintained.** `scripts/apply-social-links.ts` owns all four fields and derives the X
+handle from the `x` link and the homepage handle from the `instagram` link, each reduced to its
+final path segment. One fact kept by hand in four places is exactly how three of them came to be
+wrong. Adding the real URLs to `data/settings.json` and re-running restores every one of them.
+
+Two details that would otherwise regress:
+
+- Handles are **deleted, not blanked**. `buildMetadata` passes `twitterHandle` straight to
+  `twitter.creator`, and an empty string still emits the meta tag — pointing at nobody instead of at
+  a stranger, which is quieter but no more true.
+- `organizationSchema` **omits `sameAs` entirely** when empty rather than emitting `[]`. A visible
+  empty array in the output invites someone to "fix" it by putting the seeded handles back.
+
+The footer's social `<ul>` is no longer rendered when the list is empty. An empty list collapses to
+zero height but keeps its `mt-6`, leaving 24px of dead space under the newsletter form — and with no
+profiles configured, empty is the shop's normal state, not an edge case.
+
+The homepage "Follow Along" section stays **enabled**. It is real lifestyle photography that stands
+on its own; it simply no longer claims a handle, and its tiles are not links until an Instagram URL
+exists.
+
+### ΓΕΜΗ — recorded as a decision rather than left as an absence
+
+The trader states they are not ΓΕΜΗ-registered. Rather than leave `gemiNumber` null and silence the
+check, `COMPANY.gemiRegistration` now distinguishes three states, because a null number means two
+very different things and only one of them is safe to launch on:
+
+- `"unknown"` — nobody has answered. **The launch check fails on this**, so an unanswered question
+  cannot ship looking like an answered one.
+- `"not-registered"` — a recorded decision. The check passes but **prints the decision on every
+  run**, so a provisional answer doesn't quietly become permanent by ceasing to fail.
+- `"registered"` — requires a `gemiNumber`; the check fails if the two fields disagree, which would
+  otherwise mean the identity line silently omits a number the law requires it to show.
+
+Flagged to the user and reaffirmed by them: a Greek trader selling at distance is normally required
+to register. `scripts/rewrite-legal.ts` regenerates identically today and reports which of the three
+states it wrote under.
+
+### Payments — cash on delivery only, by decision (QA-002)
+
+Both payment config tables are still empty, so cash on delivery runs purely on provider defaults and
+is the single accepted method. Verified the honest way: the footer's accepted-payments list resolves
+through the real `getAcceptedPaymentMethodNames()` availability pipeline against the live database
+and renders exactly "Cash on Delivery".
+
+Bank transfer is real and complete but has no config row, so it never reaches checkout — its
+required fields (bank name, account holder, IBAN) are unset. Enabling it later is three form fields
+in `/admin/settings/payments/bank-transfer` and no code.
+
+### Two production environment problems, found by reading the actual Vercel env
+
+Neither was on the audit's list, and neither is visible from the repository.
+
+- **`PAYMENT_CONFIG_SECRET` is misspelled** in production. The code reads
+  `PAYMENTS_CONFIG_SECRET`. Credential encryption is therefore unconfigured in production: the
+  admin payments page shows its warning banner, and saving a Stripe key would fail outright.
+  Nothing breaks today because cash on delivery and bank transfer store no secrets. **Left open at
+  the user's request** — they are renaming it in the dashboard, which preserves the existing value.
+- **`BLOB_READ_WRITE_TOKEN` was absent from production entirely**, so Media Library uploads and the
+  CSV import's product images would have failed on the live site with a "not configured" error.
+  Copied from local `.env` to Production at the user's direction. Production only — preview
+  deployments still have no Blob token.
+
+Vercel environment changes take effect only on the next deployment; both landed with `0229648`.
+
+### Verified on the live deployment
+
+207 sitemap URLs with zero demo-domain references; robots.txt pointing at the right host; correct
+canonical; no `twitter:creator`; no `@alexandris` anywhere on the homepage; Organization JSON-LD
+carrying the real legal name, address, ΑΦΜ, email and phone with no `sameAs`; the footer identity
+line omitting the ΓΕΜΗ label cleanly. Catalogue browses, the product page selects sizes, add-to-cart
+works, and cart totals are right: €34.90 + €6.95 shipping = €41.85 with €8.10 VAT — 24%
+**inclusive** (`41.85 × 0.24/1.24`), not added on top, which is the bug class the audit session
+fixed.
+
+Checkout was deliberately **not** driven past the contact step. That would mean submitting forms on
+production, and a completed order decrements stock that deleting the order does not restore.
+
+### Also confirmed, and still outstanding
+
+The live database has **exactly one `AdminUser`**, `alexandrisstores@gmail.com`, and its password is
+**not** the seeded `admin123` — the demo account is gone from production. One account is still one
+lost password from lockout, so a second admin remains worth creating. Separately, `README.md` still
+advertises `admin@alexandris-demo.example` / `admin123` as the demo login in a **public** GitHub
+repo; that account no longer exists so it is not a live risk, but the line is now false.
+
+Also noted: Vercel SSO deployment protection is on for `all_except_custom_domains`, so only
+`shopalexandris.vercel.app` is publicly reachable — `my-eshop-alexandris.vercel.app` 302s to a
+Vercel login.
+
 ## Full pre-launch audit, then 40 of 63 findings fixed — COMPLETE, verified clean (tsc + eslint + build + 186 tests + production-build walkthrough), 18 commits pushed, HEAD `ebcd82b`
 
 The brief was a complete page-by-page, feature-by-feature functional audit of the whole shop and
