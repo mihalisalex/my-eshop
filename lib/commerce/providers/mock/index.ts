@@ -5,7 +5,7 @@ import { createRemoteCheckoutService } from "@/lib/commerce/providers/remote/che
 import { createRemoteCustomerService } from "@/lib/commerce/providers/remote/customer.service";
 import { createRemoteWishlistService } from "@/lib/commerce/providers/remote/wishlist.service";
 import { createRemoteAuthenticationService } from "@/lib/commerce/providers/remote/auth.service";
-import { createMockSearchService } from "@/lib/commerce/providers/mock/search.service";
+import { createRemoteSearchService } from "@/lib/commerce/providers/remote/search.service";
 import { createMockCMSService } from "@/lib/commerce/providers/mock/cms.service";
 import { createMockAnalyticsService } from "@/lib/commerce/providers/mock/analytics.service";
 import type { CommerceProvider } from "@/lib/commerce/types";
@@ -34,7 +34,7 @@ export function createMockCommerceProvider(): CommerceProvider {
     checkout: createRemoteCheckoutService(),
     customer: createRemoteCustomerService(),
     wishlist: createRemoteWishlistService(),
-    search: createMockSearchService(products),
+    search: createRemoteSearchService(),
     cms: createMockCMSService(),
     auth: createRemoteAuthenticationService(),
     analytics: createMockAnalyticsService(),

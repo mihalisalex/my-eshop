@@ -4,12 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PackageSearch } from "lucide-react";
 import { getCommerceProvider } from "@/lib/commerce";
-import { getEffectivePrice } from "@/lib/product";
 import { ProductCard } from "@/components/product/ProductCard";
 import { PlpToolbar } from "@/components/plp/PlpToolbar";
 import { PlpFilterSidebar, type PlpFilters } from "@/components/plp/PlpFilterSidebar";
 import type { PlpSort } from "@/components/plp/PlpSortSelect";
-import type { SearchFacet, SearchOptions } from "@/lib/commerce/types";
+import type { SearchFacet, SearchOptions, SearchResult } from "@/lib/commerce/types";
 import type { Product } from "@/types";
 
 const PAGE_SIZE = 8;
@@ -55,18 +54,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   const scopeFilters = { ...baseFilters, category: category ?? baseFilters.category, isNew: isNew || baseFilters.isNew };
   const baseFiltersKey = JSON.stringify(scopeFilters);
 
-  useEffect(() => {
-    let cancelled = false;
-    commerce.search.search("", { ...scopeFilters, pageSize: 500 }).then((result) => {
-      if (cancelled) return;
-      const prices = result.products.map((p) => getEffectivePrice(p).amount);
-      setPriceBounds(prices.length ? [Math.min(...prices), Math.max(...prices)] : [0, 0]);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- baseFiltersKey is the stable identity for the baseFilters object
-  }, [baseFiltersKey, commerce]);
+  // The price-slider bounds used to come from a SECOND request for 500 products, issued
+  // on every listing view purely to read a minimum and a maximum. /api/search now returns
+  // them alongside the page it was already sending, so the bounds cost nothing.
 
   // Used for the slider UI, which needs the full bounds to draw its track/handles.
   const displayPriceRange: [number, number] = [
@@ -106,7 +96,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     (async () => {
       for (let page = 1; page <= urlPage; page += 1) {
         if (cacheEntry.pages.has(page)) continue;
-        const result = await commerce.search.search("", {
+        const result = (await commerce.search.search("", {
           ...scopeFilters,
           colors: colors.length ? colors : undefined,
           sizes: sizes.length ? sizes : undefined,
@@ -117,11 +107,12 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
           sort,
           page,
           pageSize: PAGE_SIZE,
-        });
+        })) as SearchResult & { priceBounds?: [number, number] };
         if (cancelled) return;
         cacheEntry.pages.set(page, result.products);
         cacheEntry.facets = result.facets;
         cacheEntry.total = result.total;
+        if (result.priceBounds) setPriceBounds(result.priceBounds);
       }
 
       if (cancelled) return;

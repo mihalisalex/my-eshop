@@ -10,7 +10,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useRecentSearches } from "@/hooks/use-recent-searches";
 import { EASE } from "@/constants/animation";
 import { getCommerceProvider } from "@/lib/commerce";
-import { getTrendingSearches } from "@/services/search";
+import { getTrendingSearches } from "@/lib/trending-searches";
 import { SearchProductResult } from "@/components/layout/search/SearchProductResult";
 import { SearchCollectionResult } from "@/components/layout/search/SearchCollectionResult";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,8 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
   const { terms: recent, addTerm, clear: clearRecent } = useRecentSearches();
 
   const [query, setQuery] = useState("");
-  const [trending, setTrending] = useState<string[]>([]);
+  // Static list, so it is read once at module scope rather than set from an effect.
+  const trending = getTrendingSearches();
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -67,7 +68,6 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
 
   useEffect(() => {
     if (!open) return;
-    getTrendingSearches().then(setTrending);
     commerce.collections.getAll().then(setAllCollections);
   }, [open, commerce]);
 
