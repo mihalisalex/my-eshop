@@ -81,7 +81,6 @@
       "order": 6,
       "data": {
         "title": "Follow Along",
-        "handle": "@alexandris",
         "images": [
           { "src": "https://images.unsplash.com/photo-1553835584-c3eab150319e?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 1" },
           { "src": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80", "alt": "Styled look, social grid 2" },

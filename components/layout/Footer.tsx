@@ -34,20 +34,25 @@ export async function Footer({ navigation, settings }: FooterProps) {
           <div className="mt-6 max-w-xs">
             <NewsletterForm compact source="footer" />
           </div>
-          <ul className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs tracking-[0.05em] text-luxe-gray-dark uppercase">
-            {settings.socialLinks.map((social) => (
-              <li key={social.platform}>
-                <a
-                  href={social.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="transition-colors hover:text-luxe-black"
-                >
-                  {social.platform}
-                </a>
-              </li>
-            ))}
-          </ul>
+          {/* Rendered only when there is something to list. An empty <ul> collapses to zero
+              height but keeps its mt-6, leaving 24px of dead space under the newsletter form —
+              which is the state the shop is in until real social profiles are configured. */}
+          {settings.socialLinks.length > 0 ? (
+            <ul className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-xs tracking-[0.05em] text-luxe-gray-dark uppercase">
+              {settings.socialLinks.map((social) => (
+                <li key={social.platform}>
+                  <a
+                    href={social.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="transition-colors hover:text-luxe-black"
+                  >
+                    {social.platform}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {navigation.footer.map((column) => (
