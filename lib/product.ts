@@ -37,10 +37,6 @@ export function getProductMargin(product: Product): ProductMargin | null {
   return { profit, marginPercent };
 }
 
-function getTotalStock(product: Product): number {
-  return product.sizes.reduce((sum, size) => sum + size.quantity, 0);
-}
-
 export function findSizeVariant(product: Product, sizeName: string): SizeVariant | undefined {
   return product.sizes.find((size) => size.name === sizeName);
 }
@@ -53,7 +49,27 @@ export function isSizePurchasable(product: Product, sizeName: string): boolean {
   return product.inventoryPolicy === "continue";
 }
 
-const LOW_STOCK_THRESHOLD = 5;
+/**
+ * Scarcity is measured in SIZES REMAINING, not total units.
+ *
+ * This shop stocks roughly one pair per size, which is normal for an independent
+ * footwear retailer and is the real inventory - not a data problem. But the badge used to
+ * fire when total units across all sizes fell to 5 or fewer, which in a one-pair-per-size
+ * shop just means "five sizes left", and it lit up on 147 of 164 active products. A badge
+ * on 90% of a catalog tells a shopper nothing, and dressing ordinary stock as scarcity is
+ * manufactured urgency of the same kind as the fabricated purchase counter removed in
+ * 78b529f.
+ *
+ * Counting available sizes gives a signal that is both true and useful: 16 products are
+ * genuinely down to their last size and 28 have two left, so the badge now appears on the
+ * 27% where it means something - and says which, because "last size" and "a few sizes"
+ * are different messages to someone deciding whether to buy now.
+ */
+const FEW_SIZES_THRESHOLD = 2;
+
+function availableSizeCount(product: Product): number {
+  return product.sizes.filter((size) => size.quantity > 0).length;
+}
 
 export function getProductBadges(product: Product): ProductBadge[] {
   const badges: ProductBadge[] = [];
@@ -63,9 +79,9 @@ export function getProductBadges(product: Product): ProductBadge[] {
   if (isOnSale(product)) badges.push({ label: "Sale", tone: "sale" });
   else if (product.isNew) badges.push({ label: "New", tone: "new" });
 
-  const totalStock = getTotalStock(product);
-  if (product.availableForSale && totalStock > 0 && totalStock <= LOW_STOCK_THRESHOLD) {
-    badges.push({ label: "Low Stock", tone: "low-stock" });
+  const sizesLeft = availableSizeCount(product);
+  if (product.availableForSale && sizesLeft > 0 && sizesLeft <= FEW_SIZES_THRESHOLD) {
+    badges.push({ label: sizesLeft === 1 ? "Last size" : "Few sizes left", tone: "low-stock" });
   }
 
   return badges;

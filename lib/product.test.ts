@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getProductMargin } from "@/lib/product";
+import { getProductBadges, getProductMargin } from "@/lib/product";
 import type { Product } from "@/types/product";
 
 /** Only the fields getProductMargin actually reads — the rest of Product is irrelevant here. */
@@ -56,5 +56,59 @@ describe("getProductMargin", () => {
     );
     expect(margin).toEqual({ profit: 0, marginPercent: 0 });
     expect(Number.isNaN(margin!.marginPercent)).toBe(false);
+  });
+});
+
+/**
+ * The scarcity badge is measured in sizes remaining rather than total units, because this
+ * shop genuinely stocks about one pair per size. Counting units made the badge fire on
+ * 147 of 164 active products — a signal that appears almost everywhere is not a signal,
+ * and it dressed ordinary stock as urgency.
+ */
+function withSizes(quantities: number[]): Product {
+  return {
+    availableForSale: true,
+    sizes: quantities.map((quantity, index) => ({
+      name: String(40 + index),
+      quantity,
+      inStock: quantity > 0,
+    })),
+  } as Product;
+}
+
+describe("getProductBadges — scarcity", () => {
+  const scarcity = (product: Product) => getProductBadges(product).find((badge) => badge.tone === "low-stock");
+
+  it("says nothing for a fully stocked size run", () => {
+    // Seven sizes at one pair each is a healthy shoe shop, not a warning.
+    expect(scarcity(withSizes([1, 1, 1, 1, 1, 1, 1]))).toBeUndefined();
+  });
+
+  it("stays quiet at three sizes left", () => {
+    expect(scarcity(withSizes([1, 1, 1, 0, 0, 0, 0]))).toBeUndefined();
+  });
+
+  it("warns when two sizes remain", () => {
+    expect(scarcity(withSizes([1, 1, 0, 0, 0]))?.label).toBe("Few sizes left");
+  });
+
+  it("distinguishes the last size, which is a different message to a shopper", () => {
+    expect(scarcity(withSizes([1, 0, 0, 0, 0]))?.label).toBe("Last size");
+  });
+
+  it("counts sizes rather than units, so plentiful stock in one size is not scarcity", () => {
+    // 40 units, but only one size anyone can actually buy.
+    expect(scarcity(withSizes([40, 0, 0, 0, 0]))?.label).toBe("Last size");
+  });
+
+  it("says nothing when the product is sold out entirely", () => {
+    // Out of stock is communicated by the size selector and the disabled CTA, not by a
+    // scarcity badge that implies something is still available.
+    expect(scarcity(withSizes([0, 0, 0]))).toBeUndefined();
+  });
+
+  it("says nothing when the product is not available for sale", () => {
+    const product = { ...withSizes([1, 0, 0]), availableForSale: false } as Product;
+    expect(scarcity(product)).toBeUndefined();
   });
 });
