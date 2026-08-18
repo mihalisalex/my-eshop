@@ -17,9 +17,9 @@ import { COMPANY, formattedAddress } from "@/constants/company";
  * alongside it. Nothing describes a feature that does not exist.
  *
  * Trader identity comes from constants/company.ts so the registered name, address, ΑΦΜ
- * and contact details exist in exactly one place. The ΓΕΜΗ number is still outstanding:
- * COMPANY.gemiNumber is null, the identity line simply omits it rather than printing an
- * empty label, and scripts/check-launch-placeholders.ts fails while it stays null.
+ * and contact details exist in exactly one place. No ΓΕΜΗ number is printed: the trader is
+ * recorded as not registered (COMPANY.gemiRegistration), so the identity line omits the
+ * label rather than showing an empty one. Re-run this script if that ever changes.
  */
 const IDENTITY = `${COMPANY.legalName}, ${formattedAddress()}, VAT (ΑΦΜ) ${COMPANY.vatNumber}${COMPANY.gemiNumber ? `, ΓΕΜΗ ${COMPANY.gemiNumber}` : ""}`;
 const EMAIL = COMPANY.email;
@@ -170,4 +170,10 @@ const target = resolve(process.cwd(), "data/legal.json");
 writeFileSync(target, `${JSON.stringify(pages, null, 2)}\n`, "utf8");
 
 console.log(`Wrote ${pages.length} legal pages to data/legal.json`);
-console.log(COMPANY.gemiNumber ? "Trader identity complete." : "NOTE: COMPANY.gemiNumber is still null — the ΓΕΜΗ number is legally required and is omitted from the identity line until it is set.");
+console.log(
+  COMPANY.gemiNumber
+    ? "Trader identity complete, including the ΓΕΜΗ number."
+    : COMPANY.gemiRegistration === "not-registered"
+      ? "NOTE: no ΓΕΜΗ number printed — the trader is recorded as not registered. Re-run this after registering."
+      : "NOTE: no ΓΕΜΗ number printed and registration status is unrecorded. Set COMPANY.gemiRegistration before launch.",
+);

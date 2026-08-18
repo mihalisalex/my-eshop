@@ -2,17 +2,12 @@
   "titleTemplate": "%s | ALEXANDRIS",
   "defaultTitle": "ALEXANDRIS — Modern Luxury Footwear",
   "defaultDescription": "ALEXANDRIS is a modern luxury footwear house offering considered shoemaking, full-grain leather and timeless design for women and men.",
-  "siteUrl": "https://www.alexandris-demo.example",
+  "siteUrl": "https://shopalexandris.vercel.app",
   "defaultOgImage": "https://images.unsplash.com/photo-1699309325446-3561a7508d3c?auto=format&fit=crop&w=1200&q=80",
   "twitterHandle": "@alexandris",
   "organization": {
     "name": "ALEXANDRIS",
-    "logo": "https://www.alexandris-demo.example/logo.svg",
-    "sameAs": [
-      "https://instagram.com/alexandris",
-      "https://facebook.com/alexandris",
-      "https://tiktok.com/@alexandris",
-      "https://pinterest.com/alexandris"
-    ]
+    "logo": "https://shopalexandris.vercel.app/logo.svg",
+    "sameAs": []
   }
 }

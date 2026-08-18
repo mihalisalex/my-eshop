@@ -50,16 +50,26 @@ const CHECKS: { file: string; markers: { marker: string; why: string }[] }[] = [
 const findings: Finding[] = [];
 
 /**
- * Not every launch blocker is a string in a file. The ΓΕΜΗ number is mandatory on a
- * Greek commercial site and is simply absent rather than wrong, so it needs its own
- * check — a grep would never find it.
+ * Not every launch blocker is a string in a file. The ΓΕΜΗ number is simply absent rather
+ * than wrong, so it needs its own check — a grep would never find it.
+ *
+ * The state that must fail is "unknown", not "missing". A missing number is correct when the
+ * trader isn't registered; what is never safe is deploying a Greek commercial site without
+ * anyone having decided which of those is true, because the two look identical in the data.
  */
-if (!COMPANY.gemiNumber) {
+if (COMPANY.gemiRegistration === "unknown") {
   findings.push({
     file: "constants/company.ts",
-    marker: "COMPANY.gemiNumber is null",
+    marker: "COMPANY.gemiRegistration is \"unknown\"",
     count: 1,
-    why: "The ΓΕΜΗ registry number is legally required on a Greek commercial website. It is omitted from the trader identity line until set.",
+    why: "Nobody has recorded whether this trader is ΓΕΜΗ-registered. The number is legally required on a Greek commercial website when one exists, so this has to be answered before launch — set it to \"registered\" with a gemiNumber, or \"not-registered\".",
+  });
+} else if (COMPANY.gemiRegistration === "registered" && !COMPANY.gemiNumber) {
+  findings.push({
+    file: "constants/company.ts",
+    marker: "gemiRegistration is \"registered\" but gemiNumber is null",
+    count: 1,
+    why: "The two fields disagree: the trader is recorded as ΓΕΜΗ-registered but there is no number to print, so the identity line silently omits a number the law requires it to show.",
   });
 }
 
@@ -74,6 +84,19 @@ for (const check of CHECKS) {
     const count = contents.split(marker).length - 1;
     if (count > 0) findings.push({ file: check.file, marker, count, why });
   }
+}
+
+/**
+ * Printed on the way past rather than as a failure. A recorded decision to launch without a
+ * ΓΕΜΗ number is allowed, but it should be restated at every deploy instead of going quiet
+ * the moment it stops failing — that is how a provisional answer becomes a permanent one.
+ */
+if (COMPANY.gemiRegistration === "not-registered") {
+  console.log(
+    "NOTE: recorded as not ΓΕΜΗ-registered, so no registry number is published.\n" +
+      "      Re-confirm with an accountant — a Greek trader selling at distance is normally\n" +
+      "      required to register, and the number must then appear on the site.\n",
+  );
 }
 
 if (findings.length === 0) {

@@ -31,11 +31,28 @@ export const COMPANY = {
   vatNumber: "146214557",
 
   /**
-   * ΓΕΜΗ (General Commercial Registry) number. Not yet supplied, and mandatory on a Greek
-   * commercial website — scripts/check-launch-placeholders.ts fails while this is null so
-   * it cannot be forgotten. Set it to the registry number as a string.
+   * ΓΕΜΗ (General Commercial Registry) number, printed in the trader identity line when
+   * one exists. Stays null while `gemiRegistration` is anything other than "registered".
    */
   gemiNumber: null as string | null,
+
+  /**
+   * Whether a ΓΕΜΗ number is expected at all — deliberately separate from `gemiNumber`,
+   * because a null number means two very different things and only one of them is safe to
+   * launch on.
+   *
+   * "unknown" is the dangerous state: nobody has answered, and shipping on it publishes a
+   * commercial site that may be missing a legally required registration number. The launch
+   * check fails on it so an unanswered question cannot slip out looking like an answered one.
+   *
+   * "not-registered" is the trader's own statement (recorded 2026-08-18): there is no number
+   * to print, so `traderIdentityLine()` omits the label instead of showing an empty one, and
+   * the launch check passes while still naming the decision. This is worth re-confirming with
+   * an accountant — a Greek trader selling at distance is normally required to be registered,
+   * and once registered the number must appear on the site. On the day it exists, set this to
+   * "registered" and fill in `gemiNumber`; nothing else needs changing.
+   */
+  gemiRegistration: "not-registered" as "registered" | "not-registered" | "unknown",
 
   email: "alexandrisstores@gmail.com",
   /** Heraklion landline, displayed nationally and dialled internationally. */

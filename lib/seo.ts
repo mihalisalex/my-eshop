@@ -67,7 +67,10 @@ export function organizationSchema(seo: SiteSeoDefaults) {
     legalName: COMPANY.legalName,
     url: seo.siteUrl,
     logo: seo.organization.logo,
-    sameAs: seo.organization.sameAs,
+    // Omitted rather than emitted empty. `sameAs` is a claim that these profiles ARE this
+    // business, so an empty array is the honest state until real ones exist — and shipping
+    // `sameAs: []` invites someone to "fix" it by putting the seeded handles back.
+    ...(seo.organization.sameAs.length > 0 ? { sameAs: seo.organization.sameAs } : {}),
     vatID: COMPANY.vatNumber,
     email: COMPANY.email,
     telephone: COMPANY.phoneE164,
