@@ -20,13 +20,15 @@ interface ProductListingPageProps {
   baseFilters: Pick<SearchOptions, "gender" | "category" | "collectionId" | "isNew" | "isSale">;
   /** Set false when the page already renders its own hero/title above this component (e.g. a collection hero banner). */
   showHeader?: boolean;
+  /** Sort applied when the shopper has not chosen one. /new-in uses "newest" so the page means something. */
+  defaultSort?: PlpSort;
 }
 
 function parseCsv(value: string | null): string[] {
   return value ? value.split(",").filter(Boolean) : [];
 }
 
-export function ProductListingPage({ title, description, baseFilters, showHeader = true }: ProductListingPageProps) {
+export function ProductListingPage({ title, description, baseFilters, showHeader = true, defaultSort = "relevance" }: ProductListingPageProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -39,7 +41,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   const colors = parseCsv(searchParams.get("color"));
   const sizes = parseCsv(searchParams.get("size"));
   const availability = searchParams.get("availability") === "in-stock" ? "in-stock" : "all";
-  const sort = (searchParams.get("sort") as PlpSort | null) ?? "relevance";
+  const sort = (searchParams.get("sort") as PlpSort | null) ?? defaultSort;
   const minPriceParam = searchParams.get("minPrice");
   const maxPriceParam = searchParams.get("maxPrice");
   const urlPage = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -165,8 +167,10 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   );
 
   const handleSortChange = useCallback(
-    (nextSort: PlpSort) => updateParams({ sort: nextSort === "relevance" ? null : nextSort, page: null }),
-    [updateParams]
+    // Selecting the page’s own default clears the param rather than pinning it, so the
+    // canonical URL stays clean.
+    (nextSort: PlpSort) => updateParams({ sort: nextSort === defaultSort ? null : nextSort, page: null }),
+    [updateParams, defaultSort]
   );
 
   const handleClearAll = useCallback(

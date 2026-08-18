@@ -114,6 +114,7 @@ export function toProduct(row: ProductRow): Product {
     brand: row.brand ?? undefined,
     vendor: row.vendor ?? undefined,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 

@@ -24,7 +24,11 @@ export default async function NewInPage() {
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main className="flex-1 pt-header">
         <Suspense fallback={null}>
-          <ProductListingPage title="New In" description="Just landed." baseFilters={{ isNew: true }} />
+          {/* No isNew filter: that flag is a merchandising badge nobody had set, so this page
+              showed "0 items" while the catalog held 175 products. Sorting by when a product
+              was actually added is what "New In" means, and it stays correct on its own as
+              stock is added. */}
+          <ProductListingPage title="New In" description="The latest arrivals." baseFilters={{}} defaultSort="newest" />
         </Suspense>
       </main>
       <Footer navigation={navigation} settings={settings} />

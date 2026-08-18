@@ -121,7 +121,10 @@ export function createMockSearchService(productService: ProductService): SearchS
           results = [...results].sort((a, b) => getEffectivePrice(b).amount - getEffectivePrice(a).amount);
           break;
         case "newest":
-          results = [...results].sort((a, b) => Number(b.isNew) - Number(a.isNew));
+          // Sorts by when the product was actually added. It used to sort on the isNew
+          // FLAG, which is a merchandising badge rather than a date - and since no product
+          // in this catalog carries it, "Newest" was a no-op on every listing page.
+          results = [...results].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
           break;
         default:
           break;

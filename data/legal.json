@@ -1,81 +1,114 @@
 [
   {
-    "id": "privacy-policy",
     "slug": "privacy-policy",
     "title": "Privacy Policy",
-    "updatedAt": "2026-01-01",
+    "updatedAt": "2026-08-18",
     "sections": [
       {
+        "heading": "Who We Are",
+        "body": "This shop is operated by COMPANY_DETAILS_PENDING (\"we\", \"us\"), registered in Greece at COMPANY_DETAILS_PENDING, VAT (ΑΦΜ) COMPANY_DETAILS_PENDING, ΓΕΜΗ COMPANY_DETAILS_PENDING. We are the data controller for the personal data described here. For any privacy question, or to exercise the rights set out below, contact us at COMPANY_DETAILS_PENDING."
+      },
+      {
         "heading": "What We Collect",
-        "body": "When you browse or order, we collect the information you give us directly — name, email, shipping/billing address, order history — plus basic usage data (pages visited, device/browser type) to keep the site working and improve it."
+        "body": "When you place an order we collect the name, email address, postal address and phone number you enter at checkout, together with the contents and total of your order. A phone number is required because our courier needs a way to reach you about the delivery.\n\nIf you create an account we also store your password as a one-way hash — we never hold it in a readable form and cannot recover it for you.\n\nWe never see or store full card numbers. Card payments are handled entirely by our payment provider on their own systems; we receive only the result of the payment and, at most, the last four digits and card brand for your order record."
       },
       {
-        "heading": "How We Use It",
-        "body": "To process and ship orders, manage your account, respond to support requests, and — only if you opt in on the newsletter or during checkout — send marketing communications. We do not sell your personal data."
+        "heading": "Why We Use It, and On What Basis",
+        "body": "To perform our contract with you: taking payment, fulfilling and delivering your order, handling returns and refunds, and sending the transactional emails that go with them (order confirmation, dispatch, returns).\n\nTo meet legal obligations: retaining invoices and transaction records for the period Greek tax law requires.\n\nWith your consent: marketing email, if you have subscribed, and any non-essential cookies you have accepted. You can withdraw either at any time, and withdrawing does not affect processing carried out beforehand.\n\nFor our legitimate interests: keeping the shop secure and working, including rate-limiting to prevent abuse."
       },
       {
-        "heading": "Cookies",
-        "body": "We use cookies for cart/session persistence and basic analytics. See our Cookie Policy for the full breakdown and how to control them."
+        "heading": "Who We Share It With",
+        "body": "Only the processors needed to run the shop, and only with what they need:\n\n• Our payment provider, to take and refund payments.\n• Our courier, to deliver your order — name, address and phone number.\n• Our email provider, to send transactional and (where consented) marketing email.\n• Our hosting and database providers, who store the shop's data on our behalf.\n\nWe do not sell your personal data, and we do not share it for anyone else's marketing."
+      },
+      {
+        "heading": "How Long We Keep It",
+        "body": "Order and invoice records are kept for as long as Greek tax and accounting law requires. Account details are kept until you ask us to delete the account. Marketing consent is kept until you withdraw it. Abandoned carts and checkout sessions that never became an order are kept only briefly and then cleared."
       },
       {
         "heading": "Your Rights",
-        "body": "You can access, correct, or delete your account data at any time from Account Settings, or by contacting hello@alexandris-demo.example. Deleting your account removes your stored personal data except where we're required to retain order records for accounting or legal purposes."
+        "body": "Under the GDPR you may ask us for a copy of your data, ask us to correct it, ask us to delete it, ask us to restrict or stop a particular use, object to processing based on our legitimate interests, and ask for your data in a portable form. Where processing relies on consent you can withdraw it at any time.\n\nWrite to COMPANY_DETAILS_PENDING and we will respond within one month. If you believe we have handled your data improperly you can complain to the Hellenic Data Protection Authority (Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα), Kifissias 1-3, 115 23 Athens, www.dpa.gr."
       },
       {
-        "heading": "This Is a Demo",
-        "body": "ALEXANDRIS is a demo storefront built for evaluation purposes. This policy describes intended behaviour for illustration; no real marketing lists or third-party data sharing occur."
+        "heading": "Cookies",
+        "body": "We use a small number of cookies and similar storage. The essential ones keep your basket and your signed-in session working and cannot be switched off. Anything beyond that is only set after you accept it. Our Cookie Policy explains each one and how to change your choice."
       }
     ]
   },
   {
-    "id": "terms-of-service",
     "slug": "terms-of-service",
     "title": "Terms of Service",
-    "updatedAt": "2026-01-01",
+    "updatedAt": "2026-08-18",
     "sections": [
       {
-        "heading": "Using This Site",
-        "body": "By using this site you agree to these terms. Content, product images, and pricing are subject to change without notice. You must be able to form a legally binding contract to place an order."
+        "heading": "Who You Are Buying From",
+        "body": "Purchases on this site are a distance contract with COMPANY_DETAILS_PENDING, registered in Greece at COMPANY_DETAILS_PENDING, VAT (ΑΦΜ) COMPANY_DETAILS_PENDING, ΓΕΜΗ COMPANY_DETAILS_PENDING, contactable at COMPANY_DETAILS_PENDING. These terms apply to every order placed here."
       },
       {
-        "heading": "Orders & Pricing",
-        "body": "All prices are shown in EUR and include VAT unless stated otherwise. We reserve the right to refuse or cancel any order, including in cases of pricing errors or suspected fraud."
+        "heading": "Prices and VAT",
+        "body": "All prices are shown in euro and include Greek VAT at the applicable rate. The price shown on the product page is the price you pay for the item; shipping is added at checkout and shown separately before you confirm.\n\nWe take care to price correctly, but if an obvious pricing error means an order was placed at a clearly incorrect price, we may cancel that order and refund you in full rather than fulfil it. We will tell you if this happens."
+      },
+      {
+        "heading": "Placing an Order",
+        "body": "Your order is an offer to buy. The contract is formed when we send you an order confirmation by email. If an item turns out to be unavailable after you order, we will contact you and refund that item in full.\n\nAvailability shown on the site reflects our stock at that moment and can change while an item sits in your basket."
       },
       {
         "heading": "Payment",
-        "body": "This is a demo store — no real payment is processed regardless of which method is selected at checkout."
+        "body": "Payment is taken through the methods offered at checkout. Card details are entered on our payment provider's systems and never reach this site. Where cash on delivery is offered, payment is made to the courier when your order arrives."
+      },
+      {
+        "heading": "Delivery",
+        "body": "Delivery estimates shown at checkout are working-day estimates for mainland Greece and exclude public holidays. They are estimates, not guarantees. Risk in the goods passes to you on delivery."
+      },
+      {
+        "heading": "Your Right to Withdraw",
+        "body": "You have 14 days from the day you receive your order to withdraw from the contract without giving any reason. To do so, tell us clearly before the 14 days are up — an email is enough.\n\nReturn the goods to us within 14 days of telling us. We will refund everything you paid, including standard outbound delivery, within 14 days of receiving the goods back or of proof you have sent them, whichever comes first, using the same payment method you used.\n\nYou bear the cost of returning the goods, and you are responsible for any reduction in their value caused by handling beyond what is needed to establish their nature and characteristics — trying shoes on indoors is fine; wearing them outside is not.\n\nSeparately from this statutory right, we offer free returns within 30 days of delivery on unworn items in their original packaging. That offer is in addition to, and does not limit, your rights above."
+      },
+      {
+        "heading": "If Something Is Wrong With Your Order",
+        "body": "You have the legal guarantee of conformity under Greek and EU consumer law for goods that are faulty, damaged or not as described. Contact us and we will repair, replace or refund as the law provides. This is separate from, and unaffected by, the withdrawal right above."
       },
       {
         "heading": "Intellectual Property",
-        "body": "All site content — text, images, logos, design — belongs to ALEXANDRIS or its licensors and may not be reproduced without permission."
+        "body": "All content on this site — product photography, copy, and the shop's design — belongs to us or our licensors and may not be reproduced commercially without permission."
       },
       {
-        "heading": "Limitation of Liability",
-        "body": "The site is provided 'as is.' To the extent permitted by law, ALEXANDRIS is not liable for indirect or consequential losses arising from use of this site."
+        "heading": "Liability",
+        "body": "Nothing here limits our liability for death or personal injury caused by negligence, for fraud, or for anything else that cannot be limited by law. Subject to that, we are not liable for indirect or consequential losses arising from use of this site."
+      },
+      {
+        "heading": "Complaints and Dispute Resolution",
+        "body": "Please contact us first at COMPANY_DETAILS_PENDING — most things are resolved quickly.\n\nIf we cannot resolve it between us, you may use the European Commission's Online Dispute Resolution platform at ec.europa.eu/consumers/odr, or refer the matter to the Hellenic Consumer's Ombudsman (Συνήγορος του Καταναλωτή), www.synigoroskatanaloti.gr."
+      },
+      {
+        "heading": "Governing Law",
+        "body": "These terms are governed by Greek law, and the courts of Greece have jurisdiction. This does not deprive you of the protection of mandatory consumer rules in your country of residence."
       }
     ]
   },
   {
-    "id": "cookie-policy",
     "slug": "cookie-policy",
     "title": "Cookie Policy",
-    "updatedAt": "2026-01-01",
+    "updatedAt": "2026-08-18",
     "sections": [
       {
-        "heading": "What Cookies We Use",
-        "body": "Essential cookies keep your cart, wishlist, and session working — the site can't function without them. We may also use basic analytics cookies to understand how the site is used, in aggregate, never tied to your identity for marketing."
+        "heading": "What Cookies Are",
+        "body": "Small files and similar browser storage that let a site remember things between page loads — such as what is in your basket, or that you are signed in."
       },
       {
-        "heading": "Third-Party Cookies",
-        "body": "This demo does not integrate any third-party advertising or tracking pixels. A production deployment would disclose any added here."
+        "heading": "Essential — Always On",
+        "body": "These make the shop work and cannot be switched off:\n\n• Your basket, so items survive moving between pages.\n• Your signed-in session, if you have an account, and the admin session for staff.\n• Your language choice.\n• Your cookie choice itself, so we do not ask again on every page."
+      },
+      {
+        "heading": "Analytics and Marketing — Only With Consent",
+        "body": "We set nothing in these categories unless you accept them in the cookie banner. If you decline, none are set. If you accept and later change your mind, clear this site's data in your browser and the banner will ask again."
+      },
+      {
+        "heading": "Third Parties",
+        "body": "Our payment provider may set cookies on its own pages during checkout, and our hosting provider sets cookies needed to serve the site securely. Neither is used to advertise to you."
       },
       {
         "heading": "Managing Cookies",
-        "body": "Most browsers let you block or delete cookies in their settings. Blocking essential cookies will prevent core features like the cart from working correctly."
-      },
-      {
-        "heading": "Your Consent Choice",
-        "body": "The cookie banner shown on your first visit lets you accept all cookies or decline everything beyond what's strictly necessary. Your choice is stored on your device (not sent to us) and gates whether any future analytics/marketing script is allowed to load — you can change it any time by clearing your browser's local storage for this site."
+        "body": "Every browser lets you view and delete cookies for a site, and block them entirely. Blocking essential cookies will stop the basket and sign-in from working."
       }
     ]
   }

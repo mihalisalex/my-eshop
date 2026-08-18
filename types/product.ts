@@ -84,6 +84,8 @@ export interface Product extends SlugEntity {
   relatedProductIds?: string[];
   isNew?: boolean;
   isSale?: boolean;
+  /** ISO timestamp. Needed for a real "Newest" sort — see lib/commerce/providers/mock/search.service.ts. */
+  createdAt?: string;
   isPreorder?: boolean;
   isBackorder?: boolean;
   /** Expected fulfillment date when isPreorder/isBackorder is set (e.g. "Ships Sept 12"). */
