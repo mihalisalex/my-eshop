@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { completeCheckout } from "@/services/checkout";
+import { grantOrderAccess } from "@/lib/order-access-cookie";
 import { commerceErrorResponse } from "@/lib/commerce/http-errors";
 
 /**
@@ -22,6 +23,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // learns "redirect here" or "show these instructions", never which vendor is
     // behind them. See CompleteCheckoutResult in lib/commerce/types.ts.
     const result = await completeCheckout(checkoutId);
+
+    // This is the only moment we can know, first-hand, that this browser placed this order —
+    // so it is where the confirmation page's authority comes from. Without it the page would
+    // be back to trusting the order id in the URL (QA-041). Best-effort: a cookie failure
+    // must never fail an order that has already taken stock and started a payment; the
+    // shopper would then see "order not found" for an order that exists and is paid.
+    try {
+      await grantOrderAccess(result.order.id);
+    } catch (grantError) {
+      console.error("Failed to grant order access", result.order.id, grantError);
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     return commerceErrorResponse(error);

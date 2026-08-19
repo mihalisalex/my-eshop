@@ -587,6 +587,14 @@ model Return {
   /// "requested" | "approved" | "rejected" | "received" | "refunded"
   status String @default("requested")
 
+  /// Set exactly once, the moment this return first reaches a status meaning the goods are
+  /// physically back ("received", or "refunded" if the flow skipped straight past it).
+  /// Claimed with a null-guarded updateMany, the same once-only pattern as
+  /// Order.restockedAt — but a SEPARATE column, because a return covers a subset of the
+  /// order's lines and the two paths can both fire on the same order. services/returns.ts
+  /// and services/orders.ts each account for what the other has already credited.
+  restockedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

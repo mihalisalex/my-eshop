@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { AlertCircle, CheckCircle2, Clock, Landmark } from "lucide-react";
 import { formatMoney, orderReference } from "@/lib/format";
 import { getOrderById } from "@/services/orders";
+import { canAccessOrder } from "@/lib/order-access-cookie";
 import { getPrimaryPaymentForOrder, verifyPaymentWithProvider } from "@/services/payments";
 import { sendOrderConfirmationEmail } from "@/services/checkout";
 import { paymentProviderRegistry } from "@/lib/payments/registry";
@@ -26,12 +27,20 @@ import type { Metadata } from "next";
  * it is never itself treated as evidence. A shopper who hand-types `&verify=1`
  * triggers a real provider lookup that returns whatever is true.
  *
- * The order id is the capability token, the same convention this app already uses
- * for cart and checkout ids: an unguessable cuid, scoped to one purchase.
+ * The order id in the URL names WHICH order to show; it is no longer what permits
+ * showing it (QA-041). This page renders the customer's name, full shipping address,
+ * phone number and purchase — and a URL is written to browser history, sent in the
+ * `Referer` header, and pasted into chats. Authority now comes from `canAccessOrder`:
+ * an httpOnly grant cookie set when this browser placed the order, or ownership by the
+ * signed-in customer. The id stays in the URL because redirect-based payment providers
+ * need a stable return URL, built before the payment exists.
  */
 export const metadata: Metadata = {
   title: "Order Confirmation",
   robots: { index: false, follow: false },
+  // Belt and braces alongside the access check: never send this URL — which contains the
+  // order id — to any third-party host the page happens to reach out to.
+  referrer: "no-referrer",
 };
 
 interface ConfirmationPageProps {
@@ -55,6 +64,10 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
       </div>
     );
   }
+
+  // Authorization BEFORE the read, so an unauthorized request cannot be distinguished from a
+  // nonexistent order by timing or by any difference in what comes back.
+  if (!(await canAccessOrder(orderId))) return <OrderNotViewable />;
 
   const order = await getOrderById(orderId);
   if (!order) notFound();
@@ -251,6 +264,41 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
         <Link
           href="/"
           className="flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
+        >
+          Continue Shopping
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shown when the order id is present but this browser has no claim to it — a link opened on
+ * another device, a grant cookie that expired or was cleared, or someone else's URL.
+ *
+ * Deliberately NOT a 404, and deliberately says nothing about whether the order exists. The
+ * common case here is a real customer on their phone rather than an attacker, and telling
+ * them "not found" would suggest their order failed. It points at the two routes that
+ * genuinely work instead.
+ */
+function OrderNotViewable() {
+  return (
+    <div className="container-luxe flex flex-col items-center gap-4 py-32 text-center">
+      <h1 className="font-heading text-2xl">We can&apos;t show this order here</h1>
+      <p className="max-w-md text-sm text-luxe-gray-dark">
+        For your privacy, order details are only shown in the browser that placed the order. If you opened this link
+        on another device, sign in to see it — or check the confirmation email we sent you.
+      </p>
+      <div className="mt-2 flex flex-wrap justify-center gap-3">
+        <Link
+          href="/account/orders"
+          className="flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
+        >
+          Sign in to view
+        </Link>
+        <Link
+          href="/"
+          className="flex h-12 items-center justify-center border border-luxe-black px-8 text-xs font-medium tracking-[0.08em] uppercase"
         >
           Continue Shopping
         </Link>

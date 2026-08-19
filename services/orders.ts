@@ -5,6 +5,7 @@ import { DEFAULT_PAGE_SIZE, resolvePage, toPaged, type Paged } from "@/lib/pagin
 import { toOrder } from "@/lib/commerce/postgres/mappers";
 import { getEmailProvider, shippingUpdateEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
+import { creditStockForLines, quantitiesCreditedByReturns, subtractCreditedQuantities } from "@/services/restock";
 import type { Order } from "@/lib/commerce/types";
 
 export async function getOrderById(id: string): Promise<Order | null> {
@@ -99,11 +100,12 @@ const STOCK_RETURNING_STATUSES = new Set(["cancelled", "refunded"]);
  * guarantee. If the restock itself then fails, the claim is released so a later attempt
  * can retry rather than the order being permanently marked as settled.
  *
- * Only lines whose product denies overselling are restored. For an `inventoryPolicy:
- * "continue"` product the original decrement was `min(ordered, available)` rather than the
- * ordered quantity, so crediting the full amount back could invent stock that never
- * existed; that case is skipped deliberately rather than guessed at. Every product in this
- * catalog is currently "deny", so the distinction is precautionary.
+ * Only lines whose product denies overselling are restored — see `creditStockForLines`.
+ *
+ * Units a RETURN on this order has already credited are subtracted first. Without that, a
+ * customer returning one item and the shop then refunding the whole order credits that item
+ * twice, inventing stock that was never on the shelf. The two paths hold separate claims
+ * (`Order.restockedAt` and `Return.restockedAt`) precisely because either can happen first.
  */
 async function restockOrderIfNeeded(orderId: string, lineItems: Order["lineItems"]): Promise<void> {
   if (lineItems.length === 0) return;
@@ -115,27 +117,14 @@ async function restockOrderIfNeeded(orderId: string, lineItems: Order["lineItems
   if (claimed.count === 0) return;
 
   try {
-    const productIds = [...new Set(lineItems.map((item) => item.productId))];
-    const [products, sizes] = await Promise.all([
-      prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, inventoryPolicy: true } }),
-      prisma.productSize.findMany({
-        where: { OR: lineItems.map((item) => ({ productId: item.productId, name: item.size })) },
-        select: { id: true, productId: true, name: true },
-      }),
-    ]);
-    const policyById = new Map(products.map((product) => [product.id, product.inventoryPolicy]));
-    const sizeIdByKey = new Map(sizes.map((size) => [`${size.productId}:${size.name}`, size.id]));
+    const alreadyCredited = await quantitiesCreditedByReturns(orderId);
+    const lines = lineItems.map((item) => ({
+      productId: item.productId,
+      size: item.size,
+      quantity: item.quantity,
+    }));
 
-    const increments = lineItems
-      .filter((item) => policyById.get(item.productId) === "deny")
-      .map((item) => ({ sizeId: sizeIdByKey.get(`${item.productId}:${item.size}`), quantity: item.quantity }))
-      .filter((entry): entry is { sizeId: string; quantity: number } => Boolean(entry.sizeId));
-
-    await prisma.$transaction(
-      increments.map(({ sizeId, quantity }) =>
-        prisma.productSize.update({ where: { id: sizeId }, data: { quantity: { increment: quantity } } })
-      )
-    );
+    await creditStockForLines(subtractCreditedQuantities(lines, alreadyCredited));
   } catch (error) {
     await prisma.order.update({ where: { id: orderId }, data: { restockedAt: null } }).catch(() => {});
     // Surfaced rather than swallowed: unlike a failed email, stock that silently stayed
