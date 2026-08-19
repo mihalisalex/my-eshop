@@ -4,9 +4,21 @@ import { LOCALE_COOKIE, DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 
 /**
  * "Without i18n routing" mode (https://next-intl.dev/docs/getting-started/app-router/without-i18n-routing)
- * — cookie-based locale, no /en//el/ URL prefix and no [locale] route segment, matching
- * the deliberate choice made for this pass: real server-rendered translation without
- * restructuring every existing route/sitemap/canonical-URL decision made earlier today.
+ * — cookie-based locale, no `/el/` URL prefix and no `[locale]` route segment.
+ *
+ * That is now a considered position rather than a shortcut (QA-018). One URL set is correct
+ * while both locales render the SAME content: every product name, description, category,
+ * collection, blog post and legal page exists only in Greek, and switching to English
+ * changes ~90 chrome strings and nothing a search engine would index differently.
+ *
+ * A crawler arrives with no cookie and therefore gets Greek — the default — which is the
+ * version that should be indexed.
+ *
+ * WHAT WOULD CHANGE THIS: real translated content. The day products, categories and legal
+ * pages carry Greek and English versions, this should become locale-prefixed routing
+ * (`app/[locale]/`, unprefixed default) with `hreflang` alternates and both locales in the
+ * sitemap. Doing it before the content exists produces two near-duplicate URL sets, which
+ * costs rankings instead of earning them.
  */
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();

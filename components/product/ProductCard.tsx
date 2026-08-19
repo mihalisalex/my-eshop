@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, Eye } from "lucide-react";
@@ -28,6 +29,8 @@ const BADGE_STYLES: Record<string, string> = {
 };
 
 export function ProductCard({ product, className }: ProductCardProps) {
+  const tBadge = useTranslations("ProductBadge");
+  const tCard = useTranslations("ProductCard");
   const { isInWishlist, toggle } = useWishlist();
   const wishlisted = isInWishlist(product.id);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
@@ -74,7 +77,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
                   BADGE_STYLES[badge.tone]
                 )}
               >
-                {badge.label}
+                {tBadge(badge.key)}
               </span>
             ))}
           </div>
@@ -82,7 +85,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
 
         <button
           type="button"
-          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={wishlisted ? tCard("removeFromWishlist") : tCard("addToWishlist")}
           onClick={() => toggle(product.id)}
           className="absolute top-3 right-3 flex size-8 items-center justify-center bg-luxe-white/90 opacity-0 transition-opacity group-hover:opacity-100"
         >
@@ -98,7 +101,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           className="absolute inset-x-3 bottom-3 flex h-10 translate-y-2 items-center justify-center gap-2 bg-luxe-white text-xs font-medium tracking-[0.08em] text-luxe-black uppercase opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
         >
           <Eye className="size-4" strokeWidth={1.5} />
-          Quick View
+          {tCard("quickView")}
         </button>
       </div>
 

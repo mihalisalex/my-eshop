@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { BreadcrumbItem, FaqItem, Product, SiteSeoDefaults } from "@/types";
 import { COMPANY } from "@/constants/company";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 
 interface PageMetadataInput {
   seo: SiteSeoDefaults;
@@ -9,11 +10,16 @@ interface PageMetadataInput {
   path?: string;
   image?: string;
   noIndex?: boolean;
-  /** Defaults "en" — most call sites don't yet thread the request locale through; pass it explicitly where available (see app/products/[slug]/page.tsx). */
-  locale?: "en" | "el";
+  /**
+   * Defaults to the site's own default locale (Greek), NOT "en". It defaulted to English
+   * while every product name on the page was Greek, so pages that didn't thread the request
+   * locale through advertised `og:locale=en_US` for Greek content. Pass it explicitly where
+   * the request locale is available (see app/products/[slug]/page.tsx).
+   */
+  locale?: Locale;
 }
 
-const OG_LOCALE: Record<"en" | "el", string> = { en: "en_US", el: "el_GR" };
+const OG_LOCALE: Record<Locale, string> = { en: "en_US", el: "el_GR" };
 
 /** Builds a Next.js Metadata object from site-wide SEO defaults plus per-page overrides. */
 export function buildMetadata({
@@ -23,7 +29,7 @@ export function buildMetadata({
   path = "/",
   image,
   noIndex = false,
-  locale = "en",
+  locale = DEFAULT_LOCALE,
 }: PageMetadataInput): Metadata {
   const url = new URL(path, seo.siteUrl).toString();
   const resolvedTitle = title ?? seo.defaultTitle;
@@ -91,6 +97,10 @@ export function websiteSchema(seo: SiteSeoDefaults) {
     "@type": "WebSite",
     name: seo.organization.name,
     url: seo.siteUrl,
+    // The site's content language. A single value, not an array, because there is one URL
+    // set serving Greek content — claiming two languages here while every product name is
+    // Greek would be the same misstatement `<html lang="en">` was making.
+    inLanguage: DEFAULT_LOCALE,
     // No `potentialAction`/SearchAction here. It used to advertise
     // `${siteUrl}/search?q={search_term_string}` to search engines, and there is no
     // /search route — search exists only as a header overlay with no URL of its own, so

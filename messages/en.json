@@ -104,5 +104,25 @@
     "preferences": "Preferences",
     "security": "Security",
     "signOut": "Sign Out"
+  },
+  "ProductBadge": {
+    "preorder": "Preorder",
+    "backorder": "Backorder",
+    "sale": "Sale",
+    "new": "New",
+    "lastSize": "Last size",
+    "fewSizesLeft": "Few sizes left"
+  },
+  "ProductCard": {
+    "quickView": "Quick View",
+    "addToWishlist": "Add to wishlist",
+    "removeFromWishlist": "Remove from wishlist"
+  },
+  "PlpSort": {
+    "sortProducts": "Sort products",
+    "relevance": "Relevance",
+    "newest": "Newest",
+    "priceAsc": "Price: Low to High",
+    "priceDesc": "Price: High to Low"
   }
 }

@@ -89,16 +89,16 @@ describe("getProductBadges — scarcity", () => {
   });
 
   it("warns when two sizes remain", () => {
-    expect(scarcity(withSizes([1, 1, 0, 0, 0]))?.label).toBe("Few sizes left");
+    expect(scarcity(withSizes([1, 1, 0, 0, 0]))?.key).toBe("fewSizesLeft");
   });
 
   it("distinguishes the last size, which is a different message to a shopper", () => {
-    expect(scarcity(withSizes([1, 0, 0, 0, 0]))?.label).toBe("Last size");
+    expect(scarcity(withSizes([1, 0, 0, 0, 0]))?.key).toBe("lastSize");
   });
 
   it("counts sizes rather than units, so plentiful stock in one size is not scarcity", () => {
     // 40 units, but only one size anyone can actually buy.
-    expect(scarcity(withSizes([40, 0, 0, 0, 0]))?.label).toBe("Last size");
+    expect(scarcity(withSizes([40, 0, 0, 0, 0]))?.key).toBe("lastSize");
   });
 
   it("says nothing when the product is sold out entirely", () => {

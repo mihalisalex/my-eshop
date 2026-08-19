@@ -104,5 +104,25 @@
     "preferences": "Προτιμήσεις",
     "security": "Ασφάλεια",
     "signOut": "Αποσύνδεση"
+  },
+  "ProductBadge": {
+    "preorder": "Προπαραγγελία",
+    "backorder": "Κατόπιν παραγγελίας",
+    "sale": "Προσφορά",
+    "new": "Νέο",
+    "lastSize": "Τελευταίο νούμερο",
+    "fewSizesLeft": "Λίγα νούμερα"
+  },
+  "ProductCard": {
+    "quickView": "Γρήγορη προβολή",
+    "addToWishlist": "Προσθήκη στα αγαπημένα",
+    "removeFromWishlist": "Αφαίρεση από τα αγαπημένα"
+  },
+  "PlpSort": {
+    "sortProducts": "Ταξινόμηση προϊόντων",
+    "relevance": "Συνάφεια",
+    "newest": "Νεότερα",
+    "priceAsc": "Τιμή: Αύξουσα",
+    "priceDesc": "Τιμή: Φθίνουσα"
   }
 }

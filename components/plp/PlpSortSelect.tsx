@@ -1,15 +1,24 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
-const SORT_OPTIONS = [
-  { value: "relevance", label: "Relevance" },
-  { value: "newest", label: "Newest" },
-  { value: "price-asc", label: "Price: Low to High" },
-  { value: "price-desc", label: "Price: High to Low" },
-] as const;
+/**
+ * Values are stable identifiers that travel in the URL (`?sort=price-asc`) and reach the
+ * server; the labels are translated at render. They were hard-coded English on a shop whose
+ * default language is Greek, and this control sits on every listing page.
+ */
+const SORT_VALUES = ["relevance", "newest", "price-asc", "price-desc"] as const;
 
-export type PlpSort = (typeof SORT_OPTIONS)[number]["value"];
+export type PlpSort = (typeof SORT_VALUES)[number];
+
+/** Message keys under `PlpSort` — kept explicit so a renamed key is a type error, not a blank option. */
+const SORT_LABEL_KEY: Record<PlpSort, string> = {
+  relevance: "relevance",
+  newest: "newest",
+  "price-asc": "priceAsc",
+  "price-desc": "priceDesc",
+};
 
 interface PlpSortSelectProps {
   value: PlpSort;
@@ -18,9 +27,11 @@ interface PlpSortSelectProps {
 }
 
 export function PlpSortSelect({ value, onChange, className }: PlpSortSelectProps) {
+  const t = useTranslations("PlpSort");
+
   return (
     <select
-      aria-label="Sort products"
+      aria-label={t("sortProducts")}
       value={value}
       onChange={(event) => onChange(event.target.value as PlpSort)}
       className={cn(
@@ -28,9 +39,9 @@ export function PlpSortSelect({ value, onChange, className }: PlpSortSelectProps
         className
       )}
     >
-      {SORT_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
+      {SORT_VALUES.map((option) => (
+        <option key={option} value={option}>
+          {t(SORT_LABEL_KEY[option])}
         </option>
       ))}
     </select>

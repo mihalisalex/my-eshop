@@ -37,6 +37,7 @@ const BADGE_STYLES: Record<string, string> = {
 
 export function PurchasePanel({ product }: PurchasePanelProps) {
   const t = useTranslations("Pdp");
+  const tBadge = useTranslations("ProductBadge");
   const { addItem, isMutating } = useCart();
   const { isInWishlist, toggle } = useWishlist();
   const { customer } = useAuth();
@@ -80,7 +81,7 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
               key={badge.tone}
               className={cn("px-2 py-1 text-[10px] font-medium tracking-[0.08em] uppercase", BADGE_STYLES[badge.tone])}
             >
-              {badge.label}
+              {tBadge(badge.key)}
             </span>
           ))}
         </div>

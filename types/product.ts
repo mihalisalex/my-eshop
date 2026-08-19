@@ -45,8 +45,17 @@ export interface ProductSeoOverride {
 
 export type ProductBadgeTone = "new" | "sale" | "preorder" | "backorder" | "low-stock" | "bestseller";
 
+/** Keys under the `ProductBadge` message namespace — see messages/*.json. */
+export type ProductBadgeKey = "preorder" | "backorder" | "sale" | "new" | "lastSize" | "fewSizesLeft";
+
 export interface ProductBadge {
-  label: string;
+  /**
+   * A translation key, NOT a display string. `getProductBadges` is a pure function shared by
+   * server and client with no access to the request locale, so returning "Last size" there
+   * hard-coded English onto every product card — the most-seen text on the site, on a shop
+   * whose default language is Greek. The component that renders it does the translating.
+   */
+  key: ProductBadgeKey;
   tone: ProductBadgeTone;
 }
 

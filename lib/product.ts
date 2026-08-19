@@ -74,14 +74,14 @@ function availableSizeCount(product: Product): number {
 export function getProductBadges(product: Product): ProductBadge[] {
   const badges: ProductBadge[] = [];
 
-  if (product.isPreorder) badges.push({ label: "Preorder", tone: "preorder" });
-  else if (product.isBackorder) badges.push({ label: "Backorder", tone: "backorder" });
-  if (isOnSale(product)) badges.push({ label: "Sale", tone: "sale" });
-  else if (product.isNew) badges.push({ label: "New", tone: "new" });
+  if (product.isPreorder) badges.push({ key: "preorder", tone: "preorder" });
+  else if (product.isBackorder) badges.push({ key: "backorder", tone: "backorder" });
+  if (isOnSale(product)) badges.push({ key: "sale", tone: "sale" });
+  else if (product.isNew) badges.push({ key: "new", tone: "new" });
 
   const sizesLeft = availableSizeCount(product);
   if (product.availableForSale && sizesLeft > 0 && sizesLeft <= FEW_SIZES_THRESHOLD) {
-    badges.push({ label: sizesLeft === 1 ? "Last size" : "Few sizes left", tone: "low-stock" });
+    badges.push({ key: sizesLeft === 1 ? "lastSize" : "fewSizesLeft", tone: "low-stock" });
   }
 
   return badges;
