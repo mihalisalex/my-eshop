@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
 import { getEffectivePrice, getProductMargin } from "@/lib/product";
-import { bulkUpdateProducts, duplicateProduct, type BulkProductAction } from "@/app/admin/(dashboard)/products/actions";
+import { ListFilterBar } from "@/components/admin/ListFilterBar";
+import { Pagination } from "@/components/admin/Pagination";
+import { bulkUpdateProducts, type BulkProductAction, type BulkProductScope } from "@/app/admin/(dashboard)/products/actions";
+import { duplicateProduct } from "@/app/admin/(dashboard)/products/actions";
 import type { Product, ProductStatus } from "@/types";
-
-type StatusFilter = ProductStatus | "all";
-type SortKey = "newest" | "name" | "price-asc" | "price-desc" | "margin";
 
 const STATUS_STYLES: Record<ProductStatus, string> = {
   active: "text-green-700",
@@ -17,77 +17,65 @@ const STATUS_STYLES: Record<ProductStatus, string> = {
   archived: "text-luxe-gray-dark",
 };
 
+export interface ProductTableFilter {
+  q: string;
+  status?: ProductStatus;
+  category?: string;
+  sort: string;
+}
+
 interface ProductsTableProps {
+  /** One page of products, already filtered, sorted and paged by the server. */
   products: Product[];
+  total: number;
+  page: number;
+  pageCount: number;
+  filter: ProductTableFilter;
   categories: { slug: string; name: string }[];
 }
 
+const PAGE_SIZE = 25;
+
 /**
- * Filtering/sorting/searching runs client-side over the full catalog the server already
- * sent. That's the right trade at this catalog size (a few hundred) and keeps every
- * interaction instant with no round trip. It is explicitly NOT the right shape at tens of
- * thousands of products — at that point this needs server-side pagination with the filters
- * pushed into the query, which is why the filter state is kept flat and serialisable here.
+ * QA-046: this table used to receive the entire catalog and filter, sort and page it in the
+ * browser. Everything now happens in SQL and arrives one page at a time.
+ *
+ * Filtering is a plain GET form (ListFilterBar), so the filters live in the URL and a
+ * filtered view is a shareable, refreshable link — the same property the storefront listing
+ * pages already had and the admin did not.
+ *
+ * The part that kept this finding open was select-all. With only 25 rows in the browser,
+ * a header checkbox can honestly mean "these 25" and nothing more, so:
+ *
+ *   - the header checkbox selects the rows on THIS page, and says so;
+ *   - when they are all selected and more match, a banner offers "select all N matching";
+ *   - choosing that stores a FILTER, not a list of ids — the server re-derives the set when
+ *     the action runs. Shipping every matching id to the client to make select-all work
+ *     would reintroduce the unbounded payload this change exists to remove, and would also
+ *     act on a selection built before anyone else's edits.
+ *
+ * Selection is per-page rather than accumulated across pages: an invisible selection that
+ * survives navigation is how someone deletes 300 products believing they selected three.
  */
-export function ProductsTable({ products, categories }: ProductsTableProps) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [category, setCategory] = useState("all");
-  const [sort, setSort] = useState<SortKey>("newest");
+export function ProductsTable({ products, total, page, pageCount, filter, categories }: ProductsTableProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allMatching, setAllMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = products.filter((product) => {
-      if (status !== "all" && product.status !== status) return false;
-      if (category !== "all" && product.category !== category) return false;
-      if (!needle) return true;
-      // Searching SKU and brand as well as name is the difference between "usable" and
-      // "technically has a search box" — merchandisers look products up by SKU constantly.
-      return (
-        product.name.toLowerCase().includes(needle) ||
-        product.sku.toLowerCase().includes(needle) ||
-        (product.brand?.toLowerCase().includes(needle) ?? false)
-      );
-    });
-
-    const sorted = [...filtered];
-    switch (sort) {
-      case "name":
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      // Sorts on the effective price too, so the order matches the column being read.
-      case "price-asc":
-        sorted.sort((a, b) => getEffectivePrice(a).amount - getEffectivePrice(b).amount);
-        break;
-      case "price-desc":
-        sorted.sort((a, b) => getEffectivePrice(b).amount - getEffectivePrice(a).amount);
-        break;
-      case "margin":
-        // Products with no cost set sort last rather than pretending to be 0% margin.
-        sorted.sort((a, b) => (getProductMargin(b)?.marginPercent ?? -Infinity) - (getProductMargin(a)?.marginPercent ?? -Infinity));
-        break;
-      default:
-        break;
-    }
-    return sorted;
-  }, [products, query, status, category, sort]);
-
-  const visibleIds = visible.map((p) => p.id);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const pageIds = products.map((p) => p.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const selectionCount = allMatching ? total : selected.size;
+  const canOfferAllMatching = allOnPageSelected && total > products.length;
 
   function toggleAll() {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
-      else visibleIds.forEach((id) => next.add(id));
-      return next;
-    });
+    setAllMatching(false);
+    setSelected(() => (allOnPageSelected ? new Set() : new Set(pageIds)));
   }
 
   function toggleOne(id: string) {
+    // Any individual change ends an "all matching" selection — it no longer describes the set.
+    setAllMatching(false);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -96,91 +84,103 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
     });
   }
 
+  function clearSelection() {
+    setAllMatching(false);
+    setSelected(new Set());
+  }
+
   function runBulk(action: BulkProductAction) {
-    const ids = [...selected];
-    if (ids.length === 0) return;
+    if (selectionCount === 0) return;
+
     const label = { publish: "publish", draft: "move to draft", archive: "archive", delete: "permanently delete" }[action];
-    if (action === "delete" && !window.confirm(`Permanently delete ${ids.length} product(s)? This cannot be undone — archive instead if you just want them off the storefront.`)) return;
-    if (action !== "delete" && !window.confirm(`${label[0].toUpperCase()}${label.slice(1)} ${ids.length} product(s)?`)) return;
+    // The confirmation states the real number, which for an "all matching" selection is the
+    // server's total rather than anything visible on screen.
+    const confirmation =
+      action === "delete"
+        ? `Permanently delete ${selectionCount} product(s)? This cannot be undone — archive instead if you just want them off the storefront.`
+        : `${label[0].toUpperCase()}${label.slice(1)} ${selectionCount} product(s)?`;
+    if (!window.confirm(confirmation)) return;
+
+    const scope: BulkProductScope = allMatching
+      ? { kind: "all-matching", filter: { search: filter.q, status: filter.status, category: filter.category } }
+      : { kind: "ids", ids: [...selected] };
 
     startTransition(async () => {
-      const result = await bulkUpdateProducts(action, ids);
+      const result = await bulkUpdateProducts(action, scope);
       if (result?.error) {
         setError(result.error);
       } else {
         setError(null);
-        setSelected(new Set());
+        clearSelection();
       }
     });
   }
 
+  const isFiltered = Boolean(filter.q || filter.status || filter.category);
+  const pageParams = { q: filter.q, status: filter.status, category: filter.category, sort: filter.sort };
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name, SKU or brand…"
-          aria-label="Search products"
-          className="h-9 min-w-56 flex-1 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as StatusFilter)}
-          aria-label="Filter by status"
-          className="h-9 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        >
-          <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="draft">Draft</option>
-          <option value="archived">Archived</option>
-        </select>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          aria-label="Filter by category"
-          className="h-9 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        >
-          <option value="all">All categories</option>
-          {categories.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={sort}
-          onChange={(e) => setSort(e.target.value as SortKey)}
-          aria-label="Sort products"
-          className="h-9 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        >
-          <option value="newest">Newest</option>
-          <option value="name">Name A–Z</option>
-          <option value="price-asc">Price low–high</option>
-          <option value="price-desc">Price high–low</option>
-          <option value="margin">Margin high–low</option>
-        </select>
-      </div>
+      <ListFilterBar
+        action="/admin/products"
+        searchValue={filter.q}
+        searchPlaceholder="Search name, SKU or brand"
+        selects={[
+          {
+            name: "status",
+            label: "All statuses",
+            value: filter.status ?? "",
+            options: [
+              { value: "active", label: "Active" },
+              { value: "draft", label: "Draft" },
+              { value: "archived", label: "Archived" },
+            ],
+          },
+          {
+            name: "category",
+            label: "All categories",
+            value: filter.category ?? "",
+            options: categories.map((c) => ({ value: c.slug, label: c.name })),
+          },
+          {
+            name: "sort",
+            label: "Newest",
+            value: filter.sort === "newest" ? "" : filter.sort,
+            options: [
+              { value: "name", label: "Name A–Z" },
+              { value: "price-asc", label: "Price low–high" },
+              { value: "price-desc", label: "Price high–low" },
+              { value: "margin", label: "Margin high–low" },
+            ],
+          },
+        ]}
+      />
 
       {error ? <p className="mb-3 border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
 
-      {selected.size > 0 ? (
+      {selectionCount > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 border border-luxe-black bg-luxe-gray-light/40 px-4 py-2.5">
-          <span className="text-sm font-medium">{selected.size} selected</span>
+          <span className="text-sm font-medium">
+            {allMatching ? `All ${total} matching products selected` : `${selected.size} selected on this page`}
+          </span>
           <div className="ml-auto flex flex-wrap gap-2">
             <BulkButton onClick={() => runBulk("publish")} disabled={isPending}>Publish</BulkButton>
             <BulkButton onClick={() => runBulk("draft")} disabled={isPending}>Move to draft</BulkButton>
             <BulkButton onClick={() => runBulk("archive")} disabled={isPending}>Archive</BulkButton>
             <BulkButton onClick={() => runBulk("delete")} disabled={isPending} destructive>Delete</BulkButton>
-            <BulkButton onClick={() => setSelected(new Set())} disabled={isPending}>Clear</BulkButton>
+            <BulkButton onClick={clearSelection} disabled={isPending}>Clear</BulkButton>
           </div>
         </div>
       ) : null}
 
-      <p className="mb-2 text-xs text-luxe-gray-dark">
-        {visible.length} of {products.length} products
-      </p>
+      {canOfferAllMatching && !allMatching ? (
+        <p className="mb-3 border border-border bg-luxe-gray-light/30 px-4 py-2.5 text-sm">
+          All {products.length} products on this page are selected.{" "}
+          <button type="button" onClick={() => setAllMatching(true)} className="font-medium underline underline-offset-2">
+            Select all {total} matching products
+          </button>
+        </p>
+      ) : null}
 
       <div className="overflow-x-auto border border-border bg-luxe-white">
         <table className="w-full caption-bottom text-sm">
@@ -189,9 +189,9 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <th className="w-10 p-3">
                 <input
                   type="checkbox"
-                  checked={allVisibleSelected}
+                  checked={allOnPageSelected}
                   onChange={toggleAll}
-                  aria-label={allVisibleSelected ? "Deselect all visible products" : "Select all visible products"}
+                  aria-label={allOnPageSelected ? "Deselect the products on this page" : "Select the products on this page"}
                 />
               </th>
               <th className="p-3 text-left font-medium">Product</th>
@@ -203,18 +203,18 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
             </tr>
           </thead>
           <tbody>
-            {visible.length === 0 ? (
+            {products.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-10 text-center text-sm text-luxe-gray-dark">
-                  No products match these filters.
+                  {isFiltered ? "No products match these filters." : "No products yet."}
                 </td>
               </tr>
             ) : (
-              visible.map((product) => (
+              products.map((product) => (
                 <ProductRow
                   key={product.id}
                   product={product}
-                  selected={selected.has(product.id)}
+                  selected={allMatching || selected.has(product.id)}
                   onToggle={() => toggleOne(product.id)}
                 />
               ))
@@ -222,6 +222,16 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        basePath="/admin/products"
+        params={pageParams}
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        pageSize={PAGE_SIZE}
+        label="products"
+      />
     </div>
   );
 }

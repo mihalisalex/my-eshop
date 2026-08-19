@@ -1,8 +1,10 @@
 import "server-only";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { Product, ProductStatus } from "@/types";
 import { productInclude, toProduct } from "@/lib/commerce/postgres/mappers";
 import { getCategorySubtreeIds } from "@/services/categories";
+import { resolvePage, toPaged, type Paged } from "@/lib/pagination";
 
 /**
  * This module is the seam between components and the data source — now
@@ -133,4 +135,134 @@ export async function getRelatedProducts(productId: string, limit = 4): Promise<
     take: limit,
   });
   return rows.map(toProduct);
+}
+
+// ---------------------------------------------------------------------------
+// Admin product list (QA-046)
+// ---------------------------------------------------------------------------
+
+/**
+ * The admin products table used to receive every product and filter, sort and page in the
+ * browser. Fine at 175 and quietly not fine later — and unlike the storefront it has no
+ * publication filter to shrink the set, so it is the largest list the app sends anywhere.
+ *
+ * Raw SQL for the same reason services/search.ts uses it: two of the five sorts are on
+ * expressions Prisma cannot put in `orderBy` — the EFFECTIVE price
+ * `COALESCE(salePrice, price)`, and margin, which is derived from it. Sorting on
+ * `salePriceAmount` alone puts every full-price product in the wrong place. Every value is
+ * still parameterised through `Prisma.sql`.
+ */
+export const PRODUCT_SORT_KEYS = ["newest", "name", "price-asc", "price-desc", "margin"] as const;
+export type ProductSortKey = (typeof PRODUCT_SORT_KEYS)[number];
+
+const ADMIN_EFFECTIVE_PRICE = Prisma.sql`COALESCE(p."salePriceAmount", p."priceAmount")`;
+
+export interface AdminProductFilter {
+  search?: string;
+  status?: ProductStatus;
+  /** Category slug. Matches the whole subtree, like the storefront. */
+  category?: string;
+}
+
+export interface AdminProductListOptions extends AdminProductFilter {
+  sort?: ProductSortKey;
+  page: number;
+  pageSize: number;
+}
+
+async function adminProductWhere(filter: AdminProductFilter): Promise<Prisma.Sql> {
+  // No publication clause at all — this is the one surface that must see every lifecycle state.
+  const clauses: Prisma.Sql[] = [Prisma.sql`true`];
+
+  if (filter.status) clauses.push(Prisma.sql`p.status = ${filter.status}`);
+
+  if (filter.category) {
+    const categoryIds = await getCategorySubtreeIds(filter.category);
+    // An unknown slug matches nothing rather than everything — the same rule as the storefront.
+    clauses.push(
+      categoryIds.length > 0 ? Prisma.sql`p."categoryId" IN (${Prisma.join(categoryIds)})` : Prisma.sql`false`,
+    );
+  }
+
+  if (filter.search) {
+    // SKU and brand as well as name: merchandisers look products up by SKU constantly, and
+    // dropping that when this moved server-side would have been a silent regression.
+    const needle = `%${filter.search}%`;
+    clauses.push(Prisma.sql`(p.name ILIKE ${needle} OR p.sku ILIKE ${needle} OR p.brand ILIKE ${needle})`);
+  }
+
+  return Prisma.join(clauses, " AND ");
+}
+
+function adminProductOrderBy(sort: ProductSortKey): Prisma.Sql {
+  // Every sort ends in `p.id` as a tiebreaker. Without a total order, equal-valued rows can
+  // swap between pages and one is never seen — the same bug the storefront listing had.
+  switch (sort) {
+    case "name":
+      return Prisma.sql`p.name ASC, p.id ASC`;
+    case "price-asc":
+      return Prisma.sql`${ADMIN_EFFECTIVE_PRICE} ASC, p.id ASC`;
+    case "price-desc":
+      return Prisma.sql`${ADMIN_EFFECTIVE_PRICE} DESC, p.id ASC`;
+    case "margin":
+      // Products with no cost sort last rather than pretending to be 0% margin. NULLS LAST
+      // is what makes that true in both directions; the client version relied on -Infinity.
+      return Prisma.sql`
+        CASE
+          WHEN p."costPriceAmount" IS NULL THEN NULL
+          WHEN ${ADMIN_EFFECTIVE_PRICE} = 0 THEN NULL
+          ELSE (${ADMIN_EFFECTIVE_PRICE} - p."costPriceAmount") / ${ADMIN_EFFECTIVE_PRICE}
+        END DESC NULLS LAST, p.id ASC
+      `;
+    default:
+      return Prisma.sql`p."createdAt" DESC, p.id ASC`;
+  }
+}
+
+/** One page of products for the admin table, plus the total the filter matches. */
+export async function listProductsForAdmin(options: AdminProductListOptions): Promise<Paged<Product>> {
+  const where = await adminProductWhere(options);
+  const orderBy = adminProductOrderBy(options.sort ?? "newest");
+
+  const [{ count }] = await prisma.$queryRaw<{ count: bigint }[]>(
+    Prisma.sql`SELECT COUNT(*)::bigint AS count FROM products p WHERE ${where}`,
+  );
+  const total = Number(count);
+  const { page, skip, take } = resolvePage(total, { page: options.page, pageSize: options.pageSize });
+
+  const idRows = await prisma.$queryRaw<{ id: string }[]>(
+    Prisma.sql`SELECT p.id FROM products p WHERE ${where} ORDER BY ${orderBy} LIMIT ${take} OFFSET ${skip}`,
+  );
+  const ids = idRows.map((row) => row.id);
+  if (ids.length === 0) return toPaged<Product>([], total, page, options.pageSize);
+
+  // Ids first, then the full graph through the shared include — the relations (images,
+  // colours, sizes, collections) are what make this row expensive, and joining them in raw
+  // SQL would mean re-implementing the mapper.
+  const rows = await prisma.product.findMany({ where: { id: { in: ids } }, include: productInclude });
+  const byId = new Map(rows.map((row) => [row.id, toProduct(row)]));
+  return toPaged<Product>(
+    // Re-ordered to the SQL's order: `IN` does not preserve it.
+    ids.map((id) => byId.get(id)).filter((product): product is Product => Boolean(product)),
+    total,
+    page,
+    options.pageSize,
+  );
+}
+
+/**
+ * Every product id a filter matches, ignoring paging.
+ *
+ * This is what makes "select all N matching" honest across pages. The alternative — shipping
+ * every id to the browser with the page — is the same unbounded payload this finding is
+ * about, just smaller. Instead the browser says "everything matching this filter" and the
+ * server re-derives the set at the moment the action runs, so it also cannot act on a stale
+ * selection from before someone else edited the catalog.
+ */
+export async function productIdsMatching(filter: AdminProductFilter): Promise<string[]> {
+  const where = await adminProductWhere(filter);
+  const rows = await prisma.$queryRaw<{ id: string }[]>(
+    Prisma.sql`SELECT p.id FROM products p WHERE ${where}`,
+  );
+  return rows.map((row) => row.id);
 }

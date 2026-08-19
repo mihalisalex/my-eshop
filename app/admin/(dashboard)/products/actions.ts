@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { capabilityDenied, requireCapability } from "@/lib/admin-session";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import { writeProductRow } from "@/lib/products-import/write";
+import { productIdsMatching, type AdminProductFilter } from "@/services/products";
 
 export interface ProductActionState {
   error?: string;
@@ -166,13 +167,30 @@ export interface BulkActionState {
 
 export type BulkProductAction = "publish" | "draft" | "archive" | "delete";
 
+/**
+ * What a bulk action applies to. Either an explicit list of ids the admin ticked, or "every
+ * product matching the filter currently on screen".
+ *
+ * The second exists because the products table is now server-paged (QA-046), so ticking the
+ * header checkbox can only reach the 25 rows the browser has. Shipping every matching id to
+ * the client to make select-all work would reintroduce the unbounded payload this change is
+ * removing — so the client sends the FILTER and the server re-derives the set at the moment
+ * the action runs. That is also the safer semantic: it cannot act on a stale selection built
+ * before someone else edited the catalog.
+ */
+export type BulkProductScope = { kind: "ids"; ids: string[] } | { kind: "all-matching"; filter: AdminProductFilter };
+
 /** Bulk lifecycle transitions. One statement per action rather than a loop of updates. */
-export async function bulkUpdateProducts(action: BulkProductAction, ids: string[]): Promise<BulkActionState> {
+export async function bulkUpdateProducts(action: BulkProductAction, scope: BulkProductScope): Promise<BulkActionState> {
   // Bulk delete is checked against the stricter capability, matching the single-product
   // path — otherwise the bulk endpoint would be a way for an editor to do in one call
   // exactly what deleteProduct refuses to let them do one at a time.
   const denied = await capabilityDenied(action === "delete" ? "catalog:delete" : "catalog:edit");
   if (denied) return { error: denied };
+
+  // Resolved server-side in both cases, so the id list an action runs against is never
+  // simply whatever the browser claimed.
+  const ids = scope.kind === "ids" ? scope.ids : await productIdsMatching(scope.filter);
   if (ids.length === 0) return { error: "Select at least one product." };
 
   let updated: number;

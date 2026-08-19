@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { resolvePage, toPaged, type Paged } from "@/lib/pagination";
 import type { MediaAsset, MediaAssetWithUsage, MediaUsage } from "@/types/media";
 
 type MediaRow = {
@@ -106,14 +107,15 @@ export async function getMediaUsage(url: string): Promise<MediaUsage[]> {
 }
 
 /**
- * Usage for the whole library in a fixed number of queries rather than one call to
- * `getMediaUsage` per asset — the grid renders every asset's in-use state at once, so the
- * per-asset version would be an N+1 across six tables.
+ * One serialised blob per record that could reference an image, with the admin link to go
+ * fix it. Built once and scanned per asset — the alternative is six LIKE queries per asset,
+ * an N+1 across six tables.
+ *
+ * This is the unavoidable cost of storing image URLs inside Json columns rather than as
+ * foreign keys: there is no relation to traverse, so "is this in use" is a text search.
+ * Bounded by catalog size, not by library size.
  */
-export async function getAllMediaAssetsWithUsage(): Promise<MediaAssetWithUsage[]> {
-  const assets = await getAllMediaAssets();
-  if (assets.length === 0) return [];
-
+async function loadUsageHaystacks(): Promise<{ text: string; usage: MediaUsage }[]> {
   const [products, colors, collections, categories, posts, content] = await Promise.all([
     prisma.product.findMany({ select: { id: true, name: true, images: true, videos: true, seo: true } }),
     prisma.productColor.findMany({ where: { imageSrc: { not: null } }, select: { imageSrc: true, productId: true, product: { select: { name: true } } } }),
@@ -123,9 +125,7 @@ export async function getAllMediaAssetsWithUsage(): Promise<MediaAssetWithUsage[
     prisma.siteContent.findMany({ select: { key: true, data: true } }),
   ]);
 
-  // One serialised haystack per referencing record, scanned once per asset. At catalog
-  // scale this is far cheaper than six LIKE queries per asset.
-  const haystacks: { text: string; usage: MediaUsage }[] = [
+  return [
     ...products.map((p) => ({
       text: JSON.stringify([p.images, p.videos, p.seo]),
       usage: { label: `Product: ${p.name}`, href: `/admin/products/${p.id}` },
@@ -151,15 +151,111 @@ export async function getAllMediaAssetsWithUsage(): Promise<MediaAssetWithUsage[
       usage: { label: `Site content: ${s.key}`, href: s.key === "homepage" ? "/admin/homepage" : undefined },
     })),
   ];
+}
 
+/** Attributes each asset's usage by scanning the prebuilt haystacks. */
+function attributeUsage<T extends MediaAsset>(
+  assets: T[],
+  haystacks: { text: string; usage: MediaUsage }[],
+): (T & { usage: MediaUsage[] })[] {
   return assets.map((asset) => {
     const usage: MediaUsage[] = [];
     for (const h of haystacks) {
       if (!h.text.includes(asset.url)) continue;
+      // A product matched by both its images and one of its colours is one place to go fix.
       if (!usage.some((u) => u.label === h.usage.label)) usage.push(h.usage);
     }
     return { ...asset, usage };
   });
+}
+
+/**
+ * Usage for the whole library. Still used where every asset genuinely is needed at once;
+ * the admin grid uses `listMediaForAdmin` instead.
+ */
+export async function getAllMediaAssetsWithUsage(): Promise<MediaAssetWithUsage[]> {
+  const assets = await getAllMediaAssets();
+  if (assets.length === 0) return [];
+  return attributeUsage(assets, await loadUsageHaystacks());
+}
+
+// ---------------------------------------------------------------------------
+// Admin media list (QA-046)
+// ---------------------------------------------------------------------------
+
+export type MediaUsageFilter = "all" | "used" | "unused";
+
+export interface AdminMediaListOptions {
+  search?: string;
+  folder?: string;
+  usage?: MediaUsageFilter;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminMediaList extends Paged<MediaAssetWithUsage> {
+  /** For the page header — counted over the whole library, not the current page. */
+  unusedTotal: number;
+  libraryTotal: number;
+}
+
+/**
+ * One page of the media library.
+ *
+ * The library grid used to receive all 317 assets and filter them in the browser. Paging it
+ * is complicated by one filter that cannot be expressed in SQL: "unused" depends on whether
+ * an asset's URL appears anywhere in six other tables' Json columns, which is a text search,
+ * not an indexable column.
+ *
+ * So the shape is: filter by folder/search in SQL (cheap and indexable), then run the single
+ * consumer pass ONCE — the same pass the old code already ran — to decide used/unused and to
+ * count. Only the page's own assets get their detailed usage labels attributed. The browser
+ * receives 25 assets instead of 317; the server does no more work than before.
+ *
+ * The alternative, a `usedUrls` column kept up to date by every writer, is the real fix at a
+ * much larger scale and is not worth the write-path complexity here — it would have to be
+ * maintained by every product, collection, category, blog and site-content mutation, and a
+ * single missed one silently offers a live image for deletion.
+ */
+export async function listMediaForAdmin(options: AdminMediaListOptions): Promise<AdminMediaList> {
+  const usageFilter = options.usage ?? "all";
+
+  const where = {
+    ...(options.folder ? { folder: options.folder } : {}),
+    ...(options.search
+      ? {
+          OR: [
+            { filename: { contains: options.search, mode: "insensitive" as const } },
+            { altText: { contains: options.search, mode: "insensitive" as const } },
+            { tags: { has: options.search } },
+          ],
+        }
+      : {}),
+  };
+
+  const [matching, libraryTotal] = await Promise.all([
+    prisma.mediaAsset.findMany({ where, orderBy: { createdAt: "desc" } }),
+    prisma.mediaAsset.count(),
+  ]);
+
+  const haystacks = await loadUsageHaystacks();
+  const isUsed = (url: string) => haystacks.some((h) => h.text.includes(url));
+
+  // Counted over the whole library rather than the filtered set: the header line is a fact
+  // about the library ("42 unused"), and making it change with the filter would read as a
+  // different number for the same question.
+  const allAssets = options.folder || options.search ? await getAllMediaAssets() : matching.map(toMediaAsset);
+  const unusedTotal = allAssets.filter((asset) => !isUsed(asset.url)).length;
+
+  const filtered = matching
+    .map(toMediaAsset)
+    .filter((asset) => (usageFilter === "all" ? true : usageFilter === "used" ? isUsed(asset.url) : !isUsed(asset.url)));
+
+  const total = filtered.length;
+  const { page, skip, take } = resolvePage(total, { page: options.page, pageSize: options.pageSize });
+  const rows = attributeUsage(filtered.slice(skip, skip + take), haystacks);
+
+  return { ...toPaged(rows, total, page, options.pageSize), unusedTotal, libraryTotal };
 }
 
 export interface CreateMediaAssetInput {

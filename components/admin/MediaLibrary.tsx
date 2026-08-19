@@ -1,20 +1,35 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isOptimizableImageUrl } from "@/lib/image-hosts";
 import { Check, Copy, Lock, Upload } from "lucide-react";
+import { ListFilterBar } from "@/components/admin/ListFilterBar";
+import { Pagination } from "@/components/admin/Pagination";
 import { bulkOrganiseMedia, deleteMediaAssets, updateMediaDetails } from "@/app/admin/(dashboard)/media/actions";
 import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
 import type { MediaAssetWithUsage } from "@/types/media";
 
+export interface MediaLibraryFilter {
+  q: string;
+  folder?: string;
+  usage: string;
+}
+
 interface MediaLibraryProps {
+  /** One page of assets, already filtered and paged by the server (QA-046). */
   assets: MediaAssetWithUsage[];
+  total: number;
+  page: number;
+  pageCount: number;
+  filter: MediaLibraryFilter;
   folders: string[];
   canDelete: boolean;
 }
+
+const PAGE_SIZE = 25;
 
 function formatSize(bytes?: number): string {
   if (!bytes) return "—";
@@ -23,10 +38,10 @@ function formatSize(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) {
-  const [query, setQuery] = useState("");
-  const [folder, setFolder] = useState("all");
-  const [usageFilter, setUsageFilter] = useState<"all" | "used" | "unused">("all");
+export function MediaLibrary({ assets, total, page, pageCount, filter, folders, canDelete }: MediaLibraryProps) {
+  // Selection is scoped to the page on screen. An invisible selection that survives paging
+  // is how someone deletes 300 images believing they selected three — and unlike products,
+  // deletion here also removes the file from storage.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<MediaAssetWithUsage | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,22 +71,7 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
     }
   }
 
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return assets.filter((a) => {
-      if (folder !== "all" && (a.folder ?? "") !== folder) return false;
-      if (usageFilter === "used" && a.usage.length === 0) return false;
-      if (usageFilter === "unused" && a.usage.length > 0) return false;
-      if (!needle) return true;
-      return (
-        a.filename.toLowerCase().includes(needle) ||
-        (a.altText?.toLowerCase().includes(needle) ?? false) ||
-        a.tags.some((t) => t.toLowerCase().includes(needle))
-      );
-    });
-  }, [assets, query, folder, usageFilter]);
-
-  const unusedCount = assets.filter((a) => a.usage.length === 0).length;
+  const isFiltered = Boolean(filter.q || filter.folder || filter.usage !== "all");
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -122,39 +122,28 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
         </p>
       ) : null}
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search filename, alt text or tag…"
-          aria-label="Search media"
-          className="h-9 min-w-56 flex-1 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        />
-        <select
-          value={folder}
-          onChange={(e) => setFolder(e.target.value)}
-          aria-label="Filter by folder"
-          className="h-9 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        >
-          <option value="all">All folders</option>
-          {folders.map((f) => (
-            <option key={f} value={f}>
-              {f}
-            </option>
-          ))}
-        </select>
-        <select
-          value={usageFilter}
-          onChange={(e) => setUsageFilter(e.target.value as "all" | "used" | "unused")}
-          aria-label="Filter by usage"
-          className="h-9 border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black"
-        >
-          <option value="all">All images</option>
-          <option value="used">In use</option>
-          <option value="unused">Unused ({unusedCount})</option>
-        </select>
-      </div>
+      <ListFilterBar
+        action="/admin/media"
+        searchValue={filter.q}
+        searchPlaceholder="Search filename, alt text or tag"
+        selects={[
+          {
+            name: "folder",
+            label: "All folders",
+            value: filter.folder ?? "",
+            options: folders.map((f) => ({ value: f, label: f })),
+          },
+          {
+            name: "usage",
+            label: "All images",
+            value: filter.usage === "all" ? "" : filter.usage,
+            options: [
+              { value: "used", label: "In use" },
+              { value: "unused", label: "Unused" },
+            ],
+          },
+        ]}
+      />
 
       {error ? <p className="mb-3 border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
       {notice ? <p className="mb-3 border border-border bg-luxe-gray-light/40 p-3 text-sm">{notice}</p> : null}
@@ -223,17 +212,13 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
         </div>
       ) : null}
 
-      <p className="mb-2 text-xs text-luxe-gray-dark">
-        {visible.length} of {assets.length} images
-      </p>
-
-      {visible.length === 0 ? (
+      {assets.length === 0 ? (
         <p className="border border-border bg-luxe-white p-10 text-center text-sm text-luxe-gray-dark">
-          No images match these filters.
+          {isFiltered ? "No images match these filters." : "No images yet."}
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {visible.map((asset) => (
+          {assets.map((asset) => (
             <MediaTile
               key={asset.id}
               asset={asset}
@@ -244,6 +229,16 @@ export function MediaLibrary({ assets, folders, canDelete }: MediaLibraryProps) 
           ))}
         </div>
       )}
+
+      <Pagination
+        basePath="/admin/media"
+        params={{ q: filter.q, folder: filter.folder, usage: filter.usage === "all" ? undefined : filter.usage }}
+        page={page}
+        pageCount={pageCount}
+        total={total}
+        pageSize={PAGE_SIZE}
+        label="images"
+      />
 
       {editing ? <EditPanel asset={editing} onClose={() => setEditing(null)} /> : null}
     </div>
