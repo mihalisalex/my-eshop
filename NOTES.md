@@ -146,14 +146,51 @@ entirely** when admins already exist and no `SEED_ADMIN_EMAIL` was given (otherw
 live database silently adds an `admin@example.com` with admin rights), and it **creates rather than
 upserts**, so a re-run can never reset an existing admin's password or role.
 
+## Six post-launch findings, all closed
+
+QA-018, QA-029, QA-030, QA-041, QA-046 and QA-063 are done — 5 commits, `7170a96` → `6dcae75`.
+213 tests (up from 186). Three of them turned out to be different problems than filed:
+
+- **QA-063 (returns don't restock)** — the fix is small; the *interaction* is the point. A return
+  covers a subset of an order's lines, so refunding the order after an item was returned would
+  credit it twice, **inventing stock that never existed**. That is worse than the original bug —
+  unsellable stock is visible the moment a customer tries to buy, phantom stock is only discovered
+  when an order can't be fulfilled. `Return.restockedAt` is its own once-only claim; the return
+  path skips if the order was already restocked, and the order path subtracts what returns already
+  credited. That subtraction is a pure, tested function in `services/restock.ts`.
+- **QA-041 (order id in the URL)** — `?order=<cuid>` was the credential for a page showing name,
+  address, phone and purchase. Ids are unguessable, so this never leaked by brute force; it leaks
+  by being **shared** — history, `Referer`, pasted into chat. The id now says *which* order; an
+  httpOnly grant cookie (or customer ownership) says *whether*. **SameSite is Lax, not Strict, and
+  that is load-bearing** — a payment provider returns the shopper by cross-site top-level
+  navigation, and Strict withholds the cookie on exactly that request.
+- **QA-018 (Greek localisation)** — filed as a bilingual site with thin Greek. **It is a Greek
+  shop that was declaring `<html lang="en">`.** All 175 products store Greek in `name`; the
+  `nameEl`/`descriptionEl` columns are empty on every one. Greek is now the default.
+  **No locale URLs and no `hreflang`, on purpose** — both modes render identical content, so
+  `/en/` and `/el/` would be ~95% duplicates, which costs rankings. Revisit when content is
+  genuinely translated (see `i18n/request.ts`).
+- **QA-029 (analytics)** — the consent gate existed but nothing called it, so the banner asked
+  permission for something that never happened. GA4 now loads only after consent *and* only when
+  `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set. **The CSP widens to permit Google's hosts only when
+  that var is set** — a policy permitting what the app doesn't do is how a CSP stops being worth
+  having.
+- **QA-046 (admin paging)** — products and media now page in SQL. The blocker was never the query,
+  it was select-all: the header checkbox means "this page", and "select all N matching" stores the
+  **filter**, which the server re-derives. Shipping every id to the browser would have smuggled
+  the unbounded payload back in.
+- **QA-030 (`npm audit`)** — now clean, with prisma still on 7.9.1. `npm audit fix --force`
+  "fixes" it by **downgrading prisma to 6.12.0**; an `overrides` entry lifts the transitive
+  `deepmerge-ts` to 8.0.1 instead.
+
 ## Still open below blocker level
 
-QA-017 (create a 2nd admin — UI exists), QA-018 (Greek covers ~88 UI strings only; no `hreflang`,
-no locale URLs, so only one language is indexable), QA-028 (OG image is Unsplash stock), QA-029
-(no analytics connected; consent gate exists but nothing calls it), QA-030 (`npm audit`: 3 high via
-`prisma → @prisma/config → deepmerge-ts`, build-time reach, no clean upgrade), QA-046 (partly —
-`/admin/products` 175 and `/admin/media` 317 still render client-side), QA-063 (returns don't
-restock), plus the medium/low tail.
+QA-017 (create a 2nd admin — UI exists), QA-028 (OG image is Unsplash stock), plus the medium/low
+tail (QA-036, 038–040, 042–045, 047–049).
+
+**Greek content still to write** — this is a content job, not code: page headings ("Women"), SEO
+titles and descriptions, category and collection names, blog posts, and the legal pages are all
+still English.
 
 Deliberately NOT changed: `/admin/appearance` (read-only, honest) and `browserslist` (a business
 call about which browsers can shop here).
@@ -170,6 +207,13 @@ call about which browsers can shop here).
   which is why the two disagreed mid-session and it was not a bug.
 - **Folders named `__something` are PRIVATE in the App Router** and are never routed.
 - **Restart the dev server after a Prisma schema change** — the running server holds a stale client.
+- **Restart it after adding a `messages/*.json` namespace too.** Next caches the dynamic import,
+  so new keys render as raw `PRODUCTBADGE.SALE` until restart. Looks exactly like broken wiring.
+- **`server-only` modules cannot be imported by a `tsx` script.** Verifying a service from the
+  command line means re-running its SQL directly, not importing it.
+- **Ordering by an expression that is NULL for every row proves nothing.** The admin margin sort
+  had to be checked against synthetic values, because every product has `costPriceAmount` NULL —
+  real data exercised only the NULL branch and would have passed whatever the CASE said.
 - **`undefined` is Prisma's "leave this column alone"**; clearing a nullable Json column needs
   `Prisma.DbNull`.
 - **A `loading.tsx` on any route that calls `notFound()` reintroduces app-wide soft 404s.**

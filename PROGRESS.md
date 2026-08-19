@@ -1,5 +1,133 @@
 # ALEXANDRIS — Progress Notes
 
+## Six post-launch findings closed — COMPLETE, 5 commits `7170a96`→`6dcae75`, 213 tests
+
+QA-018, QA-029, QA-030, QA-041, QA-046 and QA-063. Three were not the problem they were filed
+as, and saying so is most of the value here.
+
+### QA-063 — returns never restocked, and the fix could easily have been worse
+
+The order-level path covered cancelling or refunding a whole order. A return is a subset of one
+and moves through a different status field, so returned goods never came back on sale.
+
+The restock itself is four lines. The interaction is the real work: a return covers *some* of an
+order's lines, so an order refunded after one of its items was returned would credit that item
+twice — **inventing stock that never existed**. That is a worse failure than the bug being fixed.
+Unsellable stock announces itself the moment a customer tries to buy; phantom stock is silent
+until an order cannot be fulfilled.
+
+So the two paths account for each other. `Return.restockedAt` is a separate once-only claim
+beside `Order.restockedAt`; the return path skips entirely when the order was already restocked,
+and the order path subtracts what returns already credited. That subtraction is a pure function
+in `services/restock.ts`, tested — including the case that forced it to consume credit as it
+goes: two order lines for the same variant must not both subtract the same returned unit, or a
+two-line order credits nothing back.
+
+Restocking fires on `received` or `refunded`, whichever lands first, and deliberately **not** on
+`approved` — approving a return only authorises the customer to post the item, and crediting then
+puts a pair of shoes on sale that is still in someone's hallway.
+
+`Return.items` is a Json snapshot, read defensively rather than cast: these are rows already
+written, possibly by an older shape, and a malformed one must not throw inside a stock
+calculation. Unreadable lines contribute nothing, erring toward crediting less.
+
+### QA-041 — the confirmation URL was the credential
+
+`?order=<cuid>` was treated as sufficient authority for a page rendering the customer's name,
+full shipping address, phone number and purchase. The ids are unguessable cuids, so this was
+never brute-forceable — it leaks by being **shared**: browser history, the `Referer` header,
+pasted into a chat. That is the failure mode a capability token in a URL always has.
+
+The id stays in the URL, because redirect-based payment providers need a stable return URL built
+before the payment exists. It now names *which* order rather than permitting it. Authority is an
+httpOnly grant cookie signed when this browser completed the checkout, or ownership by a
+signed-in customer — the second matters because clearing cookies must not lock a customer out of
+their own order.
+
+`SameSite=Lax`, not `Strict`, and it is load-bearing: a payment provider returns the shopper by
+cross-site top-level navigation, and Strict withholds the cookie on exactly that request. The
+shopper would come back from paying and be told they cannot see their order. The grant is issued
+best-effort — a cookie failure must never fail an order that has already taken stock and started
+a payment.
+
+Failing the check renders "we can't show this order here", not a 404: the common case is a real
+customer on a second device, and "not found" reads as "your order failed".
+
+Cart and checkout ids remain capability tokens. Defensible for a guest cart with no identity,
+and unlike the order id neither ever appears in a URL.
+
+### QA-018 — it is a Greek shop, not a half-translated English one
+
+Filed as thin Greek coverage on a bilingual site. The data disagreed: all 175 products store
+**Greek** names and descriptions in `name`/`description`, and the `nameEl`/`descriptionEl`
+translation columns are empty on every single one. Categories, collections, blog posts, legal
+pages and SEO titles have no translation column at all. The only thing with two variants was ~90
+UI chrome strings.
+
+So the site was serving Greek while declaring `<html lang="en">` — the wrong language for nearly
+every word on the page, for both search engines and screen readers, plus `og:locale=en_US`.
+Greek is now the default, the WebSite JSON-LD carries `inLanguage`, and English is what it always
+actually was: a toggle for the chrome.
+
+**No locale-prefixed URLs and no `hreflang`, deliberately.** `hreflang` describes alternate URLs
+carrying the same content in different languages. Both modes here render identical content, so
+`/en/` and `/el/` would be ~95% duplicates of one another — that dilutes rankings rather than
+earning them. A crawler arrives with no cookie and gets Greek, which is the version that should
+be indexed. Locale routing becomes correct the day content is genuinely translated; the note in
+`i18n/request.ts` says so.
+
+Greek-by-default then exposed the second half: the most-seen strings on the site were hard-coded
+English. Badges, Quick View and the sort dropdown appear on every card and every listing page.
+`getProductBadges` is a pure function shared by server and client with no access to the request
+locale, so it returned `"Last size"` as a display string — `ProductBadge` now carries a
+translation **key** and the component translates.
+
+### QA-029 — the consent banner was asking about something that did not exist
+
+`lib/consent.ts` had a gate and nothing called it; there was no analytics at all. Asking
+permission for something that never happens is worse than not asking.
+
+GA4 now loads gated on consent, and only when `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set — unset
+ships no analytics whatsoever. Nothing loads *before* consent: the `<Script>` is not rendered at
+all, so no request reaches Google and no cookie is set. Loading the tag then "disabling" it is
+the usual shortcut and is not the same thing — the request *is* the tracking event.
+
+Granting consent takes effect on the visit that granted it, via a change event; a `storage` event
+would not do, since it fires in *other* tabs, so the one visit guaranteed to go unmeasured would
+be the visit that produced the consent. `hasConsent` fails **closed** — no stored choice means no
+consent, because "they didn't say no" is not consent.
+
+The CSP widens to permit Google's hosts **only when the measurement id is set**. Adding them
+unconditionally would let every deployment — including this one, which has no analytics — load
+and exfiltrate to Google. Verified both ways against a running server.
+
+### QA-046 — paging the last two admin lists
+
+Products and media now filter, sort and page in SQL. The blocker was never the query; it was what
+select-all means once the browser holds 25 of 175 rows. The header checkbox now means "this
+page", and "select all N matching" stores the **filter** — the server re-derives the set when the
+action runs. Shipping every matching id to the browser would have smuggled back the unbounded
+payload the change exists to remove, and would act on a selection built before anyone else's
+edits. Selection does not accumulate across pages: an invisible selection surviving navigation is
+how someone deletes 300 products believing they selected three.
+
+Raw SQL for two of the five sorts, which are expressions Prisma cannot express in `orderBy` — the
+effective price `COALESCE(salePrice, price)` and margin, derived from it. The margin ordering was
+verified against **synthetic** values because every product has `costPriceAmount` NULL: real data
+exercises only the NULL branch and would pass whatever the CASE said.
+
+Media was complicated by one filter that cannot live in SQL — "unused" depends on whether an
+asset's URL appears in six other tables' Json columns. Folder and search filter in SQL; the
+single consumer pass the old code already ran decides used/unused. The browser now receives 25
+assets instead of 319 and the server does no more work than before.
+
+### QA-030 — audit clean without downgrading Prisma
+
+`npm audit fix --force` "resolves" this by **downgrading prisma to 6.12.0**, a breaking change and
+a worse outcome than a build-time stack-exhaustion advisory. An `overrides` entry lifts the
+transitive `deepmerge-ts` to 8.0.1 instead, leaving prisma on 7.9.1. Verified `prisma generate`
+and `prisma migrate status` still work, since `@prisma/config` is the actual consumer.
+
 ## Go-live — COMPLETE, the shop is publicly open at https://shopalexandris.vercel.app, 2 commits pushed, HEAD `0229648`
 
 All 4 launch blockers from the audit session are closed: two fixed, two deferred by an explicit
