@@ -17,13 +17,26 @@ const IS_DEV = process.env.NODE_ENV !== "production";
  * inline script and style, which is a real change rather than a config tweak. That remains
  * the next step for anyone hardening this further (audit QA-057).
  */
+/**
+ * Google Analytics hosts, allowed ONLY when a measurement id is actually configured.
+ *
+ * Adding them unconditionally would widen the policy of every deployment — including this
+ * one, which has no analytics — to permit loading and exfiltrating to Google. A CSP that
+ * permits what the app does not do is exactly the kind of quiet erosion that makes a policy
+ * stop being worth having. The runtime gate is consent (components/shared/Analytics.tsx);
+ * this is the build-time half.
+ */
+const ANALYTICS_ENABLED = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
+const GA_SCRIPT_HOSTS = " https://www.googletagmanager.com";
+const GA_CONNECT_HOSTS = " https://www.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com";
+
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'" + (IS_DEV ? " 'unsafe-eval'" : ""),
+  "script-src 'self' 'unsafe-inline'" + (IS_DEV ? " 'unsafe-eval'" : "") + (ANALYTICS_ENABLED ? GA_SCRIPT_HOSTS : ""),
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://images.unsplash.com",
+  "img-src 'self' data: https://images.unsplash.com" + (ANALYTICS_ENABLED ? " https://www.google-analytics.com" : ""),
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self'" + (ANALYTICS_ENABLED ? GA_CONNECT_HOSTS : ""),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, Playfair_Display } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -11,6 +12,7 @@ import { CartProvider } from "@/components/providers/CartProvider";
 import { WishlistProvider } from "@/components/providers/WishlistProvider";
 import { ToastViewport } from "@/components/shared/ToastViewport";
 import { CookieConsentBanner } from "@/components/shared/CookieConsentBanner";
+import { Analytics } from "@/components/shared/Analytics";
 import { ReferralCapture } from "@/components/shared/ReferralCapture";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import "./globals.css";
@@ -94,6 +96,12 @@ export default async function RootLayout({
               Stacking is unaffected: the cart drawer portals to the end of <body>, the
               toast viewport is z-200, and the header is top-fixed with no overlap. */}
           <CookieConsentBanner />
+          {/* Renders nothing until the visitor has consented AND a measurement id is
+              configured. Suspense because its page-view tracker reads useSearchParams,
+              which would otherwise opt every route into client-side rendering. */}
+          <Suspense fallback={null}>
+            <Analytics />
+          </Suspense>
           <ToastProvider>
             <CartProvider>
               <WishlistProvider>
