@@ -51,12 +51,29 @@ const POSTS: Record<string, PostTranslation> = {
       "Ένα μαύρο δερμάτινο μποτάκι είναι από τα λίγα ζευγάρια που περνούν πειστικά από το γραφείο, σε ένα δείπνο και σε ένα σαββατοκύριακο εκτός. Το κοντό παντελόνι κρατά τη σιλουέτα καθαρή· ένα slip dress αντιπαραθέτει τη δομή του μποτακιού με κάτι πιο απαλό.",
     tags: ["στυλ", "μπότες"],
   },
+  /**
+   * REWRITTEN, not just translated. This post used to say that every ALEXANDRIS pair is made
+   * by a small in-house team, "from the first cut of leather to the final polish". The
+   * catalogue is 175 products: 47 are the shop's own Alexandris Shoes line and 128 are other
+   * brands, so the claim was false for roughly three quarters of the shelf — and nothing in
+   * the data supports in-house manufacture of the rest either.
+   *
+   * The replacement is about the thing a shop genuinely does and can stand behind: choosing
+   * what to stock. It names the own line and the fact that other brands sit beside it, which
+   * is verifiable, and claims nothing about who made the shoes or how.
+   *
+   * The SLUG stays "inside-the-atelier" even though the title no longer mentions one. It is a
+   * URL, it is in the sitemap, and blog posts have no slug-history redirect the way categories
+   * do — so renaming it would break the link to gain a tidier address.
+   */
   "inside-the-atelier": {
-    title: "Μέσα στο εργαστήριο",
-    excerpt: "Μια ματιά στο μικρό εργαστήριο όπου ξεκινά κάθε ζευγάρι ALEXANDRIS.",
+    title: "Πώς διαλέγουμε τι μπαίνει στο ράφι",
+    excerpt: "Τι κοιτάμε πριν ένα ζευγάρι μπει στη συλλογή μας.",
     content:
-      "Κάθε ζευγάρι περνά από την ίδια μικρή ομάδα, από το πρώτο κόψιμο του δέρματος μέχρι το τελικό γυάλισμα. Είναι πιο αργό από μια γραμμή παραγωγής, και αυτό ακριβώς είναι το ζητούμενο.",
-    tags: ["τεχνική", "εργαστήριο"],
+      "Στο κατάστημά μας στο Ηράκλειο θα βρείτε δύο πράγματα δίπλα δίπλα: τη δική μας σειρά, Alexandris Shoes, και μάρκες που διαλέγουμε ένα ζευγάρι τη φορά.\n\n" +
+      "Το κριτήριο είναι πάντα το ίδιο — πώς πατάει, πώς εφαρμόζει, και αν θα αντέξει μια ολόκληρη σεζόν και την επόμενη. Ένα παπούτσι μπορεί να φαίνεται σωστό σε μια φωτογραφία και να μη στέκει στο πόδι· γι' αυτό τίποτα δεν μπαίνει στο ράφι πριν το δούμε από κοντά.\n\n" +
+      "Δεν κυνηγάμε τον μεγαλύτερο δυνατό κατάλογο. Προτιμάμε λιγότερα ζευγάρια, για τα οποία μπορούμε να απαντήσουμε όταν μας ρωτήσετε.",
+    tags: ["κατάστημα", "επιλογή"],
   },
 };
 
@@ -89,17 +106,7 @@ async function main() {
     changed++;
   }
 
-  console.log(changed === 0 ? "\nNothing to change — already applied." : `\n${changed} post(s) translated.`);
-
-  if (changed > 0) {
-    console.log(
-      '\nNOTE: "inside-the-atelier" states that every ALEXANDRIS pair is made by a small in-house\n' +
-        "team. This catalogue is third-party brands (U.S Polo Assn., London, Verde, Mont Martre\n" +
-        "Paris), so that reads as a manufacturing claim the shop may not be able to support.\n" +
-        "Translating it did not create the problem — it was already live in English — but it is\n" +
-        "now in the language the customer reads. Worth rewriting or unpublishing.",
-    );
-  }
+  console.log(changed === 0 ? "\nNothing to change — already applied." : `\n${changed} post(s) written.`);
 }
 
 main()

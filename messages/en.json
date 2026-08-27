@@ -142,5 +142,9 @@
   },
   "Legal": {
     "lastUpdated": "Last updated {date}"
+  },
+  "Newsletter": {
+    "emailLabel": "Email address",
+    "emailPlaceholder": "Your email address"
   }
 }

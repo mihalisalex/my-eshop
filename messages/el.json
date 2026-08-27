@@ -142,5 +142,9 @@
   },
   "Legal": {
     "lastUpdated": "Τελευταία ενημέρωση {date}"
+  },
+  "Newsletter": {
+    "emailLabel": "Διεύθυνση email",
+    "emailPlaceholder": "Η διεύθυνση email σας"
   }
 }

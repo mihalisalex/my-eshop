@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Check } from "lucide-react";
@@ -28,6 +29,7 @@ export function NewsletterForm({
   onSubscribe,
 }: NewsletterFormProps) {
   const [submitted, setSubmitted] = useState(false);
+  const t = useTranslations("Newsletter");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
@@ -81,12 +83,12 @@ export function NewsletterForm({
         )}
       >
         <label htmlFor="newsletter-email" className="sr-only">
-          Email address
+          {t("emailLabel")}
         </label>
         <input
           id="newsletter-email"
           type="email"
-          placeholder="Your email address"
+          placeholder={t("emailPlaceholder")}
           className={cn(
             "w-full bg-transparent py-3 text-sm outline-none placeholder:text-current placeholder:opacity-50",
             compact ? "" : "text-base"
