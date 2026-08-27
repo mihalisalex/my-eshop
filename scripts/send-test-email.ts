@@ -33,7 +33,8 @@ async function main() {
     process.exit(1);
   }
 
-  const providerName = process.env.EMAIL_PROVIDER ?? "dev";
+  const configured = process.env.EMAIL_PROVIDER?.trim();
+  const providerName = configured ? configured.toLowerCase() : "dev";
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
 
