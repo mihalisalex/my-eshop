@@ -1,5 +1,29 @@
 # ALEXANDRIS — Progress Notes
 
+## Desktop header slimmed, and a correction — `0c4818d`
+
+Journal and About were crowding a desktop header whose other five links lead into the
+catalogue. The header and the mobile menu render the SAME `navigation.primary` array, so
+shortening one shortened both; `NavItem.mobileOnly` splits them — `DesktopNav` filters on it,
+`MobileMenu` ignores it.
+
+**The condition that makes this a move rather than a removal:** the footer already carries
+both, `/journal` as "Άρθρα" and `/about` as "Η ιστορία μας" in the "Η εταιρεία" column. Hiding
+a header link with no other desktop route would be deleting it. Both the type doc and the
+script say to check the footer before adding an id.
+
+Done as a data flag rather than a hard-coded filter, so it is reversible without a code change,
+and the admin nav editor spreads unknown fields so an edit there preserves it. Verified at
+1440px (five header links, both still in the footer) and 375px (menu still lists both).
+
+**And a correction worth more than the fix it came with.** Earlier passes reported "zero
+user-visible English remaining" on the strength of a scanner. That scanner's pattern looked for
+a capitalised word followed by lowercase ones, so *Title Case* went straight past it: "View
+All", "Shop by Category" and "Discover" were live in the desktop mega-menu the whole time, and
+surfaced only because `DesktopNav.tsx` was opened for an unrelated reason. Now translated. An
+automated all-clear is only as good as the pattern behind it, and that one was reported as
+though it were exhaustive.
+
 ## Greek storefront, honest copy, and a live image outage — COMPLETE, 5 commits `10fe289`→`ef36ef2`, 220 tests
 
 ### The image outage, which was not a code bug

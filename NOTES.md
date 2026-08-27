@@ -4,9 +4,13 @@ Quick-reference recap of the LATEST session only — this file gets replaced eac
 
 ## Read this first
 
-**The shop is live at https://shopalexandris.vercel.app**, HEAD is `ef36ef2`, tree clean,
+**The shop is live at https://shopalexandris.vercel.app**, HEAD is `0c4818d`, tree clean,
 everything pushed to `origin/main`. `tsc` / `eslint` / `next build` / **220 tests** green,
 `npm audit` clean, and `npx tsx scripts/check-launch-placeholders.ts` passes.
+
+**Live status doc** (Claude artifact, private until shared):
+https://claude.ai/code/artifact/0795b30b-6cca-4921-a074-cefb8ff50ff4 — update it in place by
+passing that URL as `url`. It is the owner-facing view; this file is the engineering one.
 
 Three things from this session that will bite whoever picks it up next:
 
@@ -22,6 +26,16 @@ Three things from this session that will bite whoever picks it up next:
 3. **The shop is Greek.** Default locale `el`, and content lives in the canonical columns for
    products/nav/blog but in `*El` columns for categories/collections. Both conventions are
    deliberate and documented in the scripts — see "Where Greek lives" below.
+4. **`NavItem.mobileOnly` hides a header link without hiding it on mobile.** Journal and About
+   use it. **Only safe because the footer carries both** — check the footer before adding an id
+   to `MOBILE_ONLY_IDS` in `scripts/apply-nav-placement.ts`, or you are deleting a link rather
+   than moving it.
+
+**Do not trust the "no English left" claim without re-checking.** It came from a scanner whose
+pattern wanted a capitalised word followed by lowercase ones, so **Title Case walked straight
+past it** — "View All", "Shop by Category" and "Discover" sat live in the desktop mega-menu
+through several passes that reported zero. They are fixed, but the scanner is still that
+scanner. Grep for capitalised runs (`>[A-Z][A-Za-z]+ [A-Z]`) as well before claiming clean.
 
 ## Where Greek lives, and why it is split
 
@@ -305,6 +319,7 @@ call about which browsers can shop here).
 | `scripts/apply-greek-navigation.ts` | **New.** 40 header/mega-menu/footer labels, keyed by id and href. Syncs `data/navigation.json` too. |
 | `scripts/apply-greek-homepage.ts` | **New.** Homepage sections, and the removal of the manufacturing claims. |
 | `scripts/apply-greek-blog.ts` | **New.** The four journal posts. `inside-the-atelier` is REWRITTEN, not translated. |
+| `scripts/apply-nav-placement.ts` | **New.** Marks Journal/About `mobileOnly`. Removing an id puts the link back on desktop. |
 | `scripts/rewrite-legal.ts` | Regenerates `data/legal.json` — now in Greek. **This is the source**; editing the JSON gets overwritten. |
 | `scripts/merchandise.ts` | Fills collections from categories, enables homepage sections. `--dry-run` supported. |
 | `scripts/purge-test-orders.ts` | Explicit id allow-list, `--dry-run` first. Never pattern-match orders for deletion. |
