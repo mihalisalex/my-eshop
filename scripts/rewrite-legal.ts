@@ -4,27 +4,38 @@ import { resolve } from "node:path";
 import { COMPANY, formattedAddress } from "@/constants/company";
 
 /**
- * Rewrites data/legal.json for a real Greek e-shop (QA-007).
+ * Rewrites data/legal.json for a real Greek e-shop (QA-007), in Greek.
  *
- * What was there could not ship: the Privacy Policy ended with a section headed "This Is
- * a Demo" telling visitors the store was built for evaluation, and none of the three
- * documents carried anything Greek and EU law actually require of a distance seller —
- * no trader identity, no right of withdrawal, no complaint route, no governing law.
+ * What was there originally could not ship: the Privacy Policy ended with a section headed
+ * "This Is a Demo", and none of the three documents carried what Greek and EU law require of
+ * a distance seller. That was fixed in English first; it is now written in the language the
+ * shop's customers actually read, which for consumer-rights text is the point — a Greek
+ * consumer being told about their δικαίωμα υπαναχώρησης in English has been informed only in
+ * a formal sense.
  *
- * Everything below is written to be true of THIS application as it actually behaves:
- * the data it really collects, the processors it really uses, the 30-day returns policy
- * the storefront really states, and the 14-day statutory withdrawal right that sits
- * alongside it. Nothing describes a feature that does not exist.
+ * Everything below is written to be true of THIS application as it actually behaves: the data
+ * it really collects, the processors it really uses, the 30-day returns policy the storefront
+ * really states, and the 14-day statutory withdrawal right that sits alongside it. Nothing
+ * describes a feature that does not exist.
  *
- * Trader identity comes from constants/company.ts so the registered name, address, ΑΦΜ
- * and contact details exist in exactly one place. No ΓΕΜΗ number is printed: the trader is
- * recorded as not registered (COMPANY.gemiRegistration), so the identity line omits the
- * label rather than showing an empty one. Re-run this script if that ever changes.
+ * TRANSLATED, NOT RE-DRAFTED. The Greek says the same thing as the English it replaces,
+ * clause for clause, so nothing was silently added to or removed from the trader's
+ * obligations in the move. Statutory terms use their established Greek forms (υπεύθυνος
+ * επεξεργασίας, δικαίωμα υπαναχώρησης, νόμιμη εγγύηση συμμόρφωσης) rather than literal
+ * renderings, because those are the phrases the law and the consumer both use.
+ *
+ * This is the SOURCE. data/legal.json is generated — translating that file directly would be
+ * overwritten the next time anyone runs this script.
+ *
+ * Trader identity comes from constants/company.ts so the registered name, address, ΑΦΜ and
+ * contact details exist in exactly one place. No ΓΕΜΗ number is printed: the trader is
+ * recorded as not registered (COMPANY.gemiRegistration), so the identity line omits the label
+ * rather than showing an empty one. Re-run this script if that ever changes.
  */
-const IDENTITY = `${COMPANY.legalName}, ${formattedAddress()}, VAT (ΑΦΜ) ${COMPANY.vatNumber}${COMPANY.gemiNumber ? `, ΓΕΜΗ ${COMPANY.gemiNumber}` : ""}`;
+const IDENTITY = `${COMPANY.legalName}, ${formattedAddress()}, ΑΦΜ ${COMPANY.vatNumber}${COMPANY.gemiNumber ? `, ΓΕΜΗ ${COMPANY.gemiNumber}` : ""}`;
 const EMAIL = COMPANY.email;
 const PHONE = COMPANY.phone;
-const UPDATED = "2026-08-18";
+const UPDATED = "2026-08-27";
 
 interface Section {
   heading: string;
@@ -40,128 +51,146 @@ interface LegalPage {
 const pages: LegalPage[] = [
   {
     slug: "privacy-policy",
-    title: "Privacy Policy",
+    title: "Πολιτική Απορρήτου",
     updatedAt: UPDATED,
     sections: [
       {
-        heading: "Who We Are",
-        body: `This shop is operated by ${IDENTITY}. We are the data controller for the personal data described here. For any privacy question, or to exercise the rights set out below, write to ${EMAIL} or call ${PHONE}.`,
+        heading: "Ποιοι είμαστε",
+        body: `Το κατάστημα λειτουργεί από ${IDENTITY}. Είμαστε ο υπεύθυνος επεξεργασίας για τα προσωπικά δεδομένα που περιγράφονται εδώ. Για οποιοδήποτε ερώτημα σχετικά με το απόρρητο, ή για να ασκήσετε τα δικαιώματα που αναφέρονται παρακάτω, γράψτε μας στο ${EMAIL} ή καλέστε στο ${PHONE}.`,
       },
       {
-        heading: "What We Collect",
+        heading: "Τι συλλέγουμε",
         body:
-          "When you place an order we collect the name, email address, postal address and phone number you enter at checkout, together with the contents and total of your order. A phone number is required because our courier needs a way to reach you about the delivery.\n\n" +
-          "If you create an account we also store your password as a one-way hash — we never hold it in a readable form and cannot recover it for you.\n\n" +
-          "We never see or store full card numbers. Card payments are handled entirely by our payment provider on their own systems; we receive only the result of the payment and, at most, the last four digits and card brand for your order record.",
+          "Όταν κάνετε μια παραγγελία συλλέγουμε το ονοματεπώνυμο, τη διεύθυνση email, την ταχυδρομική διεύθυνση και το τηλέφωνο που συμπληρώνετε στο ταμείο, μαζί με το περιεχόμενο και το σύνολο της παραγγελίας σας. Το τηλέφωνο είναι υποχρεωτικό επειδή η εταιρεία ταχυμεταφορών χρειάζεται τρόπο να επικοινωνήσει μαζί σας για την παράδοση.\n\n" +
+          "Αν δημιουργήσετε λογαριασμό, αποθηκεύουμε επιπλέον τον κωδικό σας ως μονόδρομη κρυπτογραφική σύνοψη (hash) — δεν τον διατηρούμε ποτέ σε αναγνώσιμη μορφή και δεν μπορούμε να τον ανακτήσουμε για εσάς.\n\n" +
+          "Δεν βλέπουμε και δεν αποθηκεύουμε ποτέ πλήρεις αριθμούς καρτών. Οι πληρωμές με κάρτα διεκπεραιώνονται εξ ολοκλήρου από τον πάροχο πληρωμών στα δικά του συστήματα· εμείς λαμβάνουμε μόνο το αποτέλεσμα της πληρωμής και, το πολύ, τα τέσσερα τελευταία ψηφία και τον τύπο της κάρτας για το αρχείο της παραγγελίας σας.",
       },
       {
-        heading: "Why We Use It, and On What Basis",
+        heading: "Γιατί τα χρησιμοποιούμε και με ποια νομική βάση",
         body:
-          "To perform our contract with you: taking payment, fulfilling and delivering your order, handling returns and refunds, and sending the transactional emails that go with them (order confirmation, dispatch, returns).\n\n" +
-          "To meet legal obligations: retaining invoices and transaction records for the period Greek tax law requires.\n\n" +
-          "With your consent: marketing email, if you have subscribed, and any non-essential cookies you have accepted. You can withdraw either at any time, and withdrawing does not affect processing carried out beforehand.\n\n" +
-          "For our legitimate interests: keeping the shop secure and working, including rate-limiting to prevent abuse.",
+          "Για την εκτέλεση της σύμβασης μαζί σας: είσπραξη της πληρωμής, εκτέλεση και παράδοση της παραγγελίας, διαχείριση επιστροφών και επιστροφών χρημάτων, και αποστολή των σχετικών ενημερωτικών email (επιβεβαίωση παραγγελίας, αποστολή, επιστροφές).\n\n" +
+          "Για τη συμμόρφωση με νομικές υποχρεώσεις: διατήρηση παραστατικών και αρχείων συναλλαγών για το διάστημα που απαιτεί η ελληνική φορολογική νομοθεσία.\n\n" +
+          "Με τη συγκατάθεσή σας: email μάρκετινγκ, εφόσον έχετε εγγραφεί, και όσα μη απαραίτητα cookies έχετε αποδεχθεί. Μπορείτε να ανακαλέσετε οποιοδήποτε από τα δύο ανά πάσα στιγμή, και η ανάκληση δεν θίγει την επεξεργασία που έγινε πριν από αυτήν.\n\n" +
+          "Για τα έννομα συμφέροντά μας: τη διατήρηση της ασφάλειας και της ομαλής λειτουργίας του καταστήματος, συμπεριλαμβανομένου του περιορισμού συχνότητας αιτημάτων για την αποτροπή κατάχρησης.",
       },
       {
-        heading: "Who We Share It With",
+        heading: "Με ποιους τα μοιραζόμαστε",
         body:
-          "Only the processors needed to run the shop, and only with what they need:\n\n" +
-          "• Our payment provider, to take and refund payments.\n" +
-          "• Our courier, to deliver your order — name, address and phone number.\n" +
-          "• Our email provider, to send transactional and (where consented) marketing email.\n" +
-          "• Our hosting and database providers, who store the shop's data on our behalf.\n\n" +
-          "We do not sell your personal data, and we do not share it for anyone else's marketing.",
+          "Μόνο με τους εκτελούντες την επεξεργασία που είναι απαραίτητοι για τη λειτουργία του καταστήματος, και μόνο με όσα χρειάζονται:\n\n" +
+          "• Τον πάροχο πληρωμών, για τη διενέργεια και την επιστροφή πληρωμών.\n" +
+          "• Την εταιρεία ταχυμεταφορών, για την παράδοση της παραγγελίας σας — ονοματεπώνυμο, διεύθυνση και τηλέφωνο.\n" +
+          "• Τον πάροχο email, για την αποστολή ενημερωτικών και (όπου υπάρχει συγκατάθεση) διαφημιστικών μηνυμάτων.\n" +
+          "• Τους παρόχους φιλοξενίας και βάσης δεδομένων, που αποθηκεύουν τα δεδομένα του καταστήματος για λογαριασμό μας.\n\n" +
+          "Δεν πουλάμε τα προσωπικά σας δεδομένα και δεν τα διαθέτουμε για το μάρκετινγκ τρίτων.",
       },
       {
-        heading: "How Long We Keep It",
+        heading: "Για πόσο τα κρατάμε",
         body:
-          "Order and invoice records are kept for as long as Greek tax and accounting law requires. Account details are kept until you ask us to delete the account. Marketing consent is kept until you withdraw it. Abandoned carts and checkout sessions that never became an order are kept only briefly and then cleared.",
+          "Τα αρχεία παραγγελιών και παραστατικών τηρούνται για όσο διάστημα απαιτεί η ελληνική φορολογική και λογιστική νομοθεσία. Τα στοιχεία λογαριασμού τηρούνται μέχρι να μας ζητήσετε τη διαγραφή του. Η συγκατάθεση για μάρκετινγκ τηρείται μέχρι να την ανακαλέσετε. Τα εγκαταλελειμμένα καλάθια και οι διαδικασίες ταμείου που δεν κατέληξαν σε παραγγελία τηρούνται μόνο για σύντομο διάστημα και στη συνέχεια διαγράφονται.",
       },
       {
-        heading: "Your Rights",
+        heading: "Τα δικαιώματά σας",
         body:
-          `Under the GDPR you may ask us for a copy of your data, ask us to correct it, ask us to delete it, ask us to restrict or stop a particular use, object to processing based on our legitimate interests, and ask for your data in a portable form. Where processing relies on consent you can withdraw it at any time.\n\n` +
-          `Write to ${EMAIL} and we will respond within one month. If you believe we have handled your data improperly you can complain to the Hellenic Data Protection Authority (Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα), Kifissias 1-3, 115 23 Athens, www.dpa.gr.`,
+          "Βάσει του Γενικού Κανονισμού για την Προστασία Δεδομένων (ΓΚΠΔ) μπορείτε να μας ζητήσετε αντίγραφο των δεδομένων σας, να ζητήσετε τη διόρθωσή τους, να ζητήσετε τη διαγραφή τους, να ζητήσετε τον περιορισμό ή τη διακοπή συγκεκριμένης χρήσης, να αντιταχθείτε σε επεξεργασία που βασίζεται στα έννομα συμφέροντά μας, και να ζητήσετε τα δεδομένα σας σε φορητή μορφή. Όπου η επεξεργασία στηρίζεται στη συγκατάθεση, μπορείτε να την ανακαλέσετε ανά πάσα στιγμή.\n\n" +
+          `Γράψτε μας στο ${EMAIL} και θα απαντήσουμε εντός ενός μηνός. Αν θεωρείτε ότι έχουμε χειριστεί τα δεδομένα σας πλημμελώς, μπορείτε να προσφύγετε στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα, Κηφισίας 1-3, 115 23 Αθήνα, www.dpa.gr.`,
       },
       {
         heading: "Cookies",
-        body: "We use a small number of cookies and similar storage. The essential ones keep your basket and your signed-in session working and cannot be switched off. Anything beyond that is only set after you accept it. Our Cookie Policy explains each one and how to change your choice.",
+        body: "Χρησιμοποιούμε έναν μικρό αριθμό cookies και παρόμοιων τεχνολογιών αποθήκευσης. Τα απαραίτητα κρατούν σε λειτουργία το καλάθι και τη σύνδεσή σας και δεν μπορούν να απενεργοποιηθούν. Οτιδήποτε πέραν αυτών ενεργοποιείται μόνο αφού το αποδεχθείτε. Η Πολιτική Cookies εξηγεί το καθένα και πώς να αλλάξετε την επιλογή σας.",
       },
     ],
   },
   {
     slug: "terms-of-service",
-    title: "Terms of Service",
+    title: "Όροι Χρήσης",
     updatedAt: UPDATED,
     sections: [
       {
-        heading: "Who You Are Buying From",
-        body: `Purchases on this site are a distance contract with ${IDENTITY}. You can reach us at ${EMAIL} or ${PHONE}. These terms apply to every order placed here.`,
+        heading: "Από ποιον αγοράζετε",
+        body: `Οι αγορές σε αυτόν τον ιστότοπο αποτελούν σύμβαση από απόσταση με ${IDENTITY}. Μπορείτε να επικοινωνήσετε μαζί μας στο ${EMAIL} ή στο ${PHONE}. Οι παρόντες όροι ισχύουν για κάθε παραγγελία που γίνεται εδώ.`,
       },
       {
-        heading: "Prices and VAT",
+        heading: "Τιμές και ΦΠΑ",
         body:
-          "All prices are shown in euro and include Greek VAT at the applicable rate. The price shown on the product page is the price you pay for the item; shipping is added at checkout and shown separately before you confirm.\n\n" +
-          "We take care to price correctly, but if an obvious pricing error means an order was placed at a clearly incorrect price, we may cancel that order and refund you in full rather than fulfil it. We will tell you if this happens.",
+          "Όλες οι τιμές αναγράφονται σε ευρώ και περιλαμβάνουν τον ελληνικό ΦΠΑ με τον ισχύοντα συντελεστή. Η τιμή που εμφανίζεται στη σελίδα του προϊόντος είναι η τιμή που πληρώνετε για το είδος· τα μεταφορικά προστίθενται στο ταμείο και εμφανίζονται ξεχωριστά πριν την επιβεβαίωση.\n\n" +
+          "Καταβάλλουμε κάθε προσπάθεια για τη σωστή τιμολόγηση, αλλά αν ένα προφανές σφάλμα τιμής οδήγησε σε παραγγελία με σαφώς εσφαλμένη τιμή, ενδέχεται να ακυρώσουμε την παραγγελία και να σας επιστρέψουμε πλήρως τα χρήματα αντί να την εκτελέσουμε. Θα σας ενημερώσουμε αν συμβεί αυτό.",
       },
       {
-        heading: "Placing an Order",
+        heading: "Υποβολή παραγγελίας",
         body:
-          "Your order is an offer to buy. The contract is formed when we send you an order confirmation by email. If an item turns out to be unavailable after you order, we will contact you and refund that item in full.\n\n" +
-          "Availability shown on the site reflects our stock at that moment and can change while an item sits in your basket.",
+          "Η παραγγελία σας αποτελεί πρόταση για αγορά. Η σύμβαση καταρτίζεται όταν σας αποστείλουμε επιβεβαίωση παραγγελίας με email. Αν ένα είδος αποδειχθεί μη διαθέσιμο μετά την παραγγελία, θα επικοινωνήσουμε μαζί σας και θα σας επιστρέψουμε πλήρως το ποσό για το είδος αυτό.\n\n" +
+          "Η διαθεσιμότητα που εμφανίζεται στον ιστότοπο αντικατοπτρίζει το απόθεμά μας εκείνη τη στιγμή και μπορεί να μεταβληθεί όσο ένα είδος παραμένει στο καλάθι σας.",
       },
       {
-        heading: "Payment",
-        body: "Payment is taken through the methods offered at checkout. Card details are entered on our payment provider's systems and never reach this site. Where cash on delivery is offered, payment is made to the courier when your order arrives.",
+        heading: "Πληρωμή",
+        body: "Η πληρωμή γίνεται με τους τρόπους που προσφέρονται στο ταμείο. Τα στοιχεία της κάρτας καταχωρούνται στα συστήματα του παρόχου πληρωμών και δεν φτάνουν ποτέ σε αυτόν τον ιστότοπο. Όπου προσφέρεται αντικαταβολή, η πληρωμή γίνεται στον διανομέα κατά την παράδοση.",
       },
       {
-        heading: "Delivery",
-        body: "Delivery estimates shown at checkout are working-day estimates for mainland Greece and exclude public holidays. They are estimates, not guarantees. Risk in the goods passes to you on delivery.",
+        heading: "Παράδοση",
+        body: "Οι εκτιμήσεις παράδοσης που εμφανίζονται στο ταμείο αφορούν εργάσιμες ημέρες για την ηπειρωτική Ελλάδα και δεν περιλαμβάνουν αργίες. Πρόκειται για εκτιμήσεις, όχι εγγυήσεις. Ο κίνδυνος των αγαθών μετατίθεται σε εσάς κατά την παράδοση.",
       },
       {
-        heading: "Your Right to Withdraw",
+        heading: "Δικαίωμα υπαναχώρησης",
         body:
-          "You have 14 days from the day you receive your order to withdraw from the contract without giving any reason. To do so, tell us clearly before the 14 days are up — an email is enough.\n\n" +
-          "Return the goods to us within 14 days of telling us. We will refund everything you paid, including standard outbound delivery, within 14 days of receiving the goods back or of proof you have sent them, whichever comes first, using the same payment method you used.\n\n" +
-          "You bear the cost of returning the goods, and you are responsible for any reduction in their value caused by handling beyond what is needed to establish their nature and characteristics — trying shoes on indoors is fine; wearing them outside is not.\n\n" +
-          "Separately from this statutory right, we offer free returns within 30 days of delivery on unworn items in their original packaging. That offer is in addition to, and does not limit, your rights above.",
+          "Έχετε 14 ημέρες από την ημέρα παραλαβής της παραγγελίας σας για να υπαναχωρήσετε από τη σύμβαση χωρίς να αναφέρετε λόγο. Για να το κάνετε, ενημερώστε μας με σαφήνεια πριν παρέλθουν οι 14 ημέρες — ένα email αρκεί.\n\n" +
+          "Επιστρέψτε μας τα αγαθά εντός 14 ημερών από την ενημέρωσή σας. Θα σας επιστρέψουμε όλα όσα καταβάλατε, συμπεριλαμβανομένων των βασικών εξόδων αποστολής, εντός 14 ημερών από την παραλαβή των αγαθών ή από την απόδειξη ότι τα αποστείλατε — όποιο συμβεί πρώτο — με τον ίδιο τρόπο πληρωμής που χρησιμοποιήσατε.\n\n" +
+          "Επιβαρύνεστε με το κόστος επιστροφής των αγαθών και ευθύνεστε για τυχόν μείωση της αξίας τους που οφείλεται σε μεταχείριση πέραν εκείνης που είναι απαραίτητη για τη διαπίστωση της φύσης και των χαρακτηριστικών τους — η δοκιμή των παπουτσιών σε εσωτερικό χώρο είναι αποδεκτή· η χρήση τους σε εξωτερικό χώρο όχι.\n\n" +
+          "Ανεξάρτητα από αυτό το νόμιμο δικαίωμα, προσφέρουμε δωρεάν επιστροφές εντός 30 ημερών από την παράδοση για αφόρετα είδη στην αρχική τους συσκευασία. Η προσφορά αυτή είναι πρόσθετη και δεν περιορίζει τα παραπάνω δικαιώματά σας.",
       },
       {
-        heading: "If Something Is Wrong With Your Order",
-        body: "You have the legal guarantee of conformity under Greek and EU consumer law for goods that are faulty, damaged or not as described. Contact us and we will repair, replace or refund as the law provides. This is separate from, and unaffected by, the withdrawal right above.",
-      },
-      { heading: "Intellectual Property", body: "All content on this site — product photography, copy, and the shop's design — belongs to us or our licensors and may not be reproduced commercially without permission." },
-      {
-        heading: "Liability",
-        body: "Nothing here limits our liability for death or personal injury caused by negligence, for fraud, or for anything else that cannot be limited by law. Subject to that, we are not liable for indirect or consequential losses arising from use of this site.",
+        heading: "Αν κάτι δεν πάει καλά με την παραγγελία σας",
+        body: "Έχετε τη νόμιμη εγγύηση συμμόρφωσης βάσει της ελληνικής και ενωσιακής νομοθεσίας για την προστασία του καταναλωτή, για αγαθά που είναι ελαττωματικά, κατεστραμμένα ή δεν ανταποκρίνονται στην περιγραφή. Επικοινωνήστε μαζί μας και θα προβούμε σε επισκευή, αντικατάσταση ή επιστροφή χρημάτων, όπως προβλέπει ο νόμος. Το δικαίωμα αυτό είναι ανεξάρτητο από το δικαίωμα υπαναχώρησης και δεν θίγεται από αυτό.",
       },
       {
-        heading: "Complaints and Dispute Resolution",
+        heading: "Πνευματική ιδιοκτησία",
+        body: "Το σύνολο του περιεχομένου αυτού του ιστότοπου — φωτογραφίες προϊόντων, κείμενα και ο σχεδιασμός του καταστήματος — ανήκει σε εμάς ή στους δικαιοπαρόχους μας και δεν επιτρέπεται να αναπαραχθεί για εμπορικούς σκοπούς χωρίς άδεια.",
+      },
+      {
+        heading: "Ευθύνη",
+        body: "Τίποτα στους παρόντες όρους δεν περιορίζει την ευθύνη μας για θάνατο ή σωματική βλάβη από αμέλεια, για δόλο, ή για οτιδήποτε άλλο δεν επιδέχεται περιορισμό κατά νόμο. Με την επιφύλαξη των ανωτέρω, δεν ευθυνόμαστε για έμμεσες ή αποθετικές ζημίες που προκύπτουν από τη χρήση αυτού του ιστότοπου.",
+      },
+      {
+        heading: "Παράπονα και επίλυση διαφορών",
         body:
-          `Please contact us first at ${EMAIL} or ${PHONE} — most things are resolved quickly.\n\n` +
-          "If we cannot resolve it between us, you may use the European Commission's Online Dispute Resolution platform at ec.europa.eu/consumers/odr, or refer the matter to the Hellenic Consumer's Ombudsman (Συνήγορος του Καταναλωτή), www.synigoroskatanaloti.gr.",
+          `Παρακαλούμε επικοινωνήστε πρώτα μαζί μας στο ${EMAIL} ή στο ${PHONE} — τα περισσότερα ζητήματα επιλύονται γρήγορα.\n\n` +
+          "Αν δεν καταφέρουμε να το επιλύσουμε μεταξύ μας, μπορείτε να χρησιμοποιήσετε την πλατφόρμα Ηλεκτρονικής Επίλυσης Διαφορών της Ευρωπαϊκής Επιτροπής στο ec.europa.eu/consumers/odr, ή να απευθυνθείτε στον Συνήγορο του Καταναλωτή, www.synigoroskatanaloti.gr.",
       },
-      { heading: "Governing Law", body: "These terms are governed by Greek law, and the courts of Greece have jurisdiction. This does not deprive you of the protection of mandatory consumer rules in your country of residence." },
+      {
+        heading: "Εφαρμοστέο δίκαιο",
+        body: "Οι παρόντες όροι διέπονται από το ελληνικό δίκαιο και αρμόδια είναι τα ελληνικά δικαστήρια. Αυτό δεν σας στερεί την προστασία των αναγκαστικού δικαίου κανόνων προστασίας του καταναλωτή της χώρας διαμονής σας.",
+      },
     ],
   },
   {
     slug: "cookie-policy",
-    title: "Cookie Policy",
+    title: "Πολιτική Cookies",
     updatedAt: UPDATED,
     sections: [
-      { heading: "What Cookies Are", body: "Small files and similar browser storage that let a site remember things between page loads — such as what is in your basket, or that you are signed in." },
       {
-        heading: "Essential — Always On",
-        body:
-          "These make the shop work and cannot be switched off:\n\n" +
-          "• Your basket, so items survive moving between pages.\n" +
-          "• Your signed-in session, if you have an account, and the admin session for staff.\n" +
-          "• Your language choice.\n" +
-          "• Your cookie choice itself, so we do not ask again on every page.",
+        heading: "Τι είναι τα cookies",
+        body: "Μικρά αρχεία και παρόμοιες τεχνολογίες αποθήκευσης στον browser, που επιτρέπουν σε έναν ιστότοπο να θυμάται πράγματα ανάμεσα στις σελίδες — όπως το τι έχετε στο καλάθι σας, ή ότι είστε συνδεδεμένοι.",
       },
-      { heading: "Analytics and Marketing — Only With Consent", body: "We set nothing in these categories unless you accept them in the cookie banner. If you decline, none are set. If you accept and later change your mind, clear this site's data in your browser and the banner will ask again." },
-      { heading: "Third Parties", body: "Our payment provider may set cookies on its own pages during checkout, and our hosting provider sets cookies needed to serve the site securely. Neither is used to advertise to you." },
-      { heading: "Managing Cookies", body: "Every browser lets you view and delete cookies for a site, and block them entirely. Blocking essential cookies will stop the basket and sign-in from working." },
+      {
+        heading: "Απαραίτητα — πάντα ενεργά",
+        body:
+          "Αυτά κάνουν το κατάστημα να λειτουργεί και δεν μπορούν να απενεργοποιηθούν:\n\n" +
+          "• Το καλάθι σας, ώστε τα είδη να διατηρούνται καθώς μετακινείστε μεταξύ σελίδων.\n" +
+          "• Η σύνδεσή σας, αν έχετε λογαριασμό, και η σύνδεση διαχειριστή για το προσωπικό.\n" +
+          "• Η επιλογή γλώσσας σας.\n" +
+          "• Η ίδια η επιλογή σας για τα cookies, ώστε να μη σας ρωτάμε ξανά σε κάθε σελίδα.",
+      },
+      {
+        heading: "Στατιστικά και μάρκετινγκ — μόνο με συγκατάθεση",
+        body: "Δεν ενεργοποιούμε τίποτα σε αυτές τις κατηγορίες αν δεν το αποδεχθείτε στο σχετικό μήνυμα. Αν αρνηθείτε, δεν ενεργοποιείται κανένα. Αν αποδεχθείτε και αργότερα αλλάξετε γνώμη, διαγράψτε τα δεδομένα αυτού του ιστότοπου από τον browser σας και το μήνυμα θα εμφανιστεί ξανά.",
+      },
+      {
+        heading: "Τρίτα μέρη",
+        body: "Ο πάροχος πληρωμών μας ενδέχεται να ενεργοποιεί cookies στις δικές του σελίδες κατά τη διάρκεια του ταμείου, και ο πάροχος φιλοξενίας ενεργοποιεί όσα απαιτούνται για την ασφαλή εξυπηρέτηση του ιστότοπου. Κανένα από τα δύο δεν χρησιμοποιείται για διαφήμιση προς εσάς.",
+      },
+      {
+        heading: "Διαχείριση cookies",
+        body: "Κάθε browser σας επιτρέπει να δείτε και να διαγράψετε τα cookies ενός ιστότοπου, καθώς και να τα αποκλείσετε εντελώς. Ο αποκλεισμός των απαραίτητων cookies θα σταματήσει τη λειτουργία του καλαθιού και της σύνδεσης.",
+      },
     ],
   },
 ];

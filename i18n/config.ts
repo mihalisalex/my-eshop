@@ -28,3 +28,12 @@ export const LOCALE_COOKIE = "NEXT_LOCALE";
 export function isSupportedLocale(value: string | undefined): value is Locale {
   return SUPPORTED_LOCALES.includes(value as Locale);
 }
+
+/**
+ * BCP-47 tags for `Intl` formatters, which need a region to pick month names and number
+ * formats — "el" alone is not enough to get "1 Ιουλίου 2026".
+ *
+ * Kept beside the locale list so the site's language and the way it writes dates cannot drift
+ * apart: `formatDate` defaulted to "en-US" and printed "JULY 1, 2026" under Greek headings.
+ */
+export const LOCALE_TAG: Record<Locale, string> = { el: "el-GR", en: "en-US" };

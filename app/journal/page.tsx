@@ -5,22 +5,28 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatDate } from "@/lib/format";
 import { getAllPosts, getNavigation, getSiteSettings } from "@/services";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Journal",
-  description: "Stories on craft, leather, and considered footwear.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return { title: t("journalTitle"), description: t("journalSubtitle") };
+}
 
 export default async function JournalPage() {
-  const [navigation, settings, posts] = await Promise.all([getNavigation(), getSiteSettings(), getAllPosts()]);
+  const [navigation, settings, posts, t] = await Promise.all([
+    getNavigation(),
+    getSiteSettings(),
+    getAllPosts(),
+    getTranslations("Pages"),
+  ]);
 
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main className="flex-1 pt-header">
         <div className="container-luxe py-10 md:py-14">
-          <h1 className="font-heading text-4xl">Journal</h1>
-          <p className="mt-2 text-luxe-gray-dark">Stories on craft, leather, and considered footwear.</p>
+          <h1 className="font-heading text-4xl">{t("journalTitle")}</h1>
+          <p className="mt-2 text-luxe-gray-dark">{t("journalSubtitle")}</p>
 
           <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((post) => (

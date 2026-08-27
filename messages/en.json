@@ -135,6 +135,11 @@
     "saleTitle": "Sale",
     "saleDescription": "Limited-time markdowns.",
     "collectionsTitle": "Collections",
-    "collectionsSubtitle": "Curated edits, considered."
+    "collectionsSubtitle": "Curated edits, considered.",
+    "journalTitle": "Journal",
+    "journalSubtitle": "Stories on craft, leather, and considered footwear."
+  },
+  "Legal": {
+    "lastUpdated": "Last updated {date}"
   }
 }

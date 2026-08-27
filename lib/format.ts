@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, LOCALE_TAG } from "@/i18n/config";
 import type { Money } from "@/types";
 
 export function formatMoney({ amount, currencyCode }: Money, locale = "en-US"): string {
@@ -24,7 +25,13 @@ export function orderReference(id: string): string {
   return id.slice(-8).toUpperCase();
 }
 
-export function formatDate(dateString: string, locale = "en-US"): string {
+/**
+ * Defaults to the site's own locale, not "en-US". It is called from Server and Client
+ * Components alike and so cannot read the request locale itself; hard-coding English meant
+ * every date on the Greek storefront rendered as "JULY 1, 2026". Pass a tag explicitly where
+ * a different one is genuinely wanted.
+ */
+export function formatDate(dateString: string, locale = LOCALE_TAG[DEFAULT_LOCALE]): string {
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",

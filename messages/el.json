@@ -135,6 +135,11 @@
     "saleTitle": "Προσφορές",
     "saleDescription": "Εκπτώσεις για περιορισμένο διάστημα.",
     "collectionsTitle": "Συλλογές",
-    "collectionsSubtitle": "Επιλεγμένες συλλογές, με προσοχή."
+    "collectionsSubtitle": "Επιλεγμένες συλλογές, με προσοχή.",
+    "journalTitle": "Άρθρα",
+    "journalSubtitle": "Ιστορίες για την τεχνική, το δέρμα και τα καλοφτιαγμένα παπούτσια."
+  },
+  "Legal": {
+    "lastUpdated": "Τελευταία ενημέρωση {date}"
   }
 }
