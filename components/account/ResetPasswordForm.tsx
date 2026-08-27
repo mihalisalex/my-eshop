@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -12,6 +13,7 @@ const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
 export function ResetPasswordForm() {
+  const t = useTranslations("Auth");
   const { resetPassword } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -33,11 +35,11 @@ export function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="mx-auto w-full max-w-sm">
-        <h1 className="font-heading text-3xl">Invalid link</h1>
+        <h1 className="font-heading text-3xl">{t("invalidLink")}</h1>
         <p className="mt-2 text-sm text-luxe-gray-dark">
           This password reset link is missing its token.{" "}
           <Link href="/account/login" className="underline underline-offset-4">
-            Back to sign in
+            {t("backToSignIn")}
           </Link>
           .
         </p>
@@ -47,14 +49,14 @@ export function ResetPasswordForm() {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="font-heading text-3xl">Set a new password</h1>
-      <p className="mt-2 text-sm text-luxe-gray-dark">Choose a new password for your account.</p>
+      <h1 className="font-heading text-3xl">{t("setNewPasswordTitle")}</h1>
+      <p className="mt-2 text-sm text-luxe-gray-dark">{t("chooseNewPassword")}</p>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-4">
         <input type="hidden" {...register("token")} />
         <div>
           <label htmlFor="reset-password" className="mb-1.5 block text-eyebrow">
-            New password
+            {t("newPassword")}
           </label>
           <input
             id="reset-password"
@@ -68,7 +70,7 @@ export function ResetPasswordForm() {
         </div>
         <div>
           <label htmlFor="reset-confirm-password" className="mb-1.5 block text-eyebrow">
-            Confirm new password
+            {t("confirmNewPassword")}
           </label>
           <input
             id="reset-confirm-password"
@@ -84,7 +86,7 @@ export function ResetPasswordForm() {
           <p className="text-xs text-destructive">
             That link may have expired.{" "}
             <Link href="/account/login" className="underline underline-offset-4">
-              Request a new one
+              {t("requestNewOne")}
             </Link>
             .
           </p>
@@ -94,7 +96,7 @@ export function ResetPasswordForm() {
           disabled={isSubmitting}
           className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          Set New Password
+          {t("setNewPasswordCta")}
         </button>
       </form>
     </div>

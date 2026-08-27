@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { formatMoney } from "@/lib/format";
 
@@ -10,6 +11,7 @@ interface PriceRangeSliderProps {
 }
 
 export function PriceRangeSlider({ min, max, value, onChange }: PriceRangeSliderProps) {
+  const tA11y = useTranslations("A11y");
   const [low, high] = value;
   const range = Math.max(max - min, 1);
   const lowPercent = ((low - min) / range) * 100;
@@ -29,7 +31,7 @@ export function PriceRangeSlider({ min, max, value, onChange }: PriceRangeSlider
         />
         <input
           type="range"
-          aria-label="Minimum price"
+          aria-label={tA11y("minimumPrice")}
           min={min}
           max={max}
           value={low}
@@ -41,7 +43,7 @@ export function PriceRangeSlider({ min, max, value, onChange }: PriceRangeSlider
         />
         <input
           type="range"
-          aria-label="Maximum price"
+          aria-label={tA11y("maximumPrice")}
           min={min}
           max={max}
           value={high}

@@ -26,7 +26,7 @@ export function CartPageContent() {
     return (
       <div className="container-luxe flex flex-col items-center gap-4 py-32 text-center">
         <ShoppingBag className="size-12 text-luxe-gray-dark" strokeWidth={1} />
-        <h1 className="font-heading text-2xl">Your bag is empty</h1>
+        <h1 className="font-heading text-2xl">{t("emptyBag")}</h1>
         <p className="text-sm text-luxe-gray-dark">Looks like you haven&apos;t added anything yet.</p>
         <Link
           href="/"

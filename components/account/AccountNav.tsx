@@ -20,13 +20,14 @@ const NAV_ITEMS = [
 ] as const;
 
 export function AccountNav() {
+  const tA11y = useTranslations("A11y");
   const t = useTranslations("Account");
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
 
   return (
-    <nav aria-label="Account" className="space-y-1">
+    <nav aria-label={tA11y("account")} className="space-y-1">
       {NAV_ITEMS.map((item) => {
         const isActive = pathname === item.href;
         return (

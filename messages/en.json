@@ -41,7 +41,10 @@
     "free": "Free",
     "estimatedTax": "Includes VAT",
     "total": "Total",
-    "yourBag": "Your Bag"
+    "yourBag": "Your Bag",
+    "shoppingBag": "Shopping bag",
+    "emptyBag": "Your bag is empty",
+    "emptyBagSentence": "Your bag is empty."
   },
   "Checkout": {
     "contactTitle": "Contact",
@@ -68,7 +71,25 @@
     "placingOrder": "Placing Order...",
     "termsAgreement": "By placing your order you agree to our",
     "termsLink": "Terms of Service",
-    "termsAgreementSuffix": "."
+    "termsAgreementSuffix": ".",
+    "shippingAddressTitle": "Shipping Address",
+    "shippingAddressSubtitle": "Where should we send your order?",
+    "paymentTitle": "Payment",
+    "tryAgain": "Try again",
+    "noPaymentMethods": "No payment methods are available right now.",
+    "billingSameAsShipping": "Billing address same as shipping",
+    "reviewOrder": "Review Order",
+    "paymentMethodLabel": "Payment method",
+    "shippingMethodLabel": "Shipping method",
+    "enterAddressForRates": "Enter a shipping address to see available rates.",
+    "progress": "Checkout progress",
+    "stepContact": "Contact",
+    "stepShipping": "Shipping",
+    "stepDelivery": "Delivery",
+    "stepPayment": "Payment",
+    "stepReview": "Review",
+    "showOrderSummary": "Show order summary",
+    "hideOrderSummary": "Hide order summary"
   },
   "Plp": {
     "filter": "Filter",
@@ -80,7 +101,9 @@
     "availability": "Availability",
     "inStockOnly": "In stock only",
     "itemsOne": "{count} item",
-    "itemsOther": "{count} items"
+    "itemsOther": "{count} items",
+    "noMatches": "No products match your filters.",
+    "clearFilters": "Clear filters"
   },
   "Pdp": {
     "quantity": "Quantity",
@@ -146,5 +169,96 @@
   "Newsletter": {
     "emailLabel": "Email address",
     "emailPlaceholder": "Your email address"
+  },
+  "Auth": {
+    "signIn": "Sign In",
+    "welcomeBack": "Welcome back to ALEXANDRIS.",
+    "emailAddress": "Email address",
+    "password": "Password",
+    "forgotPassword": "Forgot your password?",
+    "resetLinkSent": "If an account exists for that email, a password reset link is on its way.",
+    "emailResetLink": "Email Me a Reset Link",
+    "backToSignIn": "Back to sign in",
+    "createAccount": "Create an account",
+    "continueAsGuest": "Continue as guest",
+    "createAccountTitle": "Create Account",
+    "joinBlurb": "Join ALEXANDRIS for faster checkout and order tracking.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "confirmPassword": "Confirm password",
+    "invalidLink": "Invalid link",
+    "setNewPasswordTitle": "Set a new password",
+    "chooseNewPassword": "Choose a new password for your account.",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "requestNewOne": "Request a new one",
+    "setNewPasswordCta": "Set New Password",
+    "loadingAccount": "Loading your account…",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "continueWithFacebook": "Continue with Facebook"
+  },
+  "Address": {
+    "firstName": "First name",
+    "lastName": "Last name",
+    "company": "Company (optional)",
+    "streetAddress": "Street address",
+    "apartment": "Apartment, suite, etc. (optional)",
+    "city": "City",
+    "region": "State / Region (optional)",
+    "postalCode": "Postal code",
+    "country": "Country",
+    "phone": "Phone",
+    "phoneHelp": "So the courier can reach you about your delivery.",
+    "cancel": "Cancel"
+  },
+  "Returns": {
+    "startReturn": "Start a Return",
+    "reason": "Reason",
+    "reasonPlaceholder": "Tell us why you're returning these items",
+    "selectAtLeastOne": "Select at least one item",
+    "addReason": "Add a reason for the return",
+    "returnRequested": "Return requested",
+    "somethingWrong": "Something went wrong"
+  },
+  "Contact": {
+    "messageSent": "Message sent",
+    "name": "Name",
+    "email": "Email",
+    "topic": "Topic",
+    "selectTopic": "Select a topic",
+    "message": "Message"
+  },
+  "Concierge": {
+    "requestSent": "Request sent",
+    "stylistReply": "A stylist will reply within 1 business day.",
+    "name": "Name",
+    "email": "Email",
+    "topic": "Topic",
+    "selectTopic": "Select a topic"
+  },
+  "BackInStock": {
+    "notifyMe": "Notify Me",
+    "emailAddress": "Email address",
+    "somethingWrong": "Something went wrong. Please try again."
+  },
+  "Reviews": {
+    "title": "Reviews"
+  },
+  "A11y": {
+    "account": "Account",
+    "cookieConsent": "Cookie consent",
+    "dismiss": "Dismiss",
+    "breadcrumb": "Breadcrumb",
+    "openGallery": "Open fullscreen gallery",
+    "closeGallery": "Close fullscreen gallery",
+    "previous": "Previous",
+    "minimumPrice": "Minimum price",
+    "maximumPrice": "Maximum price",
+    "primaryNav": "Primary",
+    "mobileNav": "Mobile primary",
+    "search": "Search",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right"
   }
 }

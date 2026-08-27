@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -6,6 +7,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { AccountNav } from "@/components/account/AccountNav";
 
 export function RequireAuthShell({ children }: { children: ReactNode }) {
+  const t = useTranslations("Auth");
   const { customer, isLoading } = useAuth();
   const router = useRouter();
 
@@ -14,7 +16,7 @@ export function RequireAuthShell({ children }: { children: ReactNode }) {
   }, [isLoading, customer, router]);
 
   if (isLoading || !customer) {
-    return <div className="container-luxe py-24 text-center text-sm text-luxe-gray-dark">Loading your account...</div>;
+    return <div className="container-luxe py-24 text-center text-sm text-luxe-gray-dark">{t("loadingAccount")}</div>;
   }
 
   return (

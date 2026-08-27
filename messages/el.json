@@ -41,7 +41,10 @@
     "free": "Δωρεάν",
     "estimatedTax": "Περιλαμβάνει ΦΠΑ",
     "total": "Σύνολο",
-    "yourBag": "Το καλάθι σας"
+    "yourBag": "Το καλάθι σας",
+    "shoppingBag": "Καλάθι αγορών",
+    "emptyBag": "Το καλάθι σας είναι άδειο",
+    "emptyBagSentence": "Το καλάθι σας είναι άδειο."
   },
   "Checkout": {
     "contactTitle": "Επικοινωνία",
@@ -68,7 +71,25 @@
     "placingOrder": "Επεξεργασία παραγγελίας...",
     "termsAgreement": "Με την υποβολή της παραγγελίας σας αποδέχεστε τους",
     "termsLink": "Όρους Χρήσης",
-    "termsAgreementSuffix": "."
+    "termsAgreementSuffix": ".",
+    "shippingAddressTitle": "Διεύθυνση αποστολής",
+    "shippingAddressSubtitle": "Πού να στείλουμε την παραγγελία σας;",
+    "paymentTitle": "Πληρωμή",
+    "tryAgain": "Δοκιμάστε ξανά",
+    "noPaymentMethods": "Δεν υπάρχουν διαθέσιμοι τρόποι πληρωμής αυτή τη στιγμή.",
+    "billingSameAsShipping": "Ίδια διεύθυνση χρέωσης με την αποστολή",
+    "reviewOrder": "Έλεγχος παραγγελίας",
+    "paymentMethodLabel": "Τρόπος πληρωμής",
+    "shippingMethodLabel": "Τρόπος αποστολής",
+    "enterAddressForRates": "Συμπληρώστε διεύθυνση αποστολής για να δείτε τις διαθέσιμες επιλογές.",
+    "progress": "Πρόοδος παραγγελίας",
+    "stepContact": "Στοιχεία",
+    "stepShipping": "Αποστολή",
+    "stepDelivery": "Παράδοση",
+    "stepPayment": "Πληρωμή",
+    "stepReview": "Έλεγχος",
+    "showOrderSummary": "Εμφάνιση σύνοψης παραγγελίας",
+    "hideOrderSummary": "Απόκρυψη σύνοψης παραγγελίας"
   },
   "Plp": {
     "filter": "Φίλτρο",
@@ -80,7 +101,9 @@
     "availability": "Διαθεσιμότητα",
     "inStockOnly": "Μόνο διαθέσιμα",
     "itemsOne": "{count} προϊόν",
-    "itemsOther": "{count} προϊόντα"
+    "itemsOther": "{count} προϊόντα",
+    "noMatches": "Δεν βρέθηκαν προϊόντα με αυτά τα φίλτρα.",
+    "clearFilters": "Καθαρισμός φίλτρων"
   },
   "Pdp": {
     "quantity": "Ποσότητα",
@@ -146,5 +169,96 @@
   "Newsletter": {
     "emailLabel": "Διεύθυνση email",
     "emailPlaceholder": "Η διεύθυνση email σας"
+  },
+  "Auth": {
+    "signIn": "Σύνδεση",
+    "welcomeBack": "Καλώς ήρθατε ξανά στο ALEXANDRIS.",
+    "emailAddress": "Διεύθυνση email",
+    "password": "Κωδικός",
+    "forgotPassword": "Ξεχάσατε τον κωδικό σας;",
+    "resetLinkSent": "Αν υπάρχει λογαριασμός με αυτό το email, σας στείλαμε σύνδεσμο επαναφοράς.",
+    "emailResetLink": "Στείλτε μου σύνδεσμο επαναφοράς",
+    "backToSignIn": "Επιστροφή στη σύνδεση",
+    "createAccount": "Δημιουργία λογαριασμού",
+    "continueAsGuest": "Συνέχεια ως επισκέπτης",
+    "createAccountTitle": "Δημιουργία λογαριασμού",
+    "joinBlurb": "Δημιουργήστε λογαριασμό για γρηγορότερες παραγγελίες και παρακολούθηση αποστολών.",
+    "firstName": "Όνομα",
+    "lastName": "Επώνυμο",
+    "confirmPassword": "Επιβεβαίωση κωδικού",
+    "invalidLink": "Μη έγκυρος σύνδεσμος",
+    "setNewPasswordTitle": "Ορίστε νέο κωδικό",
+    "chooseNewPassword": "Επιλέξτε νέο κωδικό για τον λογαριασμό σας.",
+    "newPassword": "Νέος κωδικός",
+    "confirmNewPassword": "Επιβεβαίωση νέου κωδικού",
+    "requestNewOne": "Ζητήστε νέο",
+    "setNewPasswordCta": "Ορισμός νέου κωδικού",
+    "loadingAccount": "Φόρτωση λογαριασμού…",
+    "continueWithGoogle": "Συνέχεια με Google",
+    "continueWithApple": "Συνέχεια με Apple",
+    "continueWithFacebook": "Συνέχεια με Facebook"
+  },
+  "Address": {
+    "firstName": "Όνομα",
+    "lastName": "Επώνυμο",
+    "company": "Εταιρεία (προαιρετικό)",
+    "streetAddress": "Διεύθυνση",
+    "apartment": "Διαμέρισμα, όροφος κ.λπ. (προαιρετικό)",
+    "city": "Πόλη",
+    "region": "Περιοχή / Νομός (προαιρετικό)",
+    "postalCode": "Ταχυδρομικός κώδικας",
+    "country": "Χώρα",
+    "phone": "Τηλέφωνο",
+    "phoneHelp": "Για να μπορεί η εταιρεία ταχυμεταφορών να επικοινωνήσει μαζί σας.",
+    "cancel": "Ακύρωση"
+  },
+  "Returns": {
+    "startReturn": "Έναρξη επιστροφής",
+    "reason": "Αιτία",
+    "reasonPlaceholder": "Πείτε μας γιατί επιστρέφετε αυτά τα είδη",
+    "selectAtLeastOne": "Επιλέξτε τουλάχιστον ένα είδος",
+    "addReason": "Προσθέστε την αιτία της επιστροφής",
+    "returnRequested": "Η επιστροφή καταχωρήθηκε",
+    "somethingWrong": "Κάτι πήγε στραβά"
+  },
+  "Contact": {
+    "messageSent": "Το μήνυμα στάλθηκε",
+    "name": "Ονοματεπώνυμο",
+    "email": "Email",
+    "topic": "Θέμα",
+    "selectTopic": "Επιλέξτε θέμα",
+    "message": "Μήνυμα"
+  },
+  "Concierge": {
+    "requestSent": "Το αίτημα στάλθηκε",
+    "stylistReply": "Θα λάβετε απάντηση εντός 1 εργάσιμης ημέρας.",
+    "name": "Ονοματεπώνυμο",
+    "email": "Email",
+    "topic": "Θέμα",
+    "selectTopic": "Επιλέξτε θέμα"
+  },
+  "BackInStock": {
+    "notifyMe": "Ειδοποιήστε με",
+    "emailAddress": "Διεύθυνση email",
+    "somethingWrong": "Κάτι πήγε στραβά. Δοκιμάστε ξανά."
+  },
+  "Reviews": {
+    "title": "Κριτικές"
+  },
+  "A11y": {
+    "account": "Λογαριασμός",
+    "cookieConsent": "Συγκατάθεση cookies",
+    "dismiss": "Κλείσιμο",
+    "breadcrumb": "Πλοήγηση",
+    "openGallery": "Άνοιγμα προβολής πλήρους οθόνης",
+    "closeGallery": "Κλείσιμο προβολής πλήρους οθόνης",
+    "previous": "Προηγούμενο",
+    "minimumPrice": "Ελάχιστη τιμή",
+    "maximumPrice": "Μέγιστη τιμή",
+    "primaryNav": "Κύρια πλοήγηση",
+    "mobileNav": "Κύρια πλοήγηση κινητού",
+    "search": "Αναζήτηση",
+    "scrollLeft": "Κύλιση αριστερά",
+    "scrollRight": "Κύλιση δεξιά"
   }
 }

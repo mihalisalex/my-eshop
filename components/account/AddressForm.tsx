@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +19,7 @@ interface AddressFormProps {
 }
 
 export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "Save Address" }: AddressFormProps) {
+  const tAddr = useTranslations("Address");
   const {
     register,
     handleSubmit,
@@ -45,7 +47,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="af-firstName" className="mb-1.5 block text-eyebrow">
-            First name
+            {tAddr("firstName")}
           </label>
           <input
             id="af-firstName"
@@ -62,7 +64,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
         </div>
         <div>
           <label htmlFor="af-lastName" className="mb-1.5 block text-eyebrow">
-            Last name
+            {tAddr("lastName")}
           </label>
           <input
             id="af-lastName"
@@ -81,7 +83,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
 
       <div>
         <label htmlFor="af-company" className="mb-1.5 block text-eyebrow">
-          Company (optional)
+          {tAddr("company")}
         </label>
         <input id="af-company" className={inputClass} {...register("company")} />
       </div>
@@ -92,7 +94,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
         render={({ field }) => (
           <AddressAutocompleteInput
             id="af-address1"
-            label="Street address"
+            label={tAddr("streetAddress")}
             value={field.value}
             onChange={field.onChange}
             error={errors.address1?.message}
@@ -109,7 +111,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
 
       <div>
         <label htmlFor="af-address2" className="mb-1.5 block text-eyebrow">
-          Apartment, suite, etc. (optional)
+          {tAddr("apartment")}
         </label>
         <input id="af-address2" className={inputClass} {...register("address2")} />
       </div>
@@ -117,7 +119,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="af-city" className="mb-1.5 block text-eyebrow">
-            City
+            {tAddr("city")}
           </label>
           <input
             id="af-city"
@@ -134,7 +136,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
         </div>
         <div>
           <label htmlFor="af-region" className="mb-1.5 block text-eyebrow">
-            State / Region (optional)
+            {tAddr("region")}
           </label>
           <input id="af-region" className={inputClass} {...register("region")} />
         </div>
@@ -143,7 +145,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="af-postalCode" className="mb-1.5 block text-eyebrow">
-            Postal code
+            {tAddr("postalCode")}
           </label>
           <input
             id="af-postalCode"
@@ -160,7 +162,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
         </div>
         <div>
           <label htmlFor="af-countryCode" className="mb-1.5 block text-eyebrow">
-            Country
+            {tAddr("country")}
           </label>
           <select id="af-countryCode" className={cn(inputClass, "appearance-none")} {...register("countryCode")}>
             {COUNTRIES.map((country) => (
@@ -174,7 +176,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
 
       <div>
         <label htmlFor="af-phone" className="mb-1.5 block text-eyebrow">
-          Phone
+          {tAddr("phone")}
         </label>
         <input
           id="af-phone"
@@ -204,7 +206,7 @@ export function AddressForm({ defaultValues, onSubmit, onCancel, submitLabel = "
           onClick={onCancel}
           className="h-11 flex-1 border border-border text-sm font-medium tracking-[0.05em] uppercase transition-colors hover:border-luxe-black"
         >
-          Cancel
+          {tAddr("cancel")}
         </button>
       </div>
     </form>

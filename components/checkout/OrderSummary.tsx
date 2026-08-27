@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -11,6 +12,7 @@ import { CartTotalsSummary } from "@/components/cart/CartTotalsSummary";
 import { applyGiftWrap, applyPaymentFee, applySelectedShippingRate } from "@/lib/commerce/checkout-totals";
 
 export function OrderSummary() {
+  const t = useTranslations("Checkout");
   const { cart } = useCart();
   const { checkout, selectedPaymentFee } = useCheckout();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -38,7 +40,7 @@ export function OrderSummary() {
         className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium lg:hidden"
       >
         <span>
-          {mobileOpen ? "Hide" : "Show"} order summary · {formatMoney(totals.total)}
+          {mobileOpen ? t("hideOrderSummary") : t("showOrderSummary")} · {formatMoney(totals.total)}
         </span>
         <ChevronDown className={cn("size-4 transition-transform", mobileOpen && "rotate-180")} strokeWidth={1.5} />
       </button>

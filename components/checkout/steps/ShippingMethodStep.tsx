@@ -34,7 +34,7 @@ export function ShippingMethodStep() {
       <div className="space-y-6">
         <div>
           <h2 className="font-heading text-xl">{t("deliveryTitle")}</h2>
-          <p className="mt-1 text-sm text-luxe-gray-dark">Enter a shipping address to see available rates.</p>
+          <p className="mt-1 text-sm text-luxe-gray-dark">{t("enterAddressForRates")}</p>
         </div>
       </div>
     );
@@ -47,7 +47,7 @@ export function ShippingMethodStep() {
         <p className="mt-1 text-sm text-luxe-gray-dark">{t("deliverySubtitle")}</p>
       </div>
 
-      <div role="radiogroup" aria-label="Shipping method" className="divide-y divide-border border-y border-border">
+      <div role="radiogroup" aria-label={t("shippingMethodLabel")} className="divide-y divide-border border-y border-border">
         {shippingRates.map((rate) => {
           const isSelected = selected === rate.id;
           return (

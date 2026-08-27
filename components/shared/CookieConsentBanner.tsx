@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { getConsentChoice, setConsentChoice } from "@/lib/consent";
  * `visible` therefore starts true so the server and first client render agree.
  */
 export function CookieConsentBanner() {
+  const tA11y = useTranslations("A11y");
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export function CookieConsentBanner() {
   return (
     <div
       role="region"
-      aria-label="Cookie consent"
+      aria-label={tA11y("cookieConsent")}
       data-cookie-consent
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-luxe-white p-4 sm:p-5"
     >

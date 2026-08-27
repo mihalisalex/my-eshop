@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useRef, useState } from "react";
 import Image from "next/image";
@@ -17,6 +18,7 @@ interface GalleryProps {
 }
 
 export function Gallery({ images, videos = [], productName }: GalleryProps) {
+  const tA11y = useTranslations("A11y");
   const media: GalleryMedia[] = [
     ...images.map((image) => ({ kind: "image" as const, image })),
     ...videos.map((video) => ({ kind: "video" as const, video })),
@@ -107,7 +109,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
 
         <button
           type="button"
-          aria-label="Open fullscreen gallery"
+          aria-label={tA11y("openGallery")}
           onClick={() => setLightboxOpen(true)}
           className="absolute top-3 right-3 flex size-9 items-center justify-center bg-luxe-white/90"
         >
@@ -118,7 +120,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
           <>
             <button
               type="button"
-              aria-label="Previous"
+              aria-label={tA11y("previous")}
               onClick={() => goTo(activeIndex - 1)}
               className="absolute top-1/2 left-3 flex size-9 -translate-y-1/2 items-center justify-center bg-luxe-white/90"
             >
@@ -150,7 +152,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
           >
             <button
               type="button"
-              aria-label="Close fullscreen gallery"
+              aria-label={tA11y("closeGallery")}
               onClick={() => setLightboxOpen(false)}
               className="absolute top-6 right-6 text-luxe-white"
             >
@@ -160,7 +162,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
               <>
                 <button
                   type="button"
-                  aria-label="Previous"
+                  aria-label={tA11y("previous")}
                   onClick={() => goTo(activeIndex - 1)}
                   className="absolute left-4 flex size-11 items-center justify-center text-luxe-white sm:left-8"
                 >

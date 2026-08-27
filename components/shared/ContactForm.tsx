@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +14,7 @@ const inputClass =
 const TOPICS = ["Order support", "Returns & exchanges", "Product question", "Press & partnerships", "Something else"];
 
 export function ContactForm() {
+  const t = useTranslations("Contact");
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
@@ -41,7 +43,7 @@ export function ContactForm() {
       <div className="flex items-start gap-3 border border-border bg-luxe-gray-light p-6">
         <Check className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
         <div>
-          <p className="font-medium">Message sent</p>
+          <p className="font-medium">{t("messageSent")}</p>
           <p className="mt-1 text-sm text-luxe-gray-dark">Thanks for reaching out — we&apos;ll get back to you within 1 business day.</p>
         </div>
       </div>
@@ -54,7 +56,7 @@ export function ContactForm() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="contact-name" className="text-xs font-medium tracking-[0.05em] uppercase">
-            Name
+            {t("name")}
           </label>
           <input
             id="contact-name"
@@ -71,7 +73,7 @@ export function ContactForm() {
         </div>
         <div>
           <label htmlFor="contact-email" className="text-xs font-medium tracking-[0.05em] uppercase">
-            Email
+            {t("email")}
           </label>
           <input
             id="contact-email"
@@ -91,7 +93,7 @@ export function ContactForm() {
 
       <div>
         <label htmlFor="contact-subject" className="text-xs font-medium tracking-[0.05em] uppercase">
-          Topic
+          {t("topic")}
         </label>
         <select
           id="contact-subject"
@@ -102,7 +104,7 @@ export function ContactForm() {
           {...register("subject")}
         >
           <option value="" disabled>
-            Select a topic
+            {t("selectTopic")}
           </option>
           {TOPICS.map((topic) => (
             <option key={topic} value={topic}>
@@ -119,7 +121,7 @@ export function ContactForm() {
 
       <div>
         <label htmlFor="contact-message" className="text-xs font-medium tracking-[0.05em] uppercase">
-          Message
+          {t("message")}
         </label>
         <textarea
           id="contact-message"

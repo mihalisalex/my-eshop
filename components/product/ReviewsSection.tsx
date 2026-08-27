@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { Star, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -23,11 +24,13 @@ function Stars({ rating, size = "size-4" }: { rating: number; size?: string }) {
   );
 }
 
-export function ReviewsSection({ summary, reviews }: ReviewsSectionProps) {
+export async function ReviewsSection({ summary, reviews }: ReviewsSectionProps) {
+  // Server Component, so getTranslations rather than the useTranslations hook.
+  const t = await getTranslations("Reviews");
   if (summary.count === 0) {
     return (
       <section id="reviews" className="border-t border-border py-10">
-        <h2 className="font-heading text-2xl">Reviews</h2>
+        <h2 className="font-heading text-2xl">{t("title")}</h2>
         <p className="mt-2 text-sm text-luxe-gray-dark">No reviews yet — be the first to share your fit and feel.</p>
       </section>
     );
@@ -36,7 +39,7 @@ export function ReviewsSection({ summary, reviews }: ReviewsSectionProps) {
   return (
     <section id="reviews" className="border-t border-border py-10">
       <div className="flex items-center gap-4">
-        <h2 className="font-heading text-2xl">Reviews</h2>
+        <h2 className="font-heading text-2xl">{t("title")}</h2>
         <Stars rating={summary.average} />
         <p className="text-sm text-luxe-gray-dark">
           {summary.average} out of 5 ({summary.count} review{summary.count === 1 ? "" : "s"})

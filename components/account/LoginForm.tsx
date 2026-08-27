@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -22,6 +23,7 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginFormProps) {
+  const t = useTranslations("Auth");
   const { signIn, requestPasswordReset } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<"password" | "magic-link">("password");
@@ -42,8 +44,8 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="font-heading text-3xl">Sign In</h1>
-      <p className="mt-2 text-sm text-luxe-gray-dark">Welcome back to ALEXANDRIS.</p>
+      <h1 className="font-heading text-3xl">{t("signIn")}</h1>
+      <p className="mt-2 text-sm text-luxe-gray-dark">{t("welcomeBack")}</p>
 
       {oauthError ? (
         <p className="mt-4 text-sm text-destructive">
@@ -65,7 +67,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
         <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} noValidate className="space-y-4">
           <div>
             <label htmlFor="login-email" className="mb-1.5 block text-eyebrow">
-              Email address
+              {t("emailAddress")}
             </label>
             <input
               id="login-email"
@@ -84,7 +86,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
           </div>
           <div>
             <label htmlFor="login-password" className="mb-1.5 block text-eyebrow">
-              Password
+              {t("password")}
             </label>
             <input
               id="login-password"
@@ -106,7 +108,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
             disabled={passwordForm.formState.isSubmitting}
             className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            Sign In
+            {t("signIn")}
           </button>
           {isFeatureEnabled("magic-link-auth") ? (
             <button
@@ -114,20 +116,20 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
               onClick={() => setMode("magic-link")}
               className="w-full text-center text-xs text-luxe-gray-dark underline underline-offset-4 hover:text-luxe-black"
             >
-              Forgot your password?
+              {t("forgotPassword")}
             </button>
           ) : null}
         </form>
       ) : linkSent ? (
         <p className="flex items-center gap-2 text-sm">
           <Check className="size-4 shrink-0" strokeWidth={1.5} />
-          If an account exists for that email, a password reset link is on its way.
+          {t("resetLinkSent")}
         </p>
       ) : (
         <form onSubmit={magicLinkForm.handleSubmit(onMagicLinkSubmit)} noValidate className="space-y-4">
           <div>
             <label htmlFor="magic-link-email" className="mb-1.5 block text-eyebrow">
-              Email address
+              {t("emailAddress")}
             </label>
             <input
               id="magic-link-email"
@@ -149,14 +151,14 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
             disabled={magicLinkForm.formState.isSubmitting}
             className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            Email Me a Reset Link
+            {t("emailResetLink")}
           </button>
           <button
             type="button"
             onClick={() => setMode("password")}
             className="w-full text-center text-xs text-luxe-gray-dark underline underline-offset-4 hover:text-luxe-black"
           >
-            Back to sign in
+            {t("backToSignIn")}
           </button>
         </form>
       )}
@@ -164,12 +166,12 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
       <p className="mt-8 text-center text-sm text-luxe-gray-dark">
         New to ALEXANDRIS?{" "}
         <Link href="/account/register" className="text-luxe-black underline underline-offset-4">
-          Create an account
+          {t("createAccount")}
         </Link>
       </p>
       <p className="mt-2 text-center text-sm text-luxe-gray-dark">
         <Link href="/cart" className="underline underline-offset-4 hover:text-luxe-black">
-          Continue as guest
+          {t("continueAsGuest")}
         </Link>
       </p>
     </div>

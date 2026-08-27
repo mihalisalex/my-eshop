@@ -39,6 +39,7 @@ function truncateForDisplay(query: string): string {
 }
 
 export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
+  const tA11y = useTranslations("A11y");
   const t = useTranslations("Search");
   const inputRef = useRef<HTMLInputElement>(null);
   const requestIdRef = useRef(0);
@@ -157,7 +158,7 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
           className="fixed inset-0 z-100 overflow-y-auto bg-luxe-white"
           role="dialog"
           aria-modal="true"
-          aria-label="Search"
+          aria-label={tA11y("search")}
         >
           <div className="container-luxe flex h-16 items-center justify-between border-b border-border">
             <span className="font-heading text-lg tracking-[0.1em] uppercase">{t("title")}</span>

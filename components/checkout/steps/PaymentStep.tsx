@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
@@ -58,6 +59,7 @@ function subscribeToNothing(): () => void {
  *   in this file.
  */
 export function PaymentStep() {
+  const t = useTranslations("Checkout");
   const {
     shippingAddress,
     sameBillingAsShipping,
@@ -119,7 +121,7 @@ export function PaymentStep() {
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
       <div>
-        <h2 className="font-heading text-xl">Payment</h2>
+        <h2 className="font-heading text-xl">{t("paymentTitle")}</h2>
         <p className="mt-1 text-sm text-luxe-gray-dark">
           Choose how you&apos;d like to pay. You&apos;ll confirm everything on the next step.
         </p>
@@ -142,14 +144,14 @@ export function PaymentStep() {
             className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline underline-offset-4"
           >
             <RefreshCw className="size-3.5" strokeWidth={1.5} />
-            Try again
+            {t("tryAgain")}
           </button>
         </div>
       ) : null}
 
       {!isLoadingPaymentMethods && !paymentMethodsError && visibleMethods.length === 0 ? (
         <div className="border border-border bg-luxe-gray-light p-4 text-sm">
-          <p className="font-medium">No payment methods are available right now.</p>
+          <p className="font-medium">{t("noPaymentMethods")}</p>
           <p className="mt-1 text-luxe-gray-dark">
             This can happen if your order total or delivery country falls outside what the available methods accept.
             Please contact us and we&apos;ll help you complete your order.
@@ -158,7 +160,7 @@ export function PaymentStep() {
       ) : null}
 
       {visibleMethods.length > 0 ? (
-        <div role="radiogroup" aria-label="Payment method" className="space-y-3">
+        <div role="radiogroup" aria-label={t("paymentMethodLabel")} className="space-y-3">
           {visibleMethods.map((method) => (
             <PaymentMethodOption
               key={method.id}
@@ -180,12 +182,12 @@ export function PaymentStep() {
           onChange={(event) => setSameBillingAsShipping(event.target.checked)}
           className="size-4 border-border accent-luxe-black"
         />
-        Billing address same as shipping
+        {t("billingSameAsShipping")}
       </label>
 
       {!sameBillingAsShipping ? (
         <div className="space-y-4 border-t border-border pt-6">
-          <p className="text-eyebrow">Billing address</p>
+          <p className="text-eyebrow">{t("billingAddress")}</p>
           <div className="grid grid-cols-2 gap-4">
             <Field form={billingForm} name="firstName" id="billingFirstName" label="First name" />
             <Field form={billingForm} name="lastName" id="billingLastName" label="Last name" />
@@ -226,7 +228,7 @@ export function PaymentStep() {
         disabled={isSubmitting || !selectedPaymentMethodId}
         className="flex h-12 w-full items-center justify-center gap-2 bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        Review Order
+        {t("reviewOrder")}
         <ArrowRight className="size-4" strokeWidth={1.5} />
       </button>
     </form>

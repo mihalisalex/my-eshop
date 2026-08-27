@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useRef } from "react";
 import { motion } from "framer-motion";
@@ -14,6 +15,7 @@ interface NewArrivalsProps {
 }
 
 export function NewArrivals({ title, subtitle, products }: NewArrivalsProps) {
+  const tA11y = useTranslations("A11y");
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const scrollByCard = (direction: 1 | -1) => {
@@ -33,7 +35,7 @@ export function NewArrivals({ title, subtitle, products }: NewArrivalsProps) {
         <div className="hidden gap-2 sm:flex">
           <button
             type="button"
-            aria-label="Scroll left"
+            aria-label={tA11y("scrollLeft")}
             onClick={() => scrollByCard(-1)}
             className="flex size-10 items-center justify-center border border-border transition-colors hover:border-luxe-black"
           >
@@ -41,7 +43,7 @@ export function NewArrivals({ title, subtitle, products }: NewArrivalsProps) {
           </button>
           <button
             type="button"
-            aria-label="Scroll right"
+            aria-label={tA11y("scrollRight")}
             onClick={() => scrollByCard(1)}
             className="flex size-10 items-center justify-center border border-border transition-colors hover:border-luxe-black"
           >

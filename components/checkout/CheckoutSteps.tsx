@@ -1,23 +1,25 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCheckout, type CheckoutStep } from "@/components/providers/CheckoutProvider";
 
-const STEPS: { id: CheckoutStep; label: string }[] = [
-  { id: "contact", label: "Contact" },
-  { id: "shipping", label: "Shipping" },
-  { id: "delivery", label: "Delivery" },
-  { id: "payment", label: "Payment" },
-  { id: "review", label: "Review" },
+const STEPS: { id: CheckoutStep; labelKey: string }[] = [
+  { id: "contact", labelKey: "stepContact" },
+  { id: "shipping", labelKey: "stepShipping" },
+  { id: "delivery", labelKey: "stepDelivery" },
+  { id: "payment", labelKey: "stepPayment" },
+  { id: "review", labelKey: "stepReview" },
 ];
 
 export function CheckoutSteps() {
+  const t = useTranslations("Checkout");
   const { step, furthestStep, goToStep } = useCheckout();
   const stepIndex = (id: CheckoutStep) => STEPS.findIndex((s) => s.id === id);
 
   return (
-    <nav aria-label="Checkout progress" className="mb-8 flex items-center">
+    <nav aria-label={t("progress")} className="mb-8 flex items-center">
       {STEPS.map((s, index) => {
         const isCurrent = s.id === step;
         const isComplete = stepIndex(s.id) < stepIndex(step) || stepIndex(furthestStep) > stepIndex(s.id);
@@ -44,7 +46,7 @@ export function CheckoutSteps() {
               >
                 {isComplete && !isCurrent ? <Check className="size-3" strokeWidth={2} /> : index + 1}
               </span>
-              <span className="hidden sm:inline">{s.label}</span>
+              <span className="hidden sm:inline">{t(s.labelKey)}</span>
             </button>
             {index < STEPS.length - 1 ? <div className="mx-3 h-px flex-1 bg-border" /> : null}
           </div>

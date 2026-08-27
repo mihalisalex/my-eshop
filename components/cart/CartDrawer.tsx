@@ -20,7 +20,7 @@ export function CartDrawer() {
   return (
     <Sheet open={isDrawerOpen} onOpenChange={(open) => (open ? undefined : closeDrawer())}>
       <SheetContent side="right" showCloseButton className="flex w-full flex-col border-none bg-luxe-white p-0 sm:max-w-md">
-        <SheetTitle className="sr-only">Shopping bag</SheetTitle>
+        <SheetTitle className="sr-only">{t("shoppingBag")}</SheetTitle>
         <div className="flex h-16 shrink-0 items-center border-b border-border px-6">
           <span className="font-heading text-lg tracking-[0.1em] uppercase">{t("yourBag")} ({itemCount})</span>
         </div>
@@ -28,7 +28,7 @@ export function CartDrawer() {
         {activeItems.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
             <ShoppingBag className="size-10 text-luxe-gray-dark" strokeWidth={1} />
-            <p className="text-sm text-luxe-gray-dark">Your bag is empty.</p>
+            <p className="text-sm text-luxe-gray-dark">{t("emptyBagSentence")}</p>
             <button
               type="button"
               onClick={closeDrawer}

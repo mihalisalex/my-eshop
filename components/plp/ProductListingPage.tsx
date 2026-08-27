@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -28,6 +29,7 @@ function parseCsv(value: string | null): string[] {
 }
 
 export function ProductListingPage({ title, description, baseFilters, showHeader = true, defaultSort = "relevance" }: ProductListingPageProps) {
+  const t = useTranslations("Plp");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -237,9 +239,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
             ) : total === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <PackageSearch className="size-10 text-luxe-gray-dark" strokeWidth={1} />
-                <p className="text-sm text-luxe-gray-dark">No products match your filters.</p>
+                <p className="text-sm text-luxe-gray-dark">{t("noMatches")}</p>
                 <button type="button" onClick={handleClearAll} className="text-sm underline underline-offset-4">
-                  Clear filters
+                  {t("clearFilters")}
                 </button>
               </div>
             ) : (

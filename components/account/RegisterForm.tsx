@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,6 +18,7 @@ interface RegisterFormProps {
 }
 
 export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
+  const t = useTranslations("Auth");
   const { signUp } = useAuth();
   const router = useRouter();
   const {
@@ -32,8 +34,8 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <h1 className="font-heading text-3xl">Create Account</h1>
-      <p className="mt-2 text-sm text-luxe-gray-dark">Join ALEXANDRIS for faster checkout and order tracking.</p>
+      <h1 className="font-heading text-3xl">{t("createAccountTitle")}</h1>
+      <p className="mt-2 text-sm text-luxe-gray-dark">{t("joinBlurb")}</p>
 
       <div className="mt-8">
         <SocialSignInButtons configured={configuredOAuthProviders} />
@@ -49,7 +51,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="register-firstName" className="mb-1.5 block text-eyebrow">
-              First name
+              {t("firstName")}
             </label>
             <input
               id="register-firstName"
@@ -67,7 +69,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
           </div>
           <div>
             <label htmlFor="register-lastName" className="mb-1.5 block text-eyebrow">
-              Last name
+              {t("lastName")}
             </label>
             <input
               id="register-lastName"
@@ -87,7 +89,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
         <div>
           <label htmlFor="register-email" className="mb-1.5 block text-eyebrow">
-            Email address
+            {t("emailAddress")}
           </label>
           <input
             id="register-email"
@@ -107,7 +109,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
         <div>
           <label htmlFor="register-password" className="mb-1.5 block text-eyebrow">
-            Password
+            {t("password")}
           </label>
           <input
             id="register-password"
@@ -127,7 +129,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
         <div>
           <label htmlFor="register-confirmPassword" className="mb-1.5 block text-eyebrow">
-            Confirm password
+            {t("confirmPassword")}
           </label>
           <input
             id="register-confirmPassword"
@@ -150,14 +152,14 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
           disabled={isSubmitting}
           className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          Create Account
+          {t("createAccountTitle")}
         </button>
       </form>
 
       <p className="mt-8 text-center text-sm text-luxe-gray-dark">
         Already have an account?{" "}
         <Link href="/account/login" className="text-luxe-black underline underline-offset-4">
-          Sign in
+          {t("signIn")}
         </Link>
       </p>
     </div>

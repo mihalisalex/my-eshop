@@ -27,6 +27,7 @@ interface MobileMenuProps {
 }
 
 export function MobileMenu({ items, supportLinks = [], open, onOpenChange, triggerLight }: MobileMenuProps) {
+  const tA11y = useTranslations("A11y");
   const t = useTranslations("MobileMenu");
   const close = () => onOpenChange(false);
 
@@ -53,7 +54,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
           </SheetClose>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-6 py-4" aria-label="Mobile primary">
+        <nav className="flex-1 overflow-y-auto px-6 py-4" aria-label={tA11y("mobileNav")}>
           <Accordion>
             {items.map((item) =>
               item.children?.length ? (

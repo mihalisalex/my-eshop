@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -15,6 +16,8 @@ const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
 export function ShippingAddressStep() {
+  const t = useTranslations("Checkout");
+  const tAddr = useTranslations("Address");
   const { shippingAddress, setShippingAddress } = useCheckout();
   const { customer, isLoading: isAuthLoading } = useAuth();
   const {
@@ -56,14 +59,14 @@ export function ShippingAddressStep() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
       <div>
-        <h2 className="font-heading text-xl">Shipping Address</h2>
-        <p className="mt-1 text-sm text-luxe-gray-dark">Where should we send your order?</p>
+        <h2 className="font-heading text-xl">{t("shippingAddressTitle")}</h2>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("shippingAddressSubtitle")}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="firstName" className="mb-1.5 block text-eyebrow">
-            First name
+            {tAddr("firstName")}
           </label>
           <input
             id="firstName"
@@ -81,7 +84,7 @@ export function ShippingAddressStep() {
         </div>
         <div>
           <label htmlFor="lastName" className="mb-1.5 block text-eyebrow">
-            Last name
+            {tAddr("lastName")}
           </label>
           <input
             id="lastName"
@@ -101,7 +104,7 @@ export function ShippingAddressStep() {
 
       <div>
         <label htmlFor="company" className="mb-1.5 block text-eyebrow">
-          Company (optional)
+          {tAddr("company")}
         </label>
         <input id="company" autoComplete="organization" className={inputClass} {...register("company")} />
       </div>
@@ -112,7 +115,7 @@ export function ShippingAddressStep() {
         render={({ field }) => (
           <AddressAutocompleteInput
             id="address1"
-            label="Street address"
+            label={tAddr("streetAddress")}
             value={field.value}
             onChange={field.onChange}
             error={errors.address1?.message}
@@ -129,7 +132,7 @@ export function ShippingAddressStep() {
 
       <div>
         <label htmlFor="address2" className="mb-1.5 block text-eyebrow">
-          Apartment, suite, etc. (optional)
+          {tAddr("apartment")}
         </label>
         <input id="address2" autoComplete="address-line2" className={inputClass} {...register("address2")} />
       </div>
@@ -137,7 +140,7 @@ export function ShippingAddressStep() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="city" className="mb-1.5 block text-eyebrow">
-            City
+            {tAddr("city")}
           </label>
           <input
             id="city"
@@ -155,7 +158,7 @@ export function ShippingAddressStep() {
         </div>
         <div>
           <label htmlFor="region" className="mb-1.5 block text-eyebrow">
-            State / Region (optional)
+            {tAddr("region")}
           </label>
           <input id="region" autoComplete="address-level1" className={inputClass} {...register("region")} />
         </div>
@@ -164,7 +167,7 @@ export function ShippingAddressStep() {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="postalCode" className="mb-1.5 block text-eyebrow">
-            Postal code
+            {tAddr("postalCode")}
           </label>
           <input
             id="postalCode"
@@ -182,7 +185,7 @@ export function ShippingAddressStep() {
         </div>
         <div>
           <label htmlFor="countryCode" className="mb-1.5 block text-eyebrow">
-            Country
+            {tAddr("country")}
           </label>
           <select
             id="countryCode"
@@ -202,7 +205,7 @@ export function ShippingAddressStep() {
 
       <div>
         <label htmlFor="phone" className="mb-1.5 block text-eyebrow">
-          Phone
+          {tAddr("phone")}
         </label>
         <input
           id="phone"
@@ -219,7 +222,7 @@ export function ShippingAddressStep() {
           </p>
         ) : (
           <p id="phone-hint" className="mt-1.5 text-xs text-luxe-gray-dark">
-            So the courier can reach you about your delivery.
+            {tAddr("phoneHelp")}
           </p>
         )}
       </div>
@@ -229,7 +232,7 @@ export function ShippingAddressStep() {
         disabled={isSubmitting}
         className="flex h-12 w-full items-center justify-center gap-2 bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
       >
-        Continue to Delivery
+        {t("continueToDelivery")}
         <ArrowRight className="size-4" strokeWidth={1.5} />
       </button>
     </form>

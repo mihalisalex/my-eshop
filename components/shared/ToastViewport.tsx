@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
@@ -7,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { EASE } from "@/constants/animation";
 
 export function ToastViewport() {
+  const tA11y = useTranslations("A11y");
   const { toasts, dismiss } = useToast();
 
   return (
@@ -45,7 +47,7 @@ export function ToastViewport() {
                 </button>
               ) : null}
             </div>
-            <button type="button" aria-label="Dismiss" onClick={() => dismiss(t.id)} className="shrink-0">
+            <button type="button" aria-label={tA11y("dismiss")} onClick={() => dismiss(t.id)} className="shrink-0">
               <X className="size-4" strokeWidth={1.5} />
             </button>
           </motion.div>

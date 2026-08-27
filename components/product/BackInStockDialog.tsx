@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState, type FormEvent } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +13,7 @@ interface BackInStockDialogProps {
 }
 
 export function BackInStockDialog({ productId, sizeName, open, onOpenChange }: BackInStockDialogProps) {
+  const t = useTranslations("BackInStock");
   const { customer } = useAuth();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
@@ -43,7 +45,7 @@ export function BackInStockDialog({ productId, sizeName, open, onOpenChange }: B
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-sm rounded-none border-none p-8">
-        <DialogTitle className="font-heading text-xl">Notify Me</DialogTitle>
+        <DialogTitle className="font-heading text-xl">{t("notifyMe")}</DialogTitle>
         {status === "done" ? (
           <p className="mt-4 text-sm text-luxe-gray-dark">
             We&apos;ll email you the moment size {sizeName} is back in stock.
@@ -58,7 +60,7 @@ export function BackInStockDialog({ productId, sizeName, open, onOpenChange }: B
             ) : (
               <div>
                 <label htmlFor="back-in-stock-email" className="mb-1.5 block text-eyebrow">
-                  Email address
+                  {t("emailAddress")}
                 </label>
                 <input
                   id="back-in-stock-email"
@@ -71,13 +73,13 @@ export function BackInStockDialog({ productId, sizeName, open, onOpenChange }: B
                 />
               </div>
             )}
-            {status === "error" ? <p className="text-sm text-destructive">Something went wrong. Please try again.</p> : null}
+            {status === "error" ? <p className="text-sm text-destructive">{t("somethingWrong")}</p> : null}
             <button
               type="submit"
               disabled={status === "submitting"}
               className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {status === "submitting" ? "Submitting…" : "Notify Me"}
+              {status === "submitting" ? "Submitting…" : t("notifyMe")}
             </button>
           </form>
         )}

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import {
@@ -22,6 +23,7 @@ interface ReturnRequestDialogProps {
 }
 
 export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogProps) {
+  const t = useTranslations("Returns");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -39,11 +41,11 @@ export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogPro
 
   async function handleSubmit() {
     if (selected.size === 0) {
-      toast({ title: "Select at least one item", tone: "error" });
+      toast({ title: t("selectAtLeastOne"), tone: "error" });
       return;
     }
     if (!reason.trim()) {
-      toast({ title: "Add a reason for the return", tone: "error" });
+      toast({ title: t("addReason"), tone: "error" });
       return;
     }
 
@@ -62,13 +64,13 @@ export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogPro
         const body = await res.json().catch(() => null);
         throw new Error(body?.error?.message ?? "Couldn't submit your return request.");
       }
-      toast({ title: "Return requested", description: "We'll email you once it's reviewed.", tone: "success" });
+      toast({ title: t("returnRequested"), description: "We'll email you once it's reviewed.", tone: "success" });
       setOpen(false);
       setSelected(new Set());
       setReason("");
       onCreated();
     } catch (error) {
-      toast({ title: "Something went wrong", description: error instanceof Error ? error.message : undefined, tone: "error" });
+      toast({ title: t("somethingWrong"), description: error instanceof Error ? error.message : undefined, tone: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -81,11 +83,11 @@ export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogPro
           <Button variant="outline" className="h-10 rounded-none border-border px-4 text-xs font-medium tracking-[0.05em] uppercase" />
         }
       >
-        Start a Return
+        {t("startReturn")}
       </DialogTrigger>
       <DialogContent className="max-w-lg rounded-none border-none p-8">
         <DialogHeader>
-          <DialogTitle className="font-heading text-xl">Start a Return</DialogTitle>
+          <DialogTitle className="font-heading text-xl">{t("startReturn")}</DialogTitle>
           <DialogDescription>Order {order.id.slice(-8).toUpperCase()} — select the items you&apos;d like to return.</DialogDescription>
         </DialogHeader>
 
@@ -112,8 +114,8 @@ export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogPro
         </div>
 
         <div className="mt-4">
-          <label className="mb-2 block text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Reason</label>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Tell us why you're returning these items" rows={3} />
+          <label className="mb-2 block text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">{t("reason")}</label>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("reasonPlaceholder")} rows={3} />
         </div>
 
         <DialogFooter className="mt-2">

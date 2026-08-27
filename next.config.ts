@@ -30,11 +30,27 @@ const ANALYTICS_ENABLED = Boolean(process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID);
 const GA_SCRIPT_HOSTS = " https://www.googletagmanager.com";
 const GA_CONNECT_HOSTS = " https://www.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com";
 
+/**
+ * `img-src` is derived from the same host list `images.remotePatterns` uses, rather than
+ * hand-listed.
+ *
+ * While the Vercel optimizer was on, every remote image was fetched through /_next/image and
+ * so arrived same-origin — `'self'` covered all of them and the policy only ever needed to
+ * name Unsplash. Turning the optimizer off (see `images.unoptimized` below) makes the browser
+ * fetch each file from its real host, and the CSP silently blocked every one: images that had
+ * just been "fixed" still did not render, with nothing in the network tab but a console
+ * violation.
+ *
+ * Deriving it means turning optimization on or off can never again disagree with what the
+ * policy permits.
+ */
+const REMOTE_IMAGE_SRC = REMOTE_IMAGE_HOSTS.map((host) => ` ${host.protocol}://${host.hostname}`).join("");
+
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'" + (IS_DEV ? " 'unsafe-eval'" : "") + (ANALYTICS_ENABLED ? GA_SCRIPT_HOSTS : ""),
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://images.unsplash.com" + (ANALYTICS_ENABLED ? " https://www.google-analytics.com" : ""),
+  "img-src 'self' data:" + REMOTE_IMAGE_SRC + (ANALYTICS_ENABLED ? " https://www.google-analytics.com" : ""),
   "font-src 'self' data:",
   "connect-src 'self'" + (ANALYTICS_ENABLED ? GA_CONNECT_HOSTS : ""),
   "frame-ancestors 'none'",
@@ -57,6 +73,30 @@ const nextConfig: NextConfig = {
     // Single source of truth, shared with the runtime check in lib/image-hosts.ts — adding
     // a host in one place and forgetting the other is how you get a fatal next/image error.
     remotePatterns: REMOTE_IMAGE_HOSTS,
+
+    /**
+     * Vercel's image optimizer is off, and this is a live incident fix rather than a
+     * preference.
+     *
+     * Every /_next/image request on production was returning
+     * `402 OPTIMIZED_IMAGE_REQUEST_PAYMENT_REQUIRED` — the account's image-transformation
+     * quota is exhausted. Already-cached sizes kept serving, so the damage looked random:
+     * the hero appeared at one viewport and vanished at another, because a different
+     * viewport asks for a different `w=` and that one had never been transformed. Product
+     * images were broken across the shop.
+     *
+     * With this on, next/image emits the original URL and the browser fetches it straight
+     * from Vercel Blob. The catalogue's images are ~100KB 3:4 JPEGs, which is fine to serve
+     * directly — bigger than an optimized WebP, and incomparably better than not loading.
+     *
+     * `placeholder="blur"` still works: SHIMMER_BLUR_DATA_URL is an inline data URI, not
+     * something the optimizer generates.
+     *
+     * TO TURN OPTIMIZATION BACK ON once the plan allows it, set NEXT_PUBLIC_OPTIMIZE_IMAGES
+     * to "true" and redeploy. Default is off, so a fresh deploy can never silently
+     * reintroduce broken images.
+     */
+    unoptimized: process.env.NEXT_PUBLIC_OPTIMIZE_IMAGES !== "true",
   },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];

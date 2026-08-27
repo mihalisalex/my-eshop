@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useRef, useState } from "react";
 import Link from "next/link";
@@ -18,6 +19,7 @@ interface DesktopNavProps {
 const CLOSE_DELAY = 120;
 
 export function DesktopNav({ items, transparentText }: DesktopNavProps) {
+  const tA11y = useTranslations("A11y");
   const [openId, setOpenId] = useState<string | null>(null);
   const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -36,7 +38,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
     <nav
       className="hidden items-center gap-10 lg:flex"
       onMouseLeave={scheduleClose}
-      aria-label="Primary"
+      aria-label={tA11y("primaryNav")}
     >
       {items.map((item) => (
         <div key={item.id} onMouseEnter={() => open(item.id)} className="group relative py-2">

@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,6 +14,7 @@ const inputClass =
 const TOPICS = ["Styling advice", "Sizing & fit", "A special occasion", "Gift recommendations", "Something else"];
 
 export function ConciergeForm() {
+  const t = useTranslations("Concierge");
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
@@ -41,8 +43,8 @@ export function ConciergeForm() {
       <div className="flex items-start gap-3 border border-border bg-luxe-gray-light p-6">
         <Check className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
         <div>
-          <p className="font-medium">Request sent</p>
-          <p className="mt-1 text-sm text-luxe-gray-dark">A stylist will reply within 1 business day.</p>
+          <p className="font-medium">{t("requestSent")}</p>
+          <p className="mt-1 text-sm text-luxe-gray-dark">{t("stylistReply")}</p>
         </div>
       </div>
     );
@@ -54,14 +56,14 @@ export function ConciergeForm() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
           <label htmlFor="concierge-name" className="text-xs font-medium tracking-[0.05em] uppercase">
-            Name
+            {t("name")}
           </label>
           <input id="concierge-name" className={cn(inputClass, "mt-2")} aria-invalid={Boolean(errors.name)} {...register("name")} />
           {errors.name ? <p className="mt-1 text-xs text-destructive">{errors.name.message}</p> : null}
         </div>
         <div>
           <label htmlFor="concierge-email" className="text-xs font-medium tracking-[0.05em] uppercase">
-            Email
+            {t("email")}
           </label>
           <input
             id="concierge-email"
@@ -76,7 +78,7 @@ export function ConciergeForm() {
 
       <div>
         <label htmlFor="concierge-topic" className="text-xs font-medium tracking-[0.05em] uppercase">
-          Topic
+          {t("topic")}
         </label>
         <select
           id="concierge-topic"
@@ -86,7 +88,7 @@ export function ConciergeForm() {
           {...register("topic")}
         >
           <option value="" disabled>
-            Select a topic
+            {t("selectTopic")}
           </option>
           {TOPICS.map((topic) => (
             <option key={topic} value={topic}>
