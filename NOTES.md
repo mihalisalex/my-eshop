@@ -1,13 +1,59 @@
-# Session Summary — 2026-08-18 (go-live: the shop is now publicly launched)
+# Session Summary — 2026-08-27 (Greek storefront, honest copy, and a live image outage)
 
 Quick-reference recap of the LATEST session only — this file gets replaced each session, it's the fast catch-up, not the archive. See `PROGRESS.md` for the detailed batch-by-batch build log.
 
-## Where things stand right now
+## Read this first
 
-**The shop is live and open for business at https://shopalexandris.vercel.app.** Two commits
-this session, both pushed to `origin/main`, HEAD is `0229648`. Working tree clean,
-`next build` / `tsc` / `eslint` / **186 tests** all green, and
-`npx tsx scripts/check-launch-placeholders.ts` **passes for the first time**.
+**The shop is live at https://shopalexandris.vercel.app**, HEAD is `ef36ef2`, tree clean,
+everything pushed to `origin/main`. `tsc` / `eslint` / `next build` / **220 tests** green,
+`npm audit` clean, and `npx tsx scripts/check-launch-placeholders.ts` passes.
+
+Three things from this session that will bite whoever picks it up next:
+
+1. **Vercel's image optimizer is DELIBERATELY OFF.** The account's transformation quota is
+   exhausted — every `/_next/image` request returned `402
+   OPTIMIZED_IMAGE_REQUEST_PAYMENT_REQUIRED`, which broke product photos across the shop.
+   `images.unoptimized` is on and `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` turns it back on once the
+   plan allows. **Do not "fix" this by deleting the flag.**
+2. **`img-src` is DERIVED from `REMOTE_IMAGE_HOSTS`**, not hand-written. Turning the optimizer
+   off made images load from their real hosts instead of same-origin `/_next/image`, and the
+   old CSP blocked every one — a fix that looked like it had failed, with nothing in the
+   network tab but a console violation.
+3. **The shop is Greek.** Default locale `el`, and content lives in the canonical columns for
+   products/nav/blog but in `*El` columns for categories/collections. Both conventions are
+   deliberate and documented in the scripts — see "Where Greek lives" below.
+
+## Where Greek lives, and why it is split
+
+Entities **with** `nameEl`/`titleEl` columns keep English canonical and Greek in the
+translation column: **categories, collections**. Everything reading them must call
+`lib/localize.ts` — three storefront paths did not, which is how the same collection showed as
+"The Sneaker Edit" on one page and "Η Συλλογή Σνίκερ" on another.
+
+Entities **without** those columns hold Greek directly: **products** (all 175 imported that
+way, `nameEl` empty), **navigation**, **blog posts**, **homepage sections**.
+
+The honest consequence: the EN toggle covers the ~200 UI strings plus category and collection
+names, but not product names or navigation. That is the ceiling for a catalogue that only
+exists in Greek, and it is not a bug to be chased.
+
+**`formatDate` and `formatMoney` default to the site locale**, via `LOCALE_TAG` in
+`i18n/config.ts`. Prices read `34,90 €` and `1.234,50 €`. Greek inverts both separators from
+en-US, so the old `€1,234.50` was not merely foreign-looking — it parses as a different number.
+Both are tested (`lib/format.test.ts`) because a stray `locale` argument would silently undo it.
+
+## Copy that claimed things the shop cannot support
+
+Removed, and worth not reintroducing. The live homepage brand story said *"Every pair is
+developed in small batches with tanneries we've worked with for years."* The catalogue is 175
+products: **47 own-label "Alexandris Shoes", 128 other brands** (U.S Polo Assn., London, Verde,
+Mont Martre Paris). The hero said "built on full-grain leather and honest construction" across
+a catalogue including synthetic athletic shoes, and a journal post described an in-house
+workshop making every pair.
+
+All rewritten to claim only what the data supports. Same class as the fabricated "N people
+bought this" counter and the seeded social profiles earlier passes removed. **If the shop does
+manufacture, this can go back — but accurately.**
 
 Of the 4 launch blockers carried in from the audit session, **all 4 are resolved** — two by
 fixing them, two by an explicit decision to launch without them.
@@ -183,14 +229,24 @@ QA-018, QA-029, QA-030, QA-041, QA-046 and QA-063 are done — 5 commits, `7170a
   "fixes" it by **downgrading prisma to 6.12.0**; an `overrides` entry lifts the transitive
   `deepmerge-ts` to 8.0.1 instead.
 
-## Still open below blocker level
+## Still open
 
-QA-017 (create a 2nd admin — UI exists), QA-028 (OG image is Unsplash stock), plus the medium/low
-tail (QA-036, 038–040, 042–045, 047–049).
+**Needs the owner, not code:**
 
-**Greek content still to write** — this is a content job, not code: page headings ("Women"), SEO
-titles and descriptions, category and collection names, blog posts, and the legal pages are all
-still English.
+- **Resend key + `EMAIL_FROM`.** Still the biggest gap a real shopper hits — order
+  confirmations, password resets and back-in-stock all write to `EmailLog` and are never sent.
+- **The Bank Transfer IBAN.** Configured with the form's placeholder (`GR96 0000 0000 0000 00`,
+  18 chars where a Greek IBAN is 27) and briefly live at checkout; **disabled** on 2026-08-27 at
+  the owner's request. Bank name and account holder are correct and preserved — one field and a
+  toggle in `/admin/settings/payments/bank-transfer`.
+- **Stripe keys**, whenever cards are wanted. Code-complete and unit-tested.
+- **A Greek lawyer** on the three legal documents. Translated clause for clause, but they state
+  customers' statutory rights.
+- **Vercel plan**, if image optimization matters — see the image note at the top.
+- Real social profile URLs (or leave empty), `NEXT_PUBLIC_GA_MEASUREMENT_ID`, a real domain.
+
+**Code, below blocker level:** the medium/low tail (QA-036, 038–040, 042–045, 047–049).
+QA-017, QA-018, QA-028, QA-029, QA-030, QA-041, QA-046 and QA-063 are all closed.
 
 Deliberately NOT changed: `/admin/appearance` (read-only, honest) and `browserslist` (a business
 call about which browsers can shop here).
@@ -209,6 +265,18 @@ call about which browsers can shop here).
 - **Restart the dev server after a Prisma schema change** — the running server holds a stale client.
 - **Restart it after adding a `messages/*.json` namespace too.** Next caches the dynamic import,
   so new keys render as raw `PRODUCTBADGE.SALE` until restart. Looks exactly like broken wiring.
+- **Restart it after editing `next.config.ts`** — the CSP and image config are read at boot.
+- **A 402 on `/_next/image` is a quota, not a bug.** `X-Vercel-Error` names it exactly. It
+  presents as random: cached sizes keep serving, so an image appears at one viewport and not
+  another purely because that width had been transformed before.
+- **String literals in MODULE-LEVEL constants cannot be translated in place.** They evaluate
+  once at import, where there is no request and so no locale. Store the message key and
+  translate at render — `SocialSignInButtons` and `CheckoutSteps` both had to be restructured.
+- **`useTranslations` is client-only.** Server Components need `getTranslations` and to become
+  async (`Breadcrumbs`, `ReviewsSection`, `SimplePageContent`).
+- **Bulk edits over this repo must tolerate BOTH line endings.** A `\n`-only anchor silently
+  matched nothing in CRLF files, inserting no import and leaving components referencing an
+  undefined `t` — which surfaced at `tsc`, not at the edit.
 - **`server-only` modules cannot be imported by a `tsx` script.** Verifying a service from the
   command line means re-running its SQL directly, not importing it.
 - **Ordering by an expression that is NULL for every row proves nothing.** The admin margin sort
@@ -230,22 +298,30 @@ call about which browsers can shop here).
 
 | Script | Purpose |
 |---|---|
-| `scripts/check-launch-placeholders.ts` | **Run before every deploy.** Now passes. |
-| `scripts/apply-site-url.ts` | **New.** Sets the canonical URL in the live seo row. Run when the real domain lands. |
-| `scripts/apply-social-links.ts` | **New.** Owns all four social identity fields, derived from `data/settings.json`. |
+| `scripts/check-launch-placeholders.ts` | **Run before every deploy.** Passes. |
+| `scripts/apply-site-url.ts` | Sets the canonical URL in the live seo row. Run when a real domain lands. |
+| `scripts/apply-social-links.ts` | Owns all four social identity fields, derived from `data/settings.json`. |
+| `scripts/apply-greek-content.ts` | **New.** Category/collection Greek + SEO title/description. Explains the `*El` split. |
+| `scripts/apply-greek-navigation.ts` | **New.** 40 header/mega-menu/footer labels, keyed by id and href. Syncs `data/navigation.json` too. |
+| `scripts/apply-greek-homepage.ts` | **New.** Homepage sections, and the removal of the manufacturing claims. |
+| `scripts/apply-greek-blog.ts` | **New.** The four journal posts. `inside-the-atelier` is REWRITTEN, not translated. |
+| `scripts/rewrite-legal.ts` | Regenerates `data/legal.json` — now in Greek. **This is the source**; editing the JSON gets overwritten. |
 | `scripts/merchandise.ts` | Fills collections from categories, enables homepage sections. `--dry-run` supported. |
 | `scripts/purge-test-orders.ts` | Explicit id allow-list, `--dry-run` first. Never pattern-match orders for deletion. |
-| `scripts/rewrite-legal.ts` | Regenerates `data/legal.json` from `constants/company.ts`. |
 | `scripts/apply-company-details.ts` | Writes contact details into the live `SiteContent` row. |
 
 ## The obvious next steps
 
-1. **Rename `PAYMENT_CONFIG_SECRET` → `PAYMENTS_CONFIG_SECRET`** in the Vercel dashboard.
-2. **Create a second admin account.**
-3. **Resend key + `EMAIL_FROM`** — until then no order confirmation, password reset or
-   back-in-stock mail is actually sent; it only logs to `EmailLog`.
-4. Real social profile URLs, or leave them empty.
-5. A real domain, when there is one — then re-run `apply-site-url.ts` and redeploy.
+1. **Resend key + `EMAIL_FROM`.** The biggest remaining gap: a customer who orders today gets
+   no confirmation, and one who forgets their password cannot recover it.
+2. **The real IBAN**, then re-enable Bank Transfer — or connect Stripe.
+3. **A Greek lawyer** on the legal documents.
+4. Decide on the Vercel plan (image optimization), a real domain, analytics id, social URLs.
+
+Done earlier this session and no longer outstanding: the misspelled `PAYMENT_CONFIG_SECRET`
+(renamed by the owner), the single admin account (`mihalisalex@gmail.com` added), and the
+published demo password (`6ac548c` — `lib/auth.ts` no longer exports it and the seed generates
+a random one, printed once).
 
 `README.md` was rewritten in `6ac548c` — it had still described the pre-Postgres prototype
 ("payment is cosmetic only", "no API routes exist yet to rate-limit", mock auth, `data/*.json` as

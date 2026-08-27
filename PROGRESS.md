@@ -1,5 +1,107 @@
 # ALEXANDRIS — Progress Notes
 
+## Greek storefront, honest copy, and a live image outage — COMPLETE, 5 commits `10fe289`→`ef36ef2`, 220 tests
+
+### The image outage, which was not a code bug
+
+Reported as "the hero only shows on mobile". It was neither a hero problem nor a viewport one:
+**every `/_next/image` request on production was returning `402`**, with
+`X-Vercel-Error: OPTIMIZED_IMAGE_REQUEST_PAYMENT_REQUIRED`. The account's image-transformation
+quota is exhausted.
+
+It presented as random because already-transformed sizes stayed in cache and kept serving. A
+different viewport asks for a different `w=`, so an image appeared at one width and vanished at
+another purely by whether that variant had been generated before the quota ran out. Product
+photos were broken across the shop while the hero looked fine.
+
+`images.unoptimized` is now on, so the browser fetches each file straight from Vercel Blob. The
+catalogue is ~100KB 3:4 JPEGs — larger than an optimized WebP, incomparably better than not
+loading. `placeholder="blur"` is unaffected: `SHIMMER_BLUR_DATA_URL` is an inline data URI, not
+something the optimizer produces. `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` reverses it; the default is
+off so a fresh deploy cannot silently reintroduce the breakage.
+
+**That fix then broke the images a second way**, which is the part worth remembering. While the
+optimizer was on, every remote image arrived through `/_next/image` and was therefore
+same-origin — `img-src 'self'` covered them all and the CSP only ever needed to name Unsplash.
+Fetching from the real host meant the policy blocked every one: images that had just been fixed
+still did not render, with nothing in the network tab but a console violation. `img-src` is now
+**derived** from the same `REMOTE_IMAGE_HOSTS` list that feeds `images.remotePatterns`, so
+optimization being on or off can never again disagree with what the policy permits.
+
+### Copy the shop could not support
+
+The live homepage brand story read: *"Every pair is developed in small batches with tanneries
+we've worked with for years."* The catalogue is 175 products — **47 own-label "Alexandris
+Shoes", 128 other brands** (U.S Polo Assn., London, Verde, Mont Martre Paris). So "every pair"
+was false for roughly three quarters of the shelf, and nothing in the data supports the
+tanneries. The hero carried "built on full-grain leather and honest construction" across a
+catalogue including synthetic athletic shoes, and a journal post described an in-house workshop
+where every ALEXANDRIS pair begins.
+
+All rewritten to claim only what the data supports: a shoe shop in Heraklion, its own line
+alongside brands it selects, women's and men's. Nothing about manufacture, materials, tanneries
+or batch sizes. The two **disabled** homepage sections were corrected too — false copy in a
+switched-off section just goes live the day someone switches it on.
+
+Same class as the fabricated purchase counter and the seeded social profiles removed in earlier
+passes. It mattered more here because it was the shop describing itself, on the page most
+visitors see first.
+
+### Greek, and where it lives
+
+The storefront is Greek end to end: header, mega-menu, footer, listing headings, collection
+tiles, badges, Quick View, sort dropdown, SEO metadata, the four journal posts, all three legal
+documents, the account forms, the checkout steps, contact, concierge, returns, back-in-stock,
+reviews, cart empty states, and the aria-labels.
+
+**The storage convention is split, deliberately.** Categories and collections have
+`nameEl`/`titleEl` columns, so English stays canonical and Greek lives in the translation
+column. Products, navigation, blog posts and homepage sections have no such columns, so Greek
+sits in the canonical field — the 175 products were imported that way and have no English
+version at all. Writing Greek into a canonical column that already had a populated `*El`
+sibling was my first attempt, and it produced a *second, competing* translation: the homepage
+said "Η Συλλογή Σνίκερ" and `/collections` said "Η επιλογή σε sneakers" for the same collection.
+
+The actual defect was never the content. **Three storefront paths read entities without
+localizing them**: the `/collections` index called `getAllCollections()` directly, and the
+category and collection `generateMetadata` localized nothing — so both pages rendered a Greek
+heading under an English `<title>` and `og:title`. Invisible on screen; precisely what a
+crawler indexes.
+
+Legal was translated at its **source** (`scripts/rewrite-legal.ts`), because `data/legal.json`
+is generated and would have been overwritten. Clause for clause — 7, 11 and 5 sections in, the
+same out — so nothing was added to or removed from the trader's obligations. Statutory terms
+use their established Greek forms. The trader identity line is deliberately **not** translated:
+that is the registered legal identity.
+
+### Numbers and dates
+
+`formatDate` and `formatMoney` both hard-defaulted to `en-US`, so a Greek page printed
+"JULY 1, 2026" and "€1,234.50". Both now default to the site locale through one `LOCALE_TAG`
+map. The date was merely wrong-looking; **the price was genuinely misreadable**, because Greek
+inverts the decimal and thousands separators — "1,234.50" parses to a Greek reader as one euro
+and change. That is the only locale difference here that changes the apparent *number* rather
+than the style, and it is why it was worth touching every price on a live shop. Both are tested.
+
+### The OG image was never missing
+
+`app/opengraph-image.tsx` already rendered a branded 1200×630 card. Naming a `defaultOgImage`
+overrides Next's file-based convention — so setting a "default image" was exactly what kept the
+generated card switched off, which is the opposite of how the field reads. Removing the Unsplash
+URL from both call sites turned it back on.
+
+### Three things that needed restructuring, not string swaps
+
+`SocialSignInButtons` and `CheckoutSteps` held their labels in **module-level constants**,
+evaluated once at import where there is no request and therefore no locale; they now hold
+message keys and translate at render. `Breadcrumbs` and `ReviewsSection` are Server Components,
+so they take `getTranslations` and are async.
+
+A bulk-edit helper drove most of the translation, and it had to tolerate **both line endings** —
+a `\n`-only anchor matched nothing in the CRLF files, inserted no import, and left components
+referencing an undefined `t`, which surfaced at `tsc` rather than at the edit. A scanner now
+reports zero user-visible English across the customer-facing component directories.
+
 ## Six post-launch findings closed — COMPLETE, 5 commits `7170a96`→`6dcae75`, 213 tests
 
 QA-018, QA-029, QA-030, QA-041, QA-046 and QA-063. Three were not the problem they were filed
