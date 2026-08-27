@@ -3,11 +3,12 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartPageContent } from "@/components/cart/CartPageContent";
 import { getNavigation, getSiteSettings } from "@/services";
+import { getTranslations } from "next-intl/server";
 
-export const metadata: Metadata = {
-  title: "Your Bag",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Cart");
+  return { title: t("yourBag"), robots: { index: false, follow: false } };
+}
 
 export default async function CartPage() {
   const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);

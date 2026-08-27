@@ -40,7 +40,8 @@
     "paymentFee": "Χρέωση πληρωμής",
     "free": "Δωρεάν",
     "estimatedTax": "Περιλαμβάνει ΦΠΑ",
-    "total": "Σύνολο"
+    "total": "Σύνολο",
+    "yourBag": "Το καλάθι σας"
   },
   "Checkout": {
     "contactTitle": "Επικοινωνία",

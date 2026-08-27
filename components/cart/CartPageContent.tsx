@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { CartLineItemRow } from "@/components/cart/CartLineItemRow";
@@ -10,6 +11,7 @@ import { CartRecommendations } from "@/components/cart/CartRecommendations";
 import { useCart } from "@/components/providers/CartProvider";
 
 export function CartPageContent() {
+  const t = useTranslations("Cart");
   const { cart, isLoading, itemCount } = useCart();
   const [showSaved, setShowSaved] = useState(true);
 
@@ -38,7 +40,7 @@ export function CartPageContent() {
 
   return (
     <div className="container-luxe py-12 md:py-16">
-      <h1 className="font-heading text-3xl">Your Bag ({itemCount})</h1>
+      <h1 className="font-heading text-3xl">{t("yourBag")} ({itemCount})</h1>
 
       <div className="mt-8 grid grid-cols-1 gap-12 lg:grid-cols-3">
         <div className="lg:col-span-2">

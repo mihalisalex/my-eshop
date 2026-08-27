@@ -40,7 +40,8 @@
     "paymentFee": "Payment Fee",
     "free": "Free",
     "estimatedTax": "Includes VAT",
-    "total": "Total"
+    "total": "Total",
+    "yourBag": "Your Bag"
   },
   "Checkout": {
     "contactTitle": "Contact",

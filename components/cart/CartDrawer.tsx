@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -9,6 +10,7 @@ import { CartTotalsSummary } from "@/components/cart/CartTotalsSummary";
 import { useCart } from "@/components/providers/CartProvider";
 
 export function CartDrawer() {
+  const t = useTranslations("Cart");
   const { cart, isDrawerOpen, closeDrawer, itemCount } = useCart();
   const [showSaved, setShowSaved] = useState(false);
 
@@ -20,7 +22,7 @@ export function CartDrawer() {
       <SheetContent side="right" showCloseButton className="flex w-full flex-col border-none bg-luxe-white p-0 sm:max-w-md">
         <SheetTitle className="sr-only">Shopping bag</SheetTitle>
         <div className="flex h-16 shrink-0 items-center border-b border-border px-6">
-          <span className="font-heading text-lg tracking-[0.1em] uppercase">Your Bag ({itemCount})</span>
+          <span className="font-heading text-lg tracking-[0.1em] uppercase">{t("yourBag")} ({itemCount})</span>
         </div>
 
         {activeItems.length === 0 ? (
