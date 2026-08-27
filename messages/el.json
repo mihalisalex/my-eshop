@@ -260,5 +260,10 @@
     "search": "Αναζήτηση",
     "scrollLeft": "Κύλιση αριστερά",
     "scrollRight": "Κύλιση δεξιά"
+  },
+  "Nav": {
+    "viewAll": "Δείτε τα όλα",
+    "shopByCategory": "Αγορά ανά κατηγορία",
+    "discover": "Ανακαλύψτε"
   }
 }

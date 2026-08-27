@@ -86,12 +86,14 @@
     {
       "id": "journal",
       "label": "Άρθρα",
-      "href": "/journal"
+      "href": "/journal",
+      "mobileOnly": true
     },
     {
       "id": "about",
       "label": "Σχετικά",
-      "href": "/about"
+      "href": "/about",
+      "mobileOnly": true
     }
   ],
   "utility": [

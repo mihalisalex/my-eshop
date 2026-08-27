@@ -260,5 +260,10 @@
     "search": "Search",
     "scrollLeft": "Scroll left",
     "scrollRight": "Scroll right"
+  },
+  "Nav": {
+    "viewAll": "View All",
+    "shopByCategory": "Shop by Category",
+    "discover": "Discover"
   }
 }

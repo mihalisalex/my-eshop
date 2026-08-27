@@ -20,8 +20,13 @@ const CLOSE_DELAY = 120;
 
 export function DesktopNav({ items, transparentText }: DesktopNavProps) {
   const tA11y = useTranslations("A11y");
+  const tNav = useTranslations("Nav");
   const [openId, setOpenId] = useState<string | null>(null);
   const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The mobile menu renders the same `primary` array unfiltered, so an item marked
+  // `mobileOnly` disappears from the header without disappearing from the phone.
+  const visibleItems = items.filter((item) => !item.mobileOnly);
 
   const open = (id: string) => {
     if (closeTimeout.current) clearTimeout(closeTimeout.current);
@@ -32,7 +37,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
     closeTimeout.current = setTimeout(() => setOpenId(null), CLOSE_DELAY);
   };
 
-  const activeItem = items.find((item) => item.id === openId && item.children?.length);
+  const activeItem = visibleItems.find((item) => item.id === openId && item.children?.length);
 
   return (
     <nav
@@ -40,7 +45,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
       onMouseLeave={scheduleClose}
       aria-label={tA11y("primaryNav")}
     >
-      {items.map((item) => (
+      {visibleItems.map((item) => (
         <div key={item.id} onMouseEnter={() => open(item.id)} className="group relative py-2">
           <Link
             href={item.href}
@@ -80,13 +85,13 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
                   href={activeItem.href}
                   className="mt-5 inline-flex items-center gap-1.5 text-xs tracking-[0.08em] text-luxe-gray-dark uppercase transition-colors hover:text-luxe-black"
                 >
-                  View All
+                  {tNav("viewAll")}
                   <ArrowRight className="size-3.5" strokeWidth={1.5} />
                 </Link>
               </div>
 
               <div className="col-span-3 border-l border-border pl-10">
-                <p className="text-eyebrow mb-5">Shop by Category</p>
+                <p className="text-eyebrow mb-5">{tNav("shopByCategory")}</p>
                 <ul className="space-y-3.5">
                   {activeItem.children?.map((child) => (
                     <li key={child.id}>
@@ -117,7 +122,7 @@ export function DesktopNav({ items, transparentText }: DesktopNavProps) {
                     <span className="absolute inset-x-0 bottom-0 p-5">
                       <span className="font-heading block text-lg text-white">{feature.title}</span>
                       <span className="mt-1.5 flex items-center gap-1 text-[11px] tracking-[0.1em] text-white/0 uppercase transition-colors duration-300 group-hover/feature:text-white/90">
-                        Discover
+                        {tNav("discover")}
                         <ArrowRight className="size-3 -translate-x-1 opacity-0 transition-all duration-300 group-hover/feature:translate-x-0 group-hover/feature:opacity-100" strokeWidth={1.5} />
                       </span>
                     </span>
