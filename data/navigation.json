@@ -2,80 +2,207 @@
   "primary": [
     {
       "id": "women",
-      "label": "Women",
+      "label": "Γυναικεία",
       "href": "/women",
       "children": [
-        { "id": "women-new-in", "label": "New In", "href": "/women?isNew=true" },
-        { "id": "women-heels", "label": "Heels", "href": "/women?category=heels" },
-        { "id": "women-boots", "label": "Boots", "href": "/women?category=boots" },
-        { "id": "women-sandals", "label": "Sandals", "href": "/women?category=sandals" }
+        {
+          "id": "women-new-in",
+          "label": "Νέες αφίξεις",
+          "href": "/women?isNew=true"
+        },
+        {
+          "id": "women-heels",
+          "label": "Τακούνια",
+          "href": "/women?category=heels"
+        },
+        {
+          "id": "women-boots",
+          "label": "Μπότες",
+          "href": "/women?category=boots"
+        },
+        {
+          "id": "women-sandals",
+          "label": "Πέδιλα",
+          "href": "/women?category=sandals"
+        }
       ],
       "featured": [
-        { "title": "Evening Heels", "image": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80", "href": "/collections/evening-heels" }
+        {
+          "title": "Βραδινά Τακούνια",
+          "image": "https://images.unsplash.com/photo-1770419252709-322eb8d259b4?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/evening-heels"
+        }
       ]
     },
     {
       "id": "men",
-      "label": "Men",
+      "label": "Ανδρικά",
       "href": "/men",
       "children": [
-        { "id": "men-new-in", "label": "New In", "href": "/men?isNew=true" },
-        { "id": "men-oxfords", "label": "Oxfords & Derbies", "href": "/men?category=oxfords" },
-        { "id": "men-sneakers", "label": "Sneakers", "href": "/men?category=sneakers" },
-        { "id": "men-boots", "label": "Boots", "href": "/men?category=boots" }
+        {
+          "id": "men-new-in",
+          "label": "Νέες αφίξεις",
+          "href": "/men?isNew=true"
+        },
+        {
+          "id": "men-oxfords",
+          "label": "Oxfords & Derbies",
+          "href": "/men?category=oxfords"
+        },
+        {
+          "id": "men-sneakers",
+          "label": "Sneakers",
+          "href": "/men?category=sneakers"
+        },
+        {
+          "id": "men-boots",
+          "label": "Μπότες",
+          "href": "/men?category=boots"
+        }
       ],
       "featured": [
-        { "title": "The Sneaker Edit", "image": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=800&q=80", "href": "/collections/sneaker-edit" }
+        {
+          "title": "Η Συλλογή Σνίκερ",
+          "image": "https://images.unsplash.com/photo-1633464130613-0a9154299ac2?auto=format&fit=crop&w=800&q=80",
+          "href": "/collections/sneaker-edit"
+        }
       ]
     },
-    { "id": "new-in", "label": "New In", "href": "/new-in" },
-    { "id": "collections", "label": "Collections", "href": "/collections" },
-    { "id": "sale", "label": "Sale", "href": "/sale" },
-    { "id": "journal", "label": "Journal", "href": "/journal" },
-    { "id": "about", "label": "About", "href": "/about" }
+    {
+      "id": "new-in",
+      "label": "Νέες αφίξεις",
+      "href": "/new-in"
+    },
+    {
+      "id": "collections",
+      "label": "Συλλογές",
+      "href": "/collections"
+    },
+    {
+      "id": "sale",
+      "label": "Προσφορές",
+      "href": "/sale"
+    },
+    {
+      "id": "journal",
+      "label": "Άρθρα",
+      "href": "/journal"
+    },
+    {
+      "id": "about",
+      "label": "Σχετικά",
+      "href": "/about"
+    }
   ],
   "utility": [
-    { "id": "search", "label": "Search", "href": "/search" },
-    { "id": "wishlist", "label": "Wishlist", "href": "/wishlist" },
-    { "id": "account", "label": "Account", "href": "/account" },
-    { "id": "cart", "label": "Cart", "href": "/cart" }
+    {
+      "id": "search",
+      "label": "Αναζήτηση",
+      "href": "/search"
+    },
+    {
+      "id": "wishlist",
+      "label": "Αγαπημένα",
+      "href": "/wishlist"
+    },
+    {
+      "id": "account",
+      "label": "Λογαριασμός",
+      "href": "/account"
+    },
+    {
+      "id": "cart",
+      "label": "Καλάθι",
+      "href": "/cart"
+    }
   ],
   "footer": [
     {
-      "title": "Shop",
+      "title": "Αγορές",
       "links": [
-        { "label": "Women", "href": "/women" },
-        { "label": "Men", "href": "/men" },
-        { "label": "New In", "href": "/new-in" },
-        { "label": "Sale", "href": "/sale" },
-        { "label": "Collections", "href": "/collections" }
+        {
+          "label": "Γυναικεία",
+          "href": "/women"
+        },
+        {
+          "label": "Ανδρικά",
+          "href": "/men"
+        },
+        {
+          "label": "Νέες αφίξεις",
+          "href": "/new-in"
+        },
+        {
+          "label": "Προσφορές",
+          "href": "/sale"
+        },
+        {
+          "label": "Συλλογές",
+          "href": "/collections"
+        }
       ]
     },
     {
-      "title": "About",
+      "title": "Η εταιρεία",
       "links": [
-        { "label": "Our Story", "href": "/about" },
-        { "label": "Sustainability", "href": "/sustainability" },
-        { "label": "Careers", "href": "/careers" },
-        { "label": "Journal", "href": "/journal" }
+        {
+          "label": "Η ιστορία μας",
+          "href": "/about"
+        },
+        {
+          "label": "Βιωσιμότητα",
+          "href": "/sustainability"
+        },
+        {
+          "label": "Καριέρα",
+          "href": "/careers"
+        },
+        {
+          "label": "Άρθρα",
+          "href": "/journal"
+        }
       ]
     },
     {
-      "title": "Support",
+      "title": "Υποστήριξη",
       "links": [
-        { "label": "Contact Us", "href": "/contact" },
-        { "label": "Ask a Stylist", "href": "/concierge" },
-        { "label": "Shipping & Returns", "href": "/shipping-returns" },
-        { "label": "Size Guide", "href": "/size-guide" },
-        { "label": "FAQ", "href": "/faq" }
+        {
+          "label": "Επικοινωνία",
+          "href": "/contact"
+        },
+        {
+          "label": "Ρωτήστε έναν στυλίστα",
+          "href": "/concierge"
+        },
+        {
+          "label": "Αποστολές & Επιστροφές",
+          "href": "/shipping-returns"
+        },
+        {
+          "label": "Οδηγός μεγεθών",
+          "href": "/size-guide"
+        },
+        {
+          "label": "Συχνές ερωτήσεις",
+          "href": "/faq"
+        }
       ]
     },
     {
-      "title": "Legal",
+      "title": "Νομικά",
       "links": [
-        { "label": "Privacy Policy", "href": "/legal/privacy-policy" },
-        { "label": "Terms of Service", "href": "/legal/terms-of-service" },
-        { "label": "Cookie Policy", "href": "/legal/cookie-policy" }
+        {
+          "label": "Πολιτική Απορρήτου",
+          "href": "/legal/privacy-policy"
+        },
+        {
+          "label": "Όροι Χρήσης",
+          "href": "/legal/terms-of-service"
+        },
+        {
+          "label": "Πολιτική Cookies",
+          "href": "/legal/cookie-policy"
+        }
       ]
     }
   ]

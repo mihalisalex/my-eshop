@@ -5,19 +5,22 @@ import { Footer } from "@/components/layout/Footer";
 import { ProductListingPage } from "@/components/plp/ProductListingPage";
 import { getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
 import { buildMetadata } from "@/lib/seo";
+import { getLocale, getTranslations } from "next-intl/server";
+import type { Locale } from "@/i18n/config";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seo = await getSeoDefaults();
+  const [seo, t, locale] = await Promise.all([getSeoDefaults(), getTranslations("Pages"), getLocale()]);
   return buildMetadata({
     seo,
-    title: "New In",
-    description: "The latest arrivals.",
+    title: t("newInTitle"),
+    description: t("newInDescription"),
+    locale: locale as Locale,
     path: "/new-in",
   });
 }
 
 export default async function NewInPage() {
-  const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);
+  const [navigation, settings, t] = await Promise.all([getNavigation(), getSiteSettings(), getTranslations("Pages")]);
 
   return (
     <>
@@ -28,7 +31,7 @@ export default async function NewInPage() {
               showed "0 items" while the catalog held 175 products. Sorting by when a product
               was actually added is what "New In" means, and it stays correct on its own as
               stock is added. */}
-          <ProductListingPage title="New In" description="The latest arrivals." baseFilters={{}} defaultSort="newest" />
+          <ProductListingPage title={t("newInTitle")} description={t("newInDescription")} baseFilters={{}} defaultSort="newest" />
         </Suspense>
       </main>
       <Footer navigation={navigation} settings={settings} />

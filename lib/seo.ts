@@ -36,6 +36,23 @@ export function buildMetadata({
   const resolvedDescription = description ?? seo.defaultDescription;
   const resolvedImage = image ?? seo.defaultOgImage;
 
+  /**
+   * Omitted entirely when there is no image to name, so Next's file-based convention takes
+   * over — `app/opengraph-image.tsx` renders a branded 1200x630 card from the live site name
+   * and tagline (QA-028).
+   *
+   * This is why the stock photo was so persistent: that card already existed, but declaring
+   * `openGraph.images` here ALWAYS beats the file convention, so every share previewed an
+   * Unsplash photograph of someone else's shoes instead. Setting a default image is what
+   * disables the generated one, which is the opposite of how it reads.
+   */
+  const imageMetadata = resolvedImage
+    ? {
+        openGraph: { images: [{ url: resolvedImage, width: 1200, height: 630, alt: resolvedTitle }] },
+        twitter: { images: [resolvedImage] },
+      }
+    : { openGraph: {}, twitter: {} };
+
   return {
     title: resolvedTitle,
     description: resolvedDescription,
@@ -46,16 +63,16 @@ export function buildMetadata({
       description: resolvedDescription,
       url,
       siteName: seo.organization.name,
-      images: [{ url: resolvedImage, width: 1200, height: 630, alt: resolvedTitle }],
       locale: OG_LOCALE[locale],
       type: "website",
+      ...imageMetadata.openGraph,
     },
     twitter: {
       card: "summary_large_image",
       title: resolvedTitle,
       description: resolvedDescription,
-      images: [resolvedImage],
       creator: seo.twitterHandle,
+      ...imageMetadata.twitter,
     },
   };
 }

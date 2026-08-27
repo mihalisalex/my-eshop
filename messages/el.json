@@ -124,5 +124,17 @@
     "newest": "Νεότερα",
     "priceAsc": "Τιμή: Αύξουσα",
     "priceDesc": "Τιμή: Φθίνουσα"
+  },
+  "Pages": {
+    "womenTitle": "Γυναικεία",
+    "womenDescription": "Γυναικεία παπούτσια — τακούνια, μπότες, πέδιλα και μπαλαρίνες.",
+    "menTitle": "Ανδρικά",
+    "menDescription": "Ανδρικά παπούτσια — μπότες, sneakers, loafers και oxfords.",
+    "newInTitle": "Νέες αφίξεις",
+    "newInDescription": "Οι τελευταίες παραλαβές.",
+    "saleTitle": "Προσφορές",
+    "saleDescription": "Εκπτώσεις για περιορισμένο διάστημα.",
+    "collectionsTitle": "Συλλογές",
+    "collectionsSubtitle": "Επιλεγμένες συλλογές, με προσοχή."
   }
 }

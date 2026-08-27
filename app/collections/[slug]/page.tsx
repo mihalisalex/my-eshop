@@ -22,13 +22,18 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const [collection, seo] = await Promise.all([getCollectionBySlug(slug), getSeoDefaults()]);
-  if (!collection) return {};
+  const [raw, seo, locale] = await Promise.all([getCollectionBySlug(slug), getSeoDefaults(), getLocale()]);
+  if (!raw) return {};
+  // Localized here as well as in the page body. Without it the <title> and og:title stay
+  // English while the visible heading is Greek — the body was localized and the metadata was
+  // forgotten, which is invisible on screen and is exactly what a search engine reads.
+  const collection = localizeCollection(raw, locale as Locale);
   return buildMetadata({
     seo,
     title: collection.title,
     description: collection.description ?? collection.subtitle,
     path: `/collections/${collection.slug}`,
+    locale: locale as Locale,
   });
 }
 

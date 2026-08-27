@@ -32,8 +32,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const [category, seo] = await Promise.all([getCategoryBySlug(slug), getSeoDefaults()]);
-  if (!category || !category.isVisible) return {};
+  const [raw, seo, locale] = await Promise.all([getCategoryBySlug(slug), getSeoDefaults(), getLocale()]);
+  if (!raw || !raw.isVisible) return {};
+  // Localized here as well as in the page body, which was already doing it. A Greek heading
+  // under an English <title> is invisible on screen and is precisely what a crawler indexes.
+  const category = localizeCategory(raw, locale as Locale);
   // `||`, not `??` — same empty-string-is-not-absent reasoning as the product page.
   return buildMetadata({
     seo,
@@ -41,6 +44,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     description: category.seo?.description || category.description,
     path: ROUTES.category(category.slug),
     image: category.seo?.ogImage || category.bannerImage?.src || category.image?.src,
+    locale: locale as Locale,
   });
 }
 

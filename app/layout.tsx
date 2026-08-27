@@ -43,7 +43,11 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       siteName: seo.organization.name,
-      images: [{ url: seo.defaultOgImage, width: 1200, height: 630 }],
+      // No `images` here on purpose. Declaring one overrides Next's file-based convention,
+      // and app/opengraph-image.tsx already renders a branded 1200x630 card from the live
+      // site name and tagline. Setting a default image is what turns the generated one OFF
+      // — which is the opposite of how the field reads (QA-028).
+      ...(seo.defaultOgImage ? { images: [{ url: seo.defaultOgImage, width: 1200, height: 630 }] } : {}),
     },
     twitter: {
       card: "summary_large_image",

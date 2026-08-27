@@ -124,5 +124,17 @@
     "newest": "Newest",
     "priceAsc": "Price: Low to High",
     "priceDesc": "Price: High to Low"
+  },
+  "Pages": {
+    "womenTitle": "Women",
+    "womenDescription": "Shop women's shoes — heels, boots, sandals, and flats.",
+    "menTitle": "Men",
+    "menDescription": "Shop men's shoes — boots, sneakers, loafers, and oxfords.",
+    "newInTitle": "New In",
+    "newInDescription": "The latest arrivals.",
+    "saleTitle": "Sale",
+    "saleDescription": "Limited-time markdowns.",
+    "collectionsTitle": "Collections",
+    "collectionsSubtitle": "Curated edits, considered."
   }
 }
