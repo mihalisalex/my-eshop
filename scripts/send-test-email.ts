@@ -30,7 +30,8 @@ async function main() {
   const recipient = process.argv[2];
   if (!recipient || !recipient.includes("@")) {
     console.error("Usage: npx tsx scripts/send-test-email.ts <recipient@example.com>");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const configured = process.env.EMAIL_PROVIDER?.trim();
@@ -46,14 +47,16 @@ async function main() {
   if (providerName !== "resend") {
     console.error(`EMAIL_PROVIDER is "${providerName}", so the app is using the dev provider:`);
     console.error('every email is written to EmailLog and none is sent. Set EMAIL_PROVIDER="resend".');
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   if (!apiKey || !from) {
     console.error("EMAIL_PROVIDER=resend but RESEND_API_KEY/EMAIL_FROM are missing.");
     console.error("lib/email/index.ts would log this and SILENTLY FALL BACK to the dev provider —");
     console.error("the shop would keep running and no customer would ever receive mail.");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   const message = welcomeEmail({
@@ -74,7 +77,8 @@ async function main() {
     console.error(`FAILED — ${error.name}: ${error.message}`);
     const hint = explain(error.name, error.message, from);
     if (hint) console.error(`\n${hint}`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   console.log(`Sent to ${recipient} — Resend message id ${data?.id}`);
@@ -106,5 +110,5 @@ function explain(name: string, detail: string, from: string): string | null {
 
 main().catch((e) => {
   console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
+  process.exitCode = 1;
 });
