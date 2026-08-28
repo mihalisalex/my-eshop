@@ -15,6 +15,37 @@ export interface FollowupSummary {
   scanned: number;
   sent: number;
   skipped: number;
+  /**
+   * Populated only under `dryRun`: exactly who the live run would have mailed.
+   * Absent on a real run so the cron's JSON response never carries a customer list.
+   */
+  wouldSend?: { to: string; detail: string }[];
+  /**
+   * Why the skipped rows were skipped. A bare "skipped 9" cannot distinguish "these
+   * will fire tomorrow" from "these can never be recovered", which is the only thing
+   * worth knowing before a sending domain goes live.
+   */
+  skipReasons?: Record<string, number>;
+}
+
+/**
+ * `dryRun` runs the identical selection — same query, same idle window, same
+ * already-sent comparison — but sends nothing and writes nothing, reporting the
+ * recipients instead.
+ *
+ * It exists because the abandoned-cart scan has NO lower bound on cart age: it
+ * considers every cart ever created that still has active line items and a knowable
+ * email. While EMAIL_FROM is Resend's shared testing sender every send fails with a
+ * 403 and the catch swallows it, so today the job is harmless. The day a real sending
+ * domain is verified, that accidental safety net disappears and the first 08:00 run
+ * mails the entire backlog at once. This is how you look at that list first.
+ *
+ * The flag lives on the service rather than in a separate preview script on purpose:
+ * a script that re-implemented the selection would drift, and a preview that disagrees
+ * with the real run is worse than no preview.
+ */
+export interface FollowupOptions {
+  dryRun?: boolean;
 }
 
 /**
@@ -22,7 +53,7 @@ export interface FollowupSummary {
  * guest who at least started checkout (Checkout.email). A cart that never reached
  * checkout has no email anywhere in this schema — genuinely unrecoverable, not a bug.
  */
-export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
+export async function runAbandonedCartRecovery({ dryRun = false }: FollowupOptions = {}): Promise<FollowupSummary> {
   const now = Date.now();
   const rows = await prisma.cart.findMany({
     where: { lineItems: { some: { savedForLater: false } } },
@@ -39,11 +70,17 @@ export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
 
   let sent = 0;
   let skipped = 0;
+  const wouldSend: { to: string; detail: string }[] = [];
+  const skipReasons: Record<string, number> = {};
+  const skip = (reason: string) => {
+    skipped++;
+    skipReasons[reason] = (skipReasons[reason] ?? 0) + 1;
+  };
 
   for (const row of rows) {
     const activeLineItems = row.lineItems.filter((item) => !item.savedForLater);
     if (activeLineItems.length === 0) {
-      skipped++;
+      skip("empty cart");
       continue;
     }
 
@@ -54,13 +91,13 @@ export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
       activeLineItems[0].addedAt
     );
     if (now - lastActivity.getTime() < ABANDONED_CART_IDLE_MS) {
-      skipped++;
+      skip("still active (under 24h idle)");
       continue;
     }
 
     const resolvedEmail = row.customer?.email ?? row.checkouts[0]?.email ?? null;
     if (!resolvedEmail) {
-      skipped++;
+      skip("no email — never reached checkout, unrecoverable");
       continue;
     }
 
@@ -69,7 +106,7 @@ export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
     // single comparison instead re-enables eligibility whenever new activity (a later
     // addedAt) happens after the last send, i.e. a fresh abandonment episode.
     if (row.abandonedCartEmailSentAt && row.abandonedCartEmailSentAt >= lastActivity) {
-      skipped++;
+      skip("already emailed for this abandonment");
       continue;
     }
 
@@ -80,16 +117,24 @@ export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
         lineItems: cart.lineItems.filter((item) => !item.savedForLater),
         resumeUrl: `${siteUrl}/cart?cart=${row.id}`,
       });
-      await provider.send({ to: resolvedEmail, template: "abandoned-cart", ...message });
-      await prisma.cart.update({ where: { id: row.id }, data: { abandonedCartEmailSentAt: new Date() } });
+      if (dryRun) {
+        const days = Math.floor((now - lastActivity.getTime()) / (24 * 60 * 60 * 1000));
+        wouldSend.push({
+          to: resolvedEmail,
+          detail: `${activeLineItems.length} item(s), idle ${days}d, cart ${row.id.slice(-8)}`,
+        });
+      } else {
+        await provider.send({ to: resolvedEmail, template: "abandoned-cart", ...message });
+        await prisma.cart.update({ where: { id: row.id }, data: { abandonedCartEmailSentAt: new Date() } });
+      }
       sent++;
     } catch (error) {
       console.error("Failed to send abandoned-cart email", error);
-      skipped++;
+      skip("send failed");
     }
   }
 
-  return { scanned: rows.length, sent, skipped };
+  return { scanned: rows.length, sent, skipped, ...(dryRun ? { wouldSend, skipReasons } : {}) };
 }
 
 /**
@@ -97,7 +142,7 @@ export async function runAbandonedCartRecovery(): Promise<FollowupSummary> {
  * lib/email/templates.ts's reviewRequestEmail for why (no real review-submission
  * mechanism exists in this app yet).
  */
-export async function runReviewRequestFollowup(): Promise<FollowupSummary> {
+export async function runReviewRequestFollowup({ dryRun = false }: FollowupOptions = {}): Promise<FollowupSummary> {
   const cutoff = new Date(Date.now() - REVIEW_REQUEST_DELAY_MS);
   const orders = await prisma.order.findMany({
     where: { deliveredAt: { not: null, lte: cutoff }, reviewRequestSentAt: null },
@@ -110,13 +155,18 @@ export async function runReviewRequestFollowup(): Promise<FollowupSummary> {
 
   let sent = 0;
   let skipped = 0;
+  const wouldSend: { to: string; detail: string }[] = [];
 
   for (const order of orders) {
     try {
       const lineItems = z.array(cartLineItemSchema).parse(order.lineItems);
       const message = reviewRequestEmail({ siteName: settings.siteName, orderId: order.id, lineItems, siteUrl });
-      await provider.send({ to: order.customerEmail, template: "review-request", ...message });
-      await prisma.order.update({ where: { id: order.id }, data: { reviewRequestSentAt: new Date() } });
+      if (dryRun) {
+        wouldSend.push({ to: order.customerEmail, detail: `${lineItems.length} item(s), order ${order.id.slice(-8)}` });
+      } else {
+        await provider.send({ to: order.customerEmail, template: "review-request", ...message });
+        await prisma.order.update({ where: { id: order.id }, data: { reviewRequestSentAt: new Date() } });
+      }
       sent++;
     } catch (error) {
       console.error("Failed to send review-request email", error);
@@ -124,5 +174,5 @@ export async function runReviewRequestFollowup(): Promise<FollowupSummary> {
     }
   }
 
-  return { scanned: orders.length, sent, skipped };
+  return { scanned: orders.length, sent, skipped, ...(dryRun ? { wouldSend } : {}) };
 }
