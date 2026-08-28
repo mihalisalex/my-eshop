@@ -36,7 +36,7 @@ export function FeaturedCollections({ title, subtitle, collections }: FeaturedCo
           >
             <Link
               href={collection.cta?.href ?? "#"}
-              className="group relative block h-full min-h-[320px] overflow-hidden bg-luxe-gray-light"
+              className="group relative block h-full min-h-[320px] overflow-hidden bg-luxe-gray-light md:min-h-0"
             >
               <Image
                 src={collection.image.src}
