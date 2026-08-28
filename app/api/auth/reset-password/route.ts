@@ -7,6 +7,7 @@ import { getCustomerById } from "@/services/customers";
 import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { getTranslations } from "next-intl/server";
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     const customerId = await consumePasswordResetToken(parsed.data.token, passwordHash);
     if (!customerId) {
       return NextResponse.json(
-        { error: { code: "INVALID_TOKEN", message: "This reset link is invalid or has expired. Request a new one." } },
+        { error: { code: "INVALID_TOKEN", message: (await getTranslations("ApiErrors"))("invalidResetLink") } },
         { status: 400 }
       );
     }

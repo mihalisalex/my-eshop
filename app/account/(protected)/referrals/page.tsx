@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Copy, Gift } from "lucide-react";
 import { useToast } from "@/components/providers/ToastProvider";
 import { formatDate } from "@/lib/format";
+import { useTranslations } from "next-intl";
 
 interface ReferralSummary {
   id: string;
@@ -14,6 +15,7 @@ interface ReferralSummary {
 }
 
 export default function AccountReferralsPage() {
+  const t = useTranslations("Account");
   const { toast } = useToast();
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referrals, setReferrals] = useState<ReferralSummary[] | null>(null);
@@ -32,12 +34,12 @@ export default function AccountReferralsPage() {
   const handleCopy = async () => {
     if (!shareUrl) return;
     await navigator.clipboard.writeText(shareUrl);
-    toast({ title: "Link copied", tone: "success" });
+    toast({ title: t("linkCopied"), tone: "success" });
   };
 
   return (
     <div>
-      <h1 className="font-heading text-3xl">Refer a Friend</h1>
+      <h1 className="font-heading text-3xl">{t("referrals")}</h1>
       <p className="mt-2 text-sm text-luxe-gray-dark">
         Share your link — when a friend places their first order, you get a €15 gift card.
       </p>
@@ -52,7 +54,7 @@ export default function AccountReferralsPage() {
               className="flex h-10 items-center gap-1.5 bg-luxe-black px-4 text-xs font-medium tracking-[0.05em] text-luxe-white uppercase"
             >
               <Copy className="size-3.5" strokeWidth={1.5} />
-              Copy Link
+              {t("copyLink")}
             </button>
           </div>
         ) : (
@@ -61,7 +63,7 @@ export default function AccountReferralsPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Your referrals</h2>
+        <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">{t("yourReferrals")}</h2>
         {referrals === null ? (
           <p className="mt-3 text-sm text-luxe-gray-dark">Loading...</p>
         ) : referrals.length === 0 ? (

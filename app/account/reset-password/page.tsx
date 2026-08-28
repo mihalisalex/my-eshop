@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ResetPasswordForm } from "@/components/account/ResetPasswordForm";
 import { getNavigation, getSiteSettings } from "@/services";
 
-export const metadata: Metadata = {
-  title: "Reset Password",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("resetPasswordTitle"),
   robots: { index: false, follow: false },
-};
+  };
+}
 
 export default async function ResetPasswordPage() {
   const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);

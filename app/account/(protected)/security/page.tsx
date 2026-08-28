@@ -4,11 +4,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { securitySchema, type SecurityFormValues } from "@/lib/validation/auth";
+import { useTranslations } from "next-intl";
 
 const inputClass =
   "h-11 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
 
 export default function AccountSecurityPage() {
+  const t = useTranslations("Account");
   const { changePassword } = useAuth();
   const {
     register,
@@ -24,12 +26,12 @@ export default function AccountSecurityPage() {
 
   return (
     <div>
-      <h1 className="font-heading text-3xl">Security</h1>
+      <h1 className="font-heading text-3xl">{t("security")}</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 max-w-md space-y-4">
         <div>
           <label htmlFor="security-currentPassword" className="mb-1.5 block text-eyebrow">
-            Current password
+            {t("currentPassword")}
           </label>
           <input
             id="security-currentPassword"
@@ -44,7 +46,7 @@ export default function AccountSecurityPage() {
 
         <div>
           <label htmlFor="security-newPassword" className="mb-1.5 block text-eyebrow">
-            New password
+            {t("newPassword")}
           </label>
           <input
             id="security-newPassword"
@@ -59,7 +61,7 @@ export default function AccountSecurityPage() {
 
         <div>
           <label htmlFor="security-confirmNewPassword" className="mb-1.5 block text-eyebrow">
-            Confirm new password
+            {t("confirmNewPassword")}
           </label>
           <input
             id="security-confirmNewPassword"
@@ -79,7 +81,7 @@ export default function AccountSecurityPage() {
           disabled={isSubmitting}
           className="h-11 bg-luxe-black px-8 text-sm font-medium tracking-[0.05em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          Update Password
+          {t("updatePassword")}
         </button>
       </form>
     </div>

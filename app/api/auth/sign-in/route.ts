@@ -7,6 +7,7 @@ import { getCustomerById } from "@/services/customers";
 import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { getTranslations } from "next-intl/server";
 
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const IP_KEY = (ip: string) => `sign-in:ip:${ip}`;
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     if (!row || !passwordMatches) {
       await Promise.all([recordAttempt(IP_KEY(ip)), recordAttempt(EMAIL_KEY(email))]);
       return NextResponse.json(
-        { error: { code: "INVALID_CREDENTIALS", message: "Invalid email or password." } },
+        { error: { code: "INVALID_CREDENTIALS", message: (await getTranslations("ApiErrors"))("invalidCredentials") } },
         { status: 401 }
       );
     }

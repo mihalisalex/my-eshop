@@ -59,7 +59,8 @@
     "movedToBag": "Moved to bag",
     "promoApplied": "Promo code applied",
     "giftCardApplied": "Gift card applied",
-    "somethingWentWrong": "Something went wrong"
+    "somethingWentWrong": "Something went wrong",
+    "undo": "Undo"
   },
   "Checkout": {
     "contactTitle": "Contact",
@@ -164,7 +165,29 @@
     "profile": "Profile",
     "preferences": "Preferences",
     "security": "Security",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "loyaltyStatus": "Loyalty status",
+    "addAddress": "Add address",
+    "edit": "Edit",
+    "remove": "Remove",
+    "addressAdded": "Address added",
+    "addressUpdated": "Address updated",
+    "addressRemoved": "Address removed",
+    "trackPackage": "Track package",
+    "emailAddress": "Email address",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "saveChanges": "Save changes",
+    "profileUpdated": "Profile updated",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "updatePassword": "Update password",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "yourReferrals": "Your referrals",
+    "yourRequests": "Your requests",
+    "eligibleOrders": "Eligible orders"
   },
   "ProductBadge": {
     "preorder": "Preorder",
@@ -209,7 +232,22 @@
     "collectionsTitle": "Collections",
     "collectionsSubtitle": "Curated edits, considered.",
     "journalTitle": "Journal",
-    "journalSubtitle": "Stories on craft, leather, and considered footwear."
+    "journalSubtitle": "Stories on craft, leather, and considered footwear.",
+    "aboutTitle": "Our story",
+    "careersTitle": "Careers",
+    "conciergeTitle": "Ask a stylist",
+    "contactTitle": "Contact us",
+    "faqTitle": "Frequently asked questions",
+    "faqMetaTitle": "FAQ",
+    "sizeGuideTitle": "Size guide",
+    "sustainabilityTitle": "Sustainability",
+    "wishlistTitle": "Wishlist",
+    "sharedWishlistTitle": "Shared wishlist",
+    "sharedWishlistHeading": "A shared wishlist",
+    "shopTheLookbook": "Shop the lookbook",
+    "signInTitle": "Sign in",
+    "createAccountTitle": "Create account",
+    "resetPasswordTitle": "Reset password"
   },
   "Legal": {
     "lastUpdated": "Last updated {date}"
@@ -250,7 +288,16 @@
     "loadingAccount": "Loading your account…",
     "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
-    "continueWithFacebook": "Continue with Facebook"
+    "continueWithFacebook": "Continue with Facebook",
+    "couldNotSignIn": "Couldn't sign in",
+    "pleaseTryAgain": "Please try again.",
+    "checkYourEmail": "Check your email",
+    "couldNotCreateAccount": "Couldn't create account",
+    "couldNotSendLink": "Couldn't send that link",
+    "couldNotResetPassword": "Couldn't reset password",
+    "linkMayHaveExpired": "That link may have expired.",
+    "passwordUpdated": "Password updated",
+    "couldNotUpdatePassword": "Couldn't update password"
   },
   "Address": {
     "firstName": "First name",
@@ -273,7 +320,8 @@
     "selectAtLeastOne": "Select at least one item",
     "addReason": "Add a reason for the return",
     "returnRequested": "Return requested",
-    "somethingWrong": "Something went wrong"
+    "somethingWrong": "Something went wrong",
+    "reviewEmailNote": "We'll email you once it's reviewed."
   },
   "Contact": {
     "messageSent": "Message sent",
@@ -360,7 +408,8 @@
     "empty": "Your wishlist is empty",
     "linkCopied": "Link copied",
     "linkCopiedBody": "Anyone with this link can view your wishlist.",
-    "shareLinkFailed": "Couldn't create a share link"
+    "shareLinkFailed": "Couldn't create a share link",
+    "share": "Share"
   },
   "Errors": {
     "somethingWentWrong": "Something went wrong",
@@ -369,5 +418,15 @@
     "backToHome": "Back to home",
     "notFoundTitle": "Page not found",
     "notFoundBody": "The page you're looking for doesn't exist or may have moved."
+  },
+  "ApiErrors": {
+    "currentPasswordIncorrect": "Current password is incorrect.",
+    "noPasswordYet": "This account signed in via Google, Apple, or Facebook and doesn't have a password yet. Use 'Forgot password' to set one.",
+    "unknownProvider": "Unknown sign-in method.",
+    "tooManyAttempts": "Too many attempts. Try again shortly.",
+    "providerNotConfigured": "This sign-in method isn't available.",
+    "invalidResetLink": "This reset link is invalid or has expired. Request a new one.",
+    "invalidCredentials": "Invalid email or password.",
+    "notAuthorized": "Not authorized for that customer."
   }
 }

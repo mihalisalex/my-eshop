@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Image from "next/image";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getAboutPage, getNavigation, getSiteSettings } from "@/services";
 
-export const metadata: Metadata = {
-  title: "Our Story",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("aboutTitle"),
+  };
+}
 
 export default async function AboutPage() {
   const [navigation, settings, about] = await Promise.all([getNavigation(), getSiteSettings(), getAboutPage()]);

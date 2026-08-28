@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { getSizeGuidePage, getNavigation, getSiteSettings } from "@/services";
 
-export const metadata: Metadata = {
-  title: "Size Guide",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("sizeGuideTitle"),
+  };
+}
 
 export default async function SizeGuidePage() {
+  const t = await getTranslations("Pages");
   const [navigation, settings, page] = await Promise.all([getNavigation(), getSiteSettings(), getSizeGuidePage()]);
 
   return (
@@ -15,7 +20,7 @@ export default async function SizeGuidePage() {
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main className="flex-1 pt-header">
         <div className="container-luxe max-w-3xl py-14 md:py-20">
-          <h1 className="font-heading text-4xl md:text-5xl">Size Guide</h1>
+          <h1 className="font-heading text-4xl md:text-5xl">{t("sizeGuideTitle")}</h1>
           <p className="mt-4 text-lg text-luxe-gray-dark">{page.intro}</p>
 
           <div className="mt-14 space-y-14">

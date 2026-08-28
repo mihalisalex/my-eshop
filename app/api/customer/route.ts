@@ -3,6 +3,7 @@ import { getCustomerById, updateCustomerProfile } from "@/services/customers";
 import { requireCustomerSession } from "@/lib/customer-session";
 import { commerceErrorResponse } from "@/lib/commerce/http-errors";
 import type { Customer } from "@/lib/commerce/types";
+import { getTranslations } from "next-intl/server";
 
 /**
  * Session-gated: identity always comes from the verified cookie, never from a
@@ -10,15 +11,15 @@ import type { Customer } from "@/lib/commerce/types";
  * customerId is rejected (403), not silently honored — the mock never had to
  * guard against this since localStorage has no "other user" to protect against.
  */
-function forbidden() {
-  return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Not authorized for that customer." } }, { status: 403 });
+async function forbidden() {
+  return NextResponse.json({ error: { code: "UNAUTHORIZED", message: (await getTranslations("ApiErrors"))("notAuthorized") } }, { status: 403 });
 }
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireCustomerSession();
     const requestedId = request.nextUrl.searchParams.get("customerId");
-    if (requestedId && requestedId !== session.sub) return forbidden();
+    if (requestedId && requestedId !== session.sub) return await forbidden();
     const customer = await getCustomerById(session.sub);
     return NextResponse.json({ customer });
   } catch (error) {
@@ -30,7 +31,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await requireCustomerSession();
     const body = await request.json();
-    if (typeof body.customerId === "string" && body.customerId !== session.sub) return forbidden();
+    if (typeof body.customerId === "string" && body.customerId !== session.sub) return await forbidden();
 
     const patch: Partial<Pick<Customer, "firstName" | "lastName" | "phone" | "acceptsMarketing">> = {};
     if (typeof body.firstName === "string") patch.firstName = body.firstName;

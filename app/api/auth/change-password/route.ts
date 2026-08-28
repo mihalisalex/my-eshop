@@ -6,6 +6,7 @@ import { changePasswordInputSchema } from "@/lib/validation/auth";
 import { updateCustomerPasswordHash } from "@/services/customers";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { getTranslations } from "next-intl/server";
 
 /** Ignores any client-supplied customerId (interface parity only) — identity always comes from the verified session cookie. */
 export async function POST(request: Request) {
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
         {
           error: {
             code: "NO_PASSWORD_SET",
-            message: "This account signed in via Google, Apple, or Facebook and doesn't have a password yet. Use 'Forgot password' to set one.",
+            message: (await getTranslations("ApiErrors"))("noPasswordYet"),
           },
         },
         { status: 400 }
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     if (!matches) {
       await recordAttempt(key);
       return NextResponse.json(
-        { error: { code: "INVALID_CREDENTIALS", message: "Current password is incorrect." } },
+        { error: { code: "INVALID_CREDENTIALS", message: (await getTranslations("ApiErrors"))("currentPasswordIncorrect") } },
         { status: 400 }
       );
     }

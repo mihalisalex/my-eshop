@@ -8,8 +8,10 @@ import { getCommerceProvider } from "@/lib/commerce";
 import { formatDate, formatMoney } from "@/lib/format";
 import { ORDER_STATUS_LABEL } from "@/constants/order-status";
 import type { Order } from "@/lib/commerce/types";
+import { useTranslations } from "next-intl";
 
 export default function AccountOrdersPage() {
+  const t = useTranslations("Account");
   const { customer } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);
 
@@ -21,7 +23,7 @@ export default function AccountOrdersPage() {
 
   return (
     <div>
-      <h1 className="font-heading text-3xl">Orders</h1>
+      <h1 className="font-heading text-3xl">{t("orders")}</h1>
 
       {orders === null ? (
         <p className="mt-8 text-sm text-luxe-gray-dark">Loading...</p>
@@ -51,7 +53,7 @@ export default function AccountOrdersPage() {
                       {" "}
                       &middot;{" "}
                       <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="underline hover:text-luxe-black">
-                        Track package
+                        {t("trackPackage")}
                       </a>
                     </>
                   ) : null}

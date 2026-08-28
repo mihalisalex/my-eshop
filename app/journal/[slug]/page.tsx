@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { formatDate } from "@/lib/format";
 import { getAllPosts, getNavigation, getPostBySlug, getSiteSettings } from "@/services";
+import { getTranslations } from "next-intl/server";
 
 interface JournalPostPageProps {
   params: Promise<{ slug: string }>;
@@ -25,6 +26,7 @@ export async function generateMetadata({ params }: JournalPostPageProps): Promis
 }
 
 export default async function JournalPostPage({ params }: JournalPostPageProps) {
+  const t = await getTranslations("Pages");
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post) notFound();
@@ -38,7 +40,7 @@ export default async function JournalPostPage({ params }: JournalPostPageProps) 
         <div className="container-luxe max-w-3xl py-10 md:py-14">
           <Link href="/journal" className="flex items-center gap-1.5 text-xs text-luxe-gray-dark hover:text-luxe-black">
             <ArrowLeft className="size-3.5" strokeWidth={1.5} />
-            Journal
+            {t("journalTitle")}
           </Link>
 
           <p className="mt-6 text-eyebrow">

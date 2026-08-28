@@ -8,6 +8,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useCart } from "@/components/providers/CartProvider";
 import { useWishlist } from "@/components/providers/WishlistProvider";
 import { clearStoredReferralCode, getStoredReferralCode } from "@/lib/referral";
+import { useTranslations } from "next-intl";
 
 interface AuthContextValue {
   customer: Customer | null;
@@ -28,6 +29,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations("Auth");
   const commerce = useMemo(() => getCommerceProvider(), []);
   const { toast } = useToast();
   const cart = useCart();
@@ -74,11 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         commerce.analytics.track({ name: "sign_in" });
         return true;
       } catch (error) {
-        toast({ title: "Couldn't sign in", description: errorMessage(error, "Please try again."), tone: "error" });
+        toast({ title: t("couldNotSignIn"), description: errorMessage(error, t("pleaseTryAgain")), tone: "error" });
         return false;
       }
     },
-    [commerce, toast, linkGuestState]
+    [commerce, toast, linkGuestState, t]
   );
 
   const signUp = useCallback(
@@ -91,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // doc comment for why). Deliberately the same neutral message either way, so this
           // can't be used to tell "new account" from "already registered" by the toast alone.
           toast({
-            title: "Check your email",
+            title: t("checkYourEmail"),
             description: "If that's a new address, check your inbox. Already have an account? Sign in instead.",
           });
           return false;
@@ -102,11 +104,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (referralCode) clearStoredReferralCode();
         return true;
       } catch (error) {
-        toast({ title: "Couldn't create account", description: errorMessage(error, "Please try again."), tone: "error" });
+        toast({ title: t("couldNotCreateAccount"), description: errorMessage(error, t("pleaseTryAgain")), tone: "error" });
         return false;
       }
     },
-    [commerce, toast, linkGuestState]
+    [commerce, toast, linkGuestState, t]
   );
 
   const signOut = useCallback(async () => {
@@ -120,11 +122,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await commerce.auth.requestPasswordReset(email);
         return true;
       } catch (error) {
-        toast({ title: "Couldn't send that link", description: errorMessage(error, "Please try again."), tone: "error" });
+        toast({ title: t("couldNotSendLink"), description: errorMessage(error, t("pleaseTryAgain")), tone: "error" });
         return false;
       }
     },
-    [commerce, toast]
+    [commerce, toast, t]
   );
 
   const resetPassword = useCallback(
@@ -135,11 +137,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await linkGuestState();
         return true;
       } catch (error) {
-        toast({ title: "Couldn't reset password", description: errorMessage(error, "That link may have expired."), tone: "error" });
+        toast({ title: t("couldNotResetPassword"), description: errorMessage(error, t("linkMayHaveExpired")), tone: "error" });
         return false;
       }
     },
-    [commerce, toast, linkGuestState]
+    [commerce, toast, linkGuestState, t]
   );
 
   const changePassword = useCallback(
@@ -147,14 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!customer) return false;
       try {
         await commerce.auth.changePassword(customer.id, input);
-        toast({ title: "Password updated", tone: "success" });
+        toast({ title: t("passwordUpdated"), tone: "success" });
         return true;
       } catch (error) {
-        toast({ title: "Couldn't update password", description: errorMessage(error, "Please try again."), tone: "error" });
+        toast({ title: t("couldNotUpdatePassword"), description: errorMessage(error, t("pleaseTryAgain")), tone: "error" });
         return false;
       }
     },
-    [customer, commerce, toast]
+    [customer, commerce, toast, t]
   );
 
   const refreshCustomer = useCallback(async () => {

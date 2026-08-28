@@ -7,6 +7,7 @@ import { ReturnRequestDialog } from "@/components/account/ReturnRequestDialog";
 import { getCommerceProvider } from "@/lib/commerce";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { Order, Return } from "@/lib/commerce/types";
+import { useTranslations } from "next-intl";
 
 const RETURN_STATUS_LABEL: Record<Return["status"], string> = {
   requested: "Requested",
@@ -17,6 +18,7 @@ const RETURN_STATUS_LABEL: Record<Return["status"], string> = {
 };
 
 export default function AccountReturnsPage() {
+  const t = useTranslations("Account");
   const { customer } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [returns, setReturns] = useState<Return[] | null>(null);
@@ -40,12 +42,12 @@ export default function AccountReturnsPage() {
 
   return (
     <div>
-      <h1 className="font-heading text-3xl">Returns</h1>
+      <h1 className="font-heading text-3xl">{t("returns")}</h1>
       <p className="mt-2 text-sm text-luxe-gray-dark">Start a return on any past order, or check the status of one you&apos;ve already requested.</p>
 
       {returns && returns.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Your requests</h2>
+          <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">{t("yourRequests")}</h2>
           <div className="mt-3 divide-y divide-border border-y border-border">
             {returns.map((ret) => (
               <div key={ret.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
@@ -63,7 +65,7 @@ export default function AccountReturnsPage() {
       )}
 
       <div className="mt-8">
-        <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Eligible orders</h2>
+        <h2 className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">{t("eligibleOrders")}</h2>
         {orders === null ? (
           <p className="mt-3 text-sm text-luxe-gray-dark">Loading...</p>
         ) : orders.length === 0 ? (

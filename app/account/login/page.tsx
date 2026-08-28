@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { LoginForm } from "@/components/account/LoginForm";
@@ -6,10 +7,13 @@ import { getNavigation, getSiteSettings } from "@/services";
 import { getConfiguredOAuthProviders } from "@/lib/oauth";
 import { isSafeRedirectPath } from "@/lib/oauth/state";
 
-export const metadata: Metadata = {
-  title: "Sign In",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("signInTitle"),
   robots: { index: false, follow: false },
-};
+  };
+}
 
 export default async function LoginPage({
   searchParams,

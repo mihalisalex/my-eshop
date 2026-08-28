@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/product/ProductCard";
 import { getAllLookbooks, getLookbookBySlug, getNavigation, getPublishedProductsByIds, getSiteSettings } from "@/services";
+import { getTranslations } from "next-intl/server";
 
 interface LookbookPageProps {
   params: Promise<{ slug: string }>;
@@ -23,6 +24,7 @@ export async function generateMetadata({ params }: LookbookPageProps): Promise<M
 }
 
 export default async function LookbookPage({ params }: LookbookPageProps) {
+  const t = await getTranslations("Pages");
   const { slug } = await params;
   const lookbook = await getLookbookBySlug(slug);
   if (!lookbook) notFound();
@@ -59,7 +61,7 @@ export default async function LookbookPage({ params }: LookbookPageProps) {
 
         {products.length > 0 ? (
           <div className="container-luxe py-14">
-            <h2 className="mb-6 font-heading text-2xl">Shop the Lookbook</h2>
+            <h2 className="mb-6 font-heading text-2xl">{t("shopTheLookbook")}</h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />

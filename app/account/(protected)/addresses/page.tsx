@@ -7,10 +7,12 @@ import { getCommerceProvider } from "@/lib/commerce";
 import { AddressForm } from "@/components/account/AddressForm";
 import { useToast } from "@/components/providers/ToastProvider";
 import type { AddressFormValues } from "@/lib/validation/checkout";
+import { useTranslations } from "next-intl";
 
 type EditState = { mode: "add" } | { mode: "edit"; addressId: string } | null;
 
 export default function AccountAddressesPage() {
+  const t = useTranslations("Account");
   const { customer, refreshCustomer } = useAuth();
   const { toast } = useToast();
   const [editState, setEditState] = useState<EditState>(null);
@@ -23,26 +25,26 @@ export default function AccountAddressesPage() {
     await commerce.customer.addAddress(customer.id, values);
     await refreshCustomer();
     setEditState(null);
-    toast({ title: "Address added", tone: "success" });
+    toast({ title: t("addressAdded"), tone: "success" });
   };
 
   const handleUpdate = async (addressId: string, values: AddressFormValues) => {
     await commerce.customer.updateAddress(customer.id, addressId, values);
     await refreshCustomer();
     setEditState(null);
-    toast({ title: "Address updated", tone: "success" });
+    toast({ title: t("addressUpdated"), tone: "success" });
   };
 
   const handleRemove = async (addressId: string) => {
     await commerce.customer.removeAddress(customer.id, addressId);
     await refreshCustomer();
-    toast({ title: "Address removed" });
+    toast({ title: t("addressRemoved") });
   };
 
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="font-heading text-3xl">Addresses</h1>
+        <h1 className="font-heading text-3xl">{t("addresses")}</h1>
         {editState === null ? (
           <button
             type="button"
@@ -50,14 +52,14 @@ export default function AccountAddressesPage() {
             className="flex items-center gap-1.5 text-sm underline underline-offset-4 hover:text-luxe-black"
           >
             <Plus className="size-4" strokeWidth={1.5} />
-            Add address
+            {t("addAddress")}
           </button>
         ) : null}
       </div>
 
       {editState?.mode === "add" ? (
         <div className="mt-6">
-          <AddressForm onSubmit={handleAdd} onCancel={() => setEditState(null)} submitLabel="Add Address" />
+          <AddressForm onSubmit={handleAdd} onCancel={() => setEditState(null)} submitLabel={t("addAddress")} />
         </div>
       ) : null}
 
@@ -96,14 +98,14 @@ export default function AccountAddressesPage() {
                     onClick={() => setEditState({ mode: "edit", addressId: address.id })}
                     className="underline underline-offset-4 hover:text-luxe-black"
                   >
-                    Edit
+                    {t("edit")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleRemove(address.id)}
                     className="text-destructive underline underline-offset-4"
                   >
-                    Remove
+                    {t("remove")}
                   </button>
                 </div>
               </div>

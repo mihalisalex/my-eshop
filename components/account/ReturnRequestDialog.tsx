@@ -64,7 +64,7 @@ export function ReturnRequestDialog({ order, onCreated }: ReturnRequestDialogPro
         const body = await res.json().catch(() => null);
         throw new Error(body?.error?.message ?? "Couldn't submit your return request.");
       }
-      toast({ title: t("returnRequested"), description: "We'll email you once it's reviewed.", tone: "success" });
+      toast({ title: t("returnRequested"), description: t("reviewEmailNote"), tone: "success" });
       setOpen(false);
       setSelected(new Set());
       setReason("");

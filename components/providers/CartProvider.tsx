@@ -152,7 +152,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           title: t("removed"),
           description: removed.name,
           action: {
-            label: "Undo",
+            label: t("undo"),
             onClick: () => {
               commerce.cart
                 .addLineItem(updated.id, { productId: removed.productId, color: removed.color, size: removed.size, quantity: removed.quantity })

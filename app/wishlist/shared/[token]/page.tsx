@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Heart } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -8,16 +9,20 @@ import { getNavigation, getSiteSettings } from "@/services";
 import { getProductsByIds } from "@/services/products";
 import { getWishlistByShareToken } from "@/services/wishlists";
 
-export const metadata: Metadata = {
-  title: "Shared Wishlist",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("sharedWishlistTitle"),
   robots: { index: false, follow: false },
-};
+  };
+}
 
 interface SharedWishlistPageProps {
   params: Promise<{ token: string }>;
 }
 
 export default async function SharedWishlistPage({ params }: SharedWishlistPageProps) {
+  const t = await getTranslations("Pages");
   const { token } = await params;
   const [wishlist, navigation, settings] = await Promise.all([
     getWishlistByShareToken(token),
@@ -33,7 +38,7 @@ export default async function SharedWishlistPage({ params }: SharedWishlistPageP
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
       <main className="flex-1 pt-header">
         <div className="container-luxe py-10 md:py-14">
-          <h1 className="font-heading text-3xl">A Shared Wishlist</h1>
+          <h1 className="font-heading text-3xl">{t("sharedWishlistHeading")}</h1>
           <p className="mt-2 text-sm text-luxe-gray-dark">Someone shared these picks with you.</p>
 
           {products.length === 0 ? (

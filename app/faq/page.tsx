@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { JsonLd } from "@/components/shared/JsonLd";
@@ -6,11 +7,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { faqSchema } from "@/lib/seo";
 import { getFaqPage, getNavigation, getSiteSettings } from "@/services";
 
-export const metadata: Metadata = {
-  title: "FAQ",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("faqMetaTitle"),
+  };
+}
 
 export default async function FaqPage() {
+  const t = await getTranslations("Pages");
   const [navigation, settings, page] = await Promise.all([getNavigation(), getSiteSettings(), getFaqPage()]);
 
   const allQuestions = page.categories.flatMap((category) => category.questions);
@@ -21,7 +26,7 @@ export default async function FaqPage() {
       <main className="flex-1 pt-header">
         <JsonLd data={faqSchema(allQuestions)} />
         <div className="container-luxe max-w-3xl py-14 md:py-20">
-          <h1 className="font-heading text-4xl md:text-5xl">Frequently Asked Questions</h1>
+          <h1 className="font-heading text-4xl md:text-5xl">{t("faqTitle")}</h1>
           {page.intro ? <p className="mt-4 text-lg text-luxe-gray-dark">{page.intro}</p> : null}
 
           <div className="mt-14 space-y-12">

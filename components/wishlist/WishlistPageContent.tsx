@@ -12,6 +12,7 @@ import type { Product } from "@/types";
 
 export function WishlistPageContent() {
   const t = useTranslations("Wishlist");
+  const tCart = useTranslations("Cart");
   const { wishlist, isLoading, share } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -43,7 +44,7 @@ export function WishlistPageContent() {
           href="/"
           className="mt-2 flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
         >
-          Continue Shopping
+          {tCart("continueShopping")}
         </Link>
       </div>
     );
@@ -69,7 +70,7 @@ export function WishlistPageContent() {
           className="flex h-10 items-center gap-1.5 border border-border px-4 text-xs font-medium tracking-[0.05em] uppercase hover:border-luxe-black"
         >
           <Share2 className="size-3.5" strokeWidth={1.5} />
-          Share
+          {t("share")}
         </button>
       </div>
       <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4">

@@ -62,7 +62,7 @@ export function VariantSelector({
               onClick={onOpenSizeGuide}
               className="text-xs text-luxe-gray-dark underline underline-offset-4 hover:text-luxe-black"
             >
-              Size Guide
+              {t("sizeGuide")}
             </button>
           ) : null}
         </div>

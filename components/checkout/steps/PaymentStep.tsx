@@ -199,7 +199,7 @@ export function PaymentStep() {
           </div>
           <div>
             <label htmlFor="billingCountryCode" className="mb-1.5 block text-eyebrow">
-              Country
+              {t("country")}
             </label>
             <select id="billingCountryCode" className={cn(inputClass, "appearance-none")} {...billingForm.register("countryCode")}>
               {COUNTRIES.map((country) => (

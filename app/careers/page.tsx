@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SimplePageContent } from "@/components/shared/SimplePageContent";
 import { getCareersPage, getNavigation, getSiteSettings } from "@/services";
 
-export const metadata: Metadata = {
-  title: "Careers",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("careersTitle"),
+  };
+}
 
 export default async function CareersPage() {
   const [navigation, settings, page] = await Promise.all([getNavigation(), getSiteSettings(), getCareersPage()]);

@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { RegisterForm } from "@/components/account/RegisterForm";
 import { getNavigation, getSiteSettings } from "@/services";
 import { getConfiguredOAuthProviders } from "@/lib/oauth";
 
-export const metadata: Metadata = {
-  title: "Create Account",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Pages");
+  return {
+  title: t("createAccountTitle"),
   robots: { index: false, follow: false },
-};
+  };
+}
 
 export default async function RegisterPage() {
   const [navigation, settings] = await Promise.all([getNavigation(), getSiteSettings()]);

@@ -59,7 +59,8 @@
     "movedToBag": "Μετακινήθηκε στο καλάθι",
     "promoApplied": "Ο κωδικός έκπτωσης εφαρμόστηκε",
     "giftCardApplied": "Η δωροκάρτα εφαρμόστηκε",
-    "somethingWentWrong": "Κάτι πήγε στραβά"
+    "somethingWentWrong": "Κάτι πήγε στραβά",
+    "undo": "Αναίρεση"
   },
   "Checkout": {
     "contactTitle": "Επικοινωνία",
@@ -164,7 +165,29 @@
     "profile": "Προφίλ",
     "preferences": "Προτιμήσεις",
     "security": "Ασφάλεια",
-    "signOut": "Αποσύνδεση"
+    "signOut": "Αποσύνδεση",
+    "loyaltyStatus": "Επίπεδο πιστότητας",
+    "addAddress": "Προσθήκη διεύθυνσης",
+    "edit": "Επεξεργασία",
+    "remove": "Αφαίρεση",
+    "addressAdded": "Η διεύθυνση προστέθηκε",
+    "addressUpdated": "Η διεύθυνση ενημερώθηκε",
+    "addressRemoved": "Η διεύθυνση αφαιρέθηκε",
+    "trackPackage": "Παρακολούθηση δέματος",
+    "emailAddress": "Διεύθυνση email",
+    "firstName": "Όνομα",
+    "lastName": "Επώνυμο",
+    "saveChanges": "Αποθήκευση αλλαγών",
+    "profileUpdated": "Το προφίλ ενημερώθηκε",
+    "currentPassword": "Τρέχων κωδικός",
+    "newPassword": "Νέος κωδικός",
+    "confirmNewPassword": "Επιβεβαίωση νέου κωδικού",
+    "updatePassword": "Ενημέρωση κωδικού",
+    "copyLink": "Αντιγραφή συνδέσμου",
+    "linkCopied": "Ο σύνδεσμος αντιγράφηκε",
+    "yourReferrals": "Οι συστάσεις σας",
+    "yourRequests": "Τα αιτήματά σας",
+    "eligibleOrders": "Επιλέξιμες παραγγελίες"
   },
   "ProductBadge": {
     "preorder": "Προπαραγγελία",
@@ -209,7 +232,22 @@
     "collectionsTitle": "Συλλογές",
     "collectionsSubtitle": "Επιλεγμένες συλλογές, με προσοχή.",
     "journalTitle": "Άρθρα",
-    "journalSubtitle": "Ιστορίες για την τεχνική, το δέρμα και τα καλοφτιαγμένα παπούτσια."
+    "journalSubtitle": "Ιστορίες για την τεχνική, το δέρμα και τα καλοφτιαγμένα παπούτσια.",
+    "aboutTitle": "Η ιστορία μας",
+    "careersTitle": "Καριέρα",
+    "conciergeTitle": "Ρωτήστε έναν στυλίστα",
+    "contactTitle": "Επικοινωνία",
+    "faqTitle": "Συχνές ερωτήσεις",
+    "faqMetaTitle": "Συχνές ερωτήσεις",
+    "sizeGuideTitle": "Οδηγός μεγεθών",
+    "sustainabilityTitle": "Βιωσιμότητα",
+    "wishlistTitle": "Λίστα επιθυμιών",
+    "sharedWishlistTitle": "Κοινόχρηστη λίστα επιθυμιών",
+    "sharedWishlistHeading": "Μια κοινόχρηστη λίστα επιθυμιών",
+    "shopTheLookbook": "Αγοράστε από το lookbook",
+    "signInTitle": "Σύνδεση",
+    "createAccountTitle": "Δημιουργία λογαριασμού",
+    "resetPasswordTitle": "Επαναφορά κωδικού"
   },
   "Legal": {
     "lastUpdated": "Τελευταία ενημέρωση {date}"
@@ -250,7 +288,16 @@
     "loadingAccount": "Φόρτωση λογαριασμού…",
     "continueWithGoogle": "Συνέχεια με Google",
     "continueWithApple": "Συνέχεια με Apple",
-    "continueWithFacebook": "Συνέχεια με Facebook"
+    "continueWithFacebook": "Συνέχεια με Facebook",
+    "couldNotSignIn": "Δεν ήταν δυνατή η σύνδεση",
+    "pleaseTryAgain": "Δοκιμάστε ξανά.",
+    "checkYourEmail": "Ελέγξτε το email σας",
+    "couldNotCreateAccount": "Δεν ήταν δυνατή η δημιουργία λογαριασμού",
+    "couldNotSendLink": "Δεν ήταν δυνατή η αποστολή του συνδέσμου",
+    "couldNotResetPassword": "Δεν ήταν δυνατή η επαναφορά του κωδικού",
+    "linkMayHaveExpired": "Ο σύνδεσμος μπορεί να έχει λήξει.",
+    "passwordUpdated": "Ο κωδικός ενημερώθηκε",
+    "couldNotUpdatePassword": "Δεν ήταν δυνατή η ενημέρωση του κωδικού"
   },
   "Address": {
     "firstName": "Όνομα",
@@ -273,7 +320,8 @@
     "selectAtLeastOne": "Επιλέξτε τουλάχιστον ένα είδος",
     "addReason": "Προσθέστε την αιτία της επιστροφής",
     "returnRequested": "Η επιστροφή καταχωρήθηκε",
-    "somethingWrong": "Κάτι πήγε στραβά"
+    "somethingWrong": "Κάτι πήγε στραβά",
+    "reviewEmailNote": "Θα σας ενημερώσουμε με email μόλις εξεταστεί."
   },
   "Contact": {
     "messageSent": "Το μήνυμα στάλθηκε",
@@ -360,7 +408,8 @@
     "empty": "Η λίστα επιθυμιών σας είναι άδεια",
     "linkCopied": "Ο σύνδεσμος αντιγράφηκε",
     "linkCopiedBody": "Όποιος έχει αυτόν τον σύνδεσμο μπορεί να δει τη λίστα σας.",
-    "shareLinkFailed": "Δεν ήταν δυνατή η δημιουργία συνδέσμου"
+    "shareLinkFailed": "Δεν ήταν δυνατή η δημιουργία συνδέσμου",
+    "share": "Κοινοποίηση"
   },
   "Errors": {
     "somethingWentWrong": "Κάτι πήγε στραβά",
@@ -369,5 +418,15 @@
     "backToHome": "Επιστροφή στην αρχική",
     "notFoundTitle": "Η σελίδα δεν βρέθηκε",
     "notFoundBody": "Η σελίδα που ψάχνετε δεν υπάρχει ή μπορεί να έχει μετακινηθεί."
+  },
+  "ApiErrors": {
+    "currentPasswordIncorrect": "Ο τρέχων κωδικός δεν είναι σωστός.",
+    "noPasswordYet": "Αυτός ο λογαριασμός συνδέθηκε μέσω Google, Apple ή Facebook και δεν έχει ακόμη κωδικό. Χρησιμοποιήστε το «Ξεχάσατε τον κωδικό» για να ορίσετε έναν.",
+    "unknownProvider": "Άγνωστη μέθοδος σύνδεσης.",
+    "tooManyAttempts": "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.",
+    "providerNotConfigured": "Αυτή η μέθοδος σύνδεσης δεν είναι διαθέσιμη.",
+    "invalidResetLink": "Ο σύνδεσμος επαναφοράς δεν είναι έγκυρος ή έχει λήξει. Ζητήστε νέον.",
+    "invalidCredentials": "Λανθασμένο email ή κωδικός.",
+    "notAuthorized": "Δεν έχετε πρόσβαση σε αυτόν τον πελάτη."
   }
 }

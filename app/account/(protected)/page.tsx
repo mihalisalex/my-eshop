@@ -8,15 +8,17 @@ import { getCommerceProvider } from "@/lib/commerce";
 import { getLoyaltyTier, getNextLoyaltyTier } from "@/lib/loyalty";
 import { formatMoney } from "@/lib/format";
 import type { Order } from "@/lib/commerce/types";
+import { useTranslations } from "next-intl";
 
 const QUICK_LINKS = [
-  { href: "/account/orders", label: "Orders", icon: Package },
-  { href: "/account/addresses", label: "Addresses", icon: MapPin },
-  { href: "/wishlist", label: "Wishlist", icon: Heart },
-  { href: "/account/profile", label: "Profile", icon: User },
+  { href: "/account/orders", labelKey: "orders", icon: Package },
+  { href: "/account/addresses", labelKey: "addresses", icon: MapPin },
+  { href: "/wishlist", labelKey: "wishlist", icon: Heart },
+  { href: "/account/profile", labelKey: "profile", icon: User },
 ];
 
 export default function AccountOverviewPage() {
+  const t = useTranslations("Account");
   const { customer } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);
 
@@ -46,7 +48,7 @@ export default function AccountOverviewPage() {
         <div className="mt-8 border border-border bg-luxe-white p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">Loyalty Status</p>
+              <p className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark">{t("loyaltyStatus")}</p>
               <p className="mt-1 font-heading text-2xl">{tier.label}</p>
             </div>
             <p className="text-sm text-luxe-gray-dark">
@@ -76,7 +78,7 @@ export default function AccountOverviewPage() {
             className="flex flex-col items-center gap-2 border border-border py-6 text-center transition-colors hover:border-luxe-black"
           >
             <link.icon className="size-5" strokeWidth={1.5} />
-            <span className="text-sm">{link.label}</span>
+            <span className="text-sm">{t(link.labelKey)}</span>
           </Link>
         ))}
       </div>
