@@ -140,7 +140,18 @@
   "ProductCard": {
     "quickView": "Quick View",
     "addToWishlist": "Add to wishlist",
-    "removeFromWishlist": "Remove from wishlist"
+    "removeFromWishlist": "Remove from wishlist",
+    "quickAdd": "Quick add"
+  },
+  "QuickAdd": {
+    "title": "Select a size",
+    "color": "Colour",
+    "size": "Size",
+    "selectSize": "Select a size",
+    "addToBag": "Add to bag",
+    "soldOut": "Sold out",
+    "viewDetails": "View full details",
+    "sizeUnavailable": "Unavailable"
   },
   "PlpSort": {
     "sortProducts": "Sort products",

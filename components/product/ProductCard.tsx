@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Eye } from "lucide-react";
+import { Heart, Eye, Plus } from "lucide-react";
 import { ColorSwatches } from "@/components/product/ColorSwatches";
 import { QuickViewDialog } from "@/components/product/QuickViewDialog";
+import { QuickAddSheet } from "@/components/product/QuickAddSheet";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getEffectivePrice, getProductBadges, isOnSale } from "@/lib/product";
@@ -34,6 +35,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const { isInWishlist, toggle } = useWishlist();
   const wishlisted = isInWishlist(product.id);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [primaryImage, hoverImage] = product.images;
   const badges = getProductBadges(product);
   const effectivePrice = getEffectivePrice(product);
@@ -87,7 +89,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
           type="button"
           aria-label={wishlisted ? tCard("removeFromWishlist") : tCard("addToWishlist")}
           onClick={() => toggle(product.id)}
-          className="absolute top-3 right-3 flex size-8 items-center justify-center bg-luxe-white/90 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute top-3 right-3 flex size-8 items-center justify-center bg-luxe-white/90 transition-opacity md:opacity-0 md:group-hover:opacity-100"
         >
           <Heart
             className={cn("size-4", wishlisted ? "fill-luxe-black" : "")}
@@ -98,10 +100,19 @@ export function ProductCard({ product, className }: ProductCardProps) {
         <button
           type="button"
           onClick={() => setQuickViewOpen(true)}
-          className="absolute inset-x-3 bottom-3 flex h-10 translate-y-2 items-center justify-center gap-2 bg-luxe-white text-xs font-medium tracking-[0.08em] text-luxe-black uppercase opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+          className="absolute inset-x-3 bottom-3 hidden h-10 translate-y-2 items-center justify-center gap-2 bg-luxe-white text-xs font-medium tracking-[0.08em] text-luxe-black uppercase opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 md:flex"
         >
           <Eye className="size-4" strokeWidth={1.5} />
           {tCard("quickView")}
+        </button>
+
+        <button
+          type="button"
+          aria-label={tCard("quickAdd")}
+          onClick={() => setQuickAddOpen(true)}
+          className="absolute right-3 bottom-3 flex size-10 items-center justify-center bg-luxe-white/95 text-luxe-black shadow-sm md:hidden"
+        >
+          <Plus className="size-5" strokeWidth={1.5} />
         </button>
       </div>
 
@@ -119,6 +130,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       </div>
 
       <QuickViewDialog product={product} open={quickViewOpen} onOpenChange={setQuickViewOpen} />
+      <QuickAddSheet product={product} open={quickAddOpen} onOpenChange={setQuickAddOpen} />
     </div>
   );
 }

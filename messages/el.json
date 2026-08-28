@@ -140,7 +140,18 @@
   "ProductCard": {
     "quickView": "Γρήγορη προβολή",
     "addToWishlist": "Προσθήκη στα αγαπημένα",
-    "removeFromWishlist": "Αφαίρεση από τα αγαπημένα"
+    "removeFromWishlist": "Αφαίρεση από τα αγαπημένα",
+    "quickAdd": "Γρήγορη προσθήκη"
+  },
+  "QuickAdd": {
+    "title": "Επιλέξτε μέγεθος",
+    "color": "Χρώμα",
+    "size": "Μέγεθος",
+    "selectSize": "Επιλέξτε μέγεθος",
+    "addToBag": "Προσθήκη στο καλάθι",
+    "soldOut": "Εξαντλήθηκε",
+    "viewDetails": "Δείτε όλες τις λεπτομέρειες",
+    "sizeUnavailable": "Μη διαθέσιμο"
   },
   "PlpSort": {
     "sortProducts": "Ταξινόμηση προϊόντων",
