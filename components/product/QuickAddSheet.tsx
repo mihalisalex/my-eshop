@@ -64,20 +64,32 @@ export function QuickAddSheet({ product, open, onOpenChange }: QuickAddSheetProp
       >
         <SheetTitle className="sr-only">{product.name}</SheetTitle>
 
-        <div className="flex items-start gap-3 border-b border-border p-4">
-          <div className="relative aspect-3/4 w-16 shrink-0 overflow-hidden bg-luxe-gray-light">
-            <Image src={image.src} alt={image.alt} fill sizes="64px" className="object-cover" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="line-clamp-2 text-sm">{product.name}</p>
-            <div className="mt-1 flex items-center gap-2 text-sm">
+        <div className="flex items-stretch gap-4 border-b border-border p-4">
+          {/* The reason the sheet exists is to look at the shoe, so the photograph gets the
+              space: a bordered 3:4 frame at 42% of the sheet, ~9x the area of the 64px
+              thumbnail it replaces, and tappable through to the full gallery. */}
+          <Link
+            href={`/products/${product.slug}`}
+            className="relative aspect-3/4 w-[42%] max-w-44 shrink-0 overflow-hidden border border-border bg-luxe-gray-light"
+          >
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              sizes="(max-width: 480px) 42vw, 176px"
+              className="object-cover"
+            />
+          </Link>
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <p className="line-clamp-3 text-sm leading-snug">{product.name}</p>
+            <div className="mt-2 flex items-center gap-2 text-sm">
               <span className={isOnSale(product) ? "text-destructive" : ""}>{formatMoney(price)}</span>
               {isOnSale(product) && product.compareAtPrice ? (
                 <span className="text-luxe-gray-dark line-through">{formatMoney(product.compareAtPrice)}</span>
               ) : null}
             </div>
             {colorName ? (
-              <p className="mt-1 text-xs text-luxe-gray-dark">
+              <p className="mt-2 text-[10px] tracking-[0.15em] text-luxe-gray-dark uppercase">
                 {t("color")}: {colorName}
               </p>
             ) : null}
