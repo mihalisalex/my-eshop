@@ -1,47 +1,63 @@
 import "dotenv/config";
 import { Resend } from "resend";
-import { welcomeEmail } from "@/lib/email/templates";
-import { COMPANY } from "@/constants/company";
+import { EMAIL_SAMPLES, SAMPLE_NAMES } from "@/scripts/email-samples";
 
 /**
- * Proves that transactional email actually leaves the building.
+ * Proves that transactional email actually leaves the building, for any template.
  *
- * The whole email stack (templates, providers, EmailLog, eleven call sites) has been
- * finished and untested since launch, because `EMAIL_PROVIDER` was never switched off
- * `dev` — and the dev provider writes a perfect-looking row to `EmailLog` and sends
- * nothing. The admin Emails page therefore looks identical whether real mail is going
- * out or not. That is the failure this script exists to catch: **a green EmailLog is
- * not evidence of delivery.**
+ * The whole email stack (templates, providers, EmailLog, eleven call sites) was finished
+ * and untested for months, because `EMAIL_PROVIDER` was never switched off `dev` — and the
+ * dev provider writes a perfect-looking row to `EmailLog` and sends nothing. The admin
+ * Emails page therefore looks identical whether real mail is going out or not. That is the
+ * failure this script exists to catch: **a green EmailLog is not evidence of delivery.**
  *
  *   npx tsx scripts/send-test-email.ts you@yourdomain.com
+ *   npx tsx scripts/send-test-email.ts you@yourdomain.com order-confirmation
  *
- * It deliberately re-implements the switch in `buildEmailProvider()` rather than
- * importing it: `lib/email/index.ts` is `server-only`, which throws outside a Next
- * server runtime. Keep the two in step — if they disagree, this script's verdict is
- * worthless. It also does NOT write to `EmailLog`; a connection test is not an order
- * confirmation and should not appear in the shop's audit trail.
+ * The template defaults to `welcome` because it is the smallest one that still exercises
+ * the shared layout. Pass a name to post any of the others — `order-confirmation` is the
+ * one worth looking at, since it is the only template with product imagery, a totals block
+ * and payment instructions, and therefore the only one where most of the design lives.
  *
- * The message sent is the real `welcomeEmail` template, unmodified, so what lands in
- * the inbox is what a customer sees — masthead, serif display type, CTA button and all.
- * Send it to yourself: until a domain is verified in Resend, your own account address
- * is the only recipient Resend will accept anyway.
+ * Content comes from `scripts/email-samples.ts`, shared with `scripts/preview-emails.ts`,
+ * so what lands in the inbox is byte-for-byte what the browser preview showed.
+ *
+ * It deliberately re-implements the switch in `buildEmailProvider()` rather than importing
+ * it: `lib/email/index.ts` is `server-only`, which throws outside a Next server runtime.
+ * Keep the two in step — if they disagree, this script's verdict is worthless. It also does
+ * NOT write to `EmailLog`; a connection test is not an order and should not appear in the
+ * shop's audit trail.
+ *
+ * Send it to yourself. Until a domain is verified in Resend, the account's own address is
+ * the only recipient Resend will accept anyway.
  */
 async function main() {
   const recipient = process.argv[2];
+  const templateName = process.argv[3] ?? "welcome";
+
   if (!recipient || !recipient.includes("@")) {
-    console.error("Usage: npx tsx scripts/send-test-email.ts <recipient@example.com>");
+    console.error("Usage: npx tsx scripts/send-test-email.ts <recipient@example.com> [template]");
+    console.error(`Templates: ${SAMPLE_NAMES.join(", ")}`);
     process.exitCode = 1;
     return;
   }
 
-  const configured = process.env.EMAIL_PROVIDER?.trim();
-  const providerName = configured ? configured.toLowerCase() : "dev";
+  const message = EMAIL_SAMPLES[templateName];
+  if (!message) {
+    console.error(`Unknown template "${templateName}".`);
+    console.error(`Templates: ${SAMPLE_NAMES.join(", ")}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const providerName = process.env.EMAIL_PROVIDER?.trim().toLowerCase() || "dev";
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
 
   console.log(`EMAIL_PROVIDER   ${providerName}`);
   console.log(`RESEND_API_KEY   ${apiKey ? `set (${apiKey.slice(0, 8)}…, ${apiKey.length} chars)` : "NOT SET"}`);
   console.log(`EMAIL_FROM       ${from ?? "NOT SET"}`);
+  console.log(`TEMPLATE         ${templateName} — "${message.subject}"`);
   console.log("");
 
   if (providerName !== "resend") {
@@ -58,12 +74,6 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-
-  const message = welcomeEmail({
-    siteName: COMPANY.brandName,
-    firstName: "Test",
-    shopUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
-  });
 
   const { data, error } = await new Resend(apiKey).emails.send({
     from,
