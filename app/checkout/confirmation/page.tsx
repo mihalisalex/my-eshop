@@ -199,7 +199,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
         </div>
         <div className="flex justify-between">
           <span className="text-luxe-gray-dark">{tCart("shipping")}</span>
-          <span>{formatMoney(order.totals.shippingTotal)}</span>
+          <span>{order.totals.shippingTotal.amount === 0 ? tCart("free") : formatMoney(order.totals.shippingTotal)}</span>
         </div>
         {order.totals.giftWrapTotal.amount > 0 ? (
           <div className="flex justify-between">

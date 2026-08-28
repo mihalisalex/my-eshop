@@ -189,19 +189,25 @@ function lineItemsHtml(lineItems: CartLineItem[]): string {
 }
 
 function totalsHtml(totals: CartTotals): string {
-  const row = (label: string, money: { amount: number; currencyCode: string }) => `
+  /**
+   * Takes the already-rendered string rather than a Money, so a row can read "Δωρεάν"
+   * instead of "0 €". The cart has said Δωρεάν since launch
+   * (components/cart/CartTotalsSummary.tsx) — the email and the confirmation page were
+   * the two places that still priced free delivery at zero euro.
+   */
+  const row = (label: string, value: string) => `
     <tr>
       <td style="padding:7px 0;color:${BODY};font-size:13px;">${label}</td>
-      <td align="right" style="padding:7px 0;color:${BODY};font-size:13px;">${formatMoney(money)}</td>
+      <td align="right" style="padding:7px 0;color:${BODY};font-size:13px;">${value}</td>
     </tr>`;
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:26px;">
-      ${row("Υποσύνολο", totals.subtotal)}
-      ${totals.discountTotal.amount > 0 ? row("Έκπτωση", { amount: -totals.discountTotal.amount, currencyCode: totals.discountTotal.currencyCode }) : ""}
-      ${totals.giftCardTotal.amount > 0 ? row("Δωροκάρτα", { amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode }) : ""}
-      ${row("Αποστολή", totals.shippingTotal)}
-      ${totals.giftWrapTotal.amount > 0 ? row("Συσκευασία δώρου", totals.giftWrapTotal) : ""}
-      ${totals.paymentFeeTotal.amount > 0 ? row("Επιβάρυνση πληρωμής", totals.paymentFeeTotal) : ""}
+      ${row("Υποσύνολο", formatMoney(totals.subtotal))}
+      ${totals.discountTotal.amount > 0 ? row("Έκπτωση", formatMoney({ amount: -totals.discountTotal.amount, currencyCode: totals.discountTotal.currencyCode })) : ""}
+      ${totals.giftCardTotal.amount > 0 ? row("Δωροκάρτα", formatMoney({ amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode })) : ""}
+      ${row("Αποστολή", totals.shippingTotal.amount === 0 ? "Δωρεάν" : formatMoney(totals.shippingTotal))}
+      ${totals.giftWrapTotal.amount > 0 ? row("Συσκευασία δώρου", formatMoney(totals.giftWrapTotal)) : ""}
+      ${totals.paymentFeeTotal.amount > 0 ? row("Επιβάρυνση πληρωμής", formatMoney(totals.paymentFeeTotal)) : ""}
       <tr><td colspan="2" style="padding-top:16px;border-top:1px solid ${HAIRLINE};"></td></tr>
       <tr>
         <td style="padding:4px 0;font-family:${SERIF};font-size:17px;color:${INK};">Σύνολο</td>
