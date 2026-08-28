@@ -13,19 +13,19 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [error]);
 
   return (
-    <html lang="en">
+    <html lang="el">
       <body>
         <div style={{ display: "flex", minHeight: "100vh", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1rem", padding: "1.5rem", textAlign: "center", fontFamily: "sans-serif" }}>
-          <h1 style={{ fontSize: "1.5rem" }}>Something went wrong</h1>
+          <h1 style={{ fontSize: "1.5rem" }}>Κάτι πήγε στραβά</h1>
           <p style={{ color: "#555", maxWidth: "24rem" }}>
-            An unexpected error occurred while loading the page. Please try again.
+            Παρουσιάστηκε απροσδόκητο σφάλμα κατά τη φόρτωση της σελίδας. Δοκιμάστε ξανά.
           </p>
           <button
             type="button"
             onClick={reset}
             style={{ height: "3rem", padding: "0 2rem", background: "#111", color: "#fff", fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", border: "none", cursor: "pointer" }}
           >
-            Try Again
+            Δοκιμάστε ξανά
           </button>
         </div>
       </body>

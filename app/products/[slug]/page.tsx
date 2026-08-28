@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/config";
 import { localizeProduct, localizeProducts } from "@/lib/localize";
 import { Header } from "@/components/layout/Header";
@@ -58,6 +58,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
+  const t = await getTranslations("Pdp");
   const { slug } = await params;
   const rawProduct = await getProductBySlug(slug);
   if (!rawProduct) notFound();
@@ -115,7 +116,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <ReviewsSection summary={reviewSummary} reviews={reviews} />
-          <RelatedProducts title="You May Also Like" products={related} />
+          <RelatedProducts title={t("youMayAlsoLike")} products={related} />
           <RecentlyViewedSection currentProductId={product.id} />
         </div>
       </main>

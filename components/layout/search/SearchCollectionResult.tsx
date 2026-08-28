@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import type { Collection } from "@/types";
 
 interface SearchCollectionResultProps {
@@ -10,6 +11,7 @@ interface SearchCollectionResultProps {
 }
 
 export function SearchCollectionResult({ collection, active, onNavigate }: SearchCollectionResultProps) {
+  const t = useTranslations("Search");
   return (
     <Link
       href={`/collections/${collection.slug}`}
@@ -25,7 +27,7 @@ export function SearchCollectionResult({ collection, active, onNavigate }: Searc
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{collection.title}</p>
-        <p className="text-xs text-luxe-gray-dark">Collection</p>
+        <p className="text-xs text-luxe-gray-dark">{t("collection")}</p>
       </div>
     </Link>
   );

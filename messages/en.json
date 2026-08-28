@@ -24,7 +24,8 @@
     "searching": "Searching...",
     "noResults": "No results for \"{query}\". Try a different term, color, or SKU.",
     "products": "Products",
-    "collections": "Collections"
+    "collections": "Collections",
+    "collection": "Collection"
   },
   "Cart": {
     "remove": "Remove",
@@ -138,7 +139,20 @@
     "addToBag": "Add to Bag",
     "addToWishlist": "Add to wishlist",
     "removeFromWishlist": "Remove from wishlist",
-    "sizeSuggestion": "Based on your past orders, you usually wear {size} — tap to select"
+    "sizeSuggestion": "Based on your past orders, you usually wear {size} — tap to select",
+    "composition": "Composition",
+    "careInstructions": "Care instructions",
+    "returns": "Returns",
+    "size": "Size",
+    "lowStock": "Low stock",
+    "sizeGuide": "Size guide",
+    "footLength": "Foot length",
+    "recentlyViewed": "Recently viewed",
+    "youMayAlsoLike": "You may also like",
+    "color": "Colour",
+    "addToBagCta": "Add to bag",
+    "selectASize": "Select a size",
+    "viewFullDetails": "View full details"
   },
   "Account": {
     "overview": "Overview",
@@ -341,5 +355,19 @@
     "refunded": "Refunded",
     "partially_refunded": "Partially refunded",
     "expired": "Expired"
+  },
+  "Wishlist": {
+    "empty": "Your wishlist is empty",
+    "linkCopied": "Link copied",
+    "linkCopiedBody": "Anyone with this link can view your wishlist.",
+    "shareLinkFailed": "Couldn't create a share link"
+  },
+  "Errors": {
+    "somethingWentWrong": "Something went wrong",
+    "unexpected": "An unexpected error occurred. You can try again, or head back to the homepage.",
+    "tryAgain": "Try again",
+    "backToHome": "Back to home",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The page you're looking for doesn't exist or may have moved."
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Heart, Share2 } from "lucide-react";
 import { useWishlist } from "@/components/providers/WishlistProvider";
@@ -10,6 +11,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import type { Product } from "@/types";
 
 export function WishlistPageContent() {
+  const t = useTranslations("Wishlist");
   const { wishlist, isLoading, share } = useWishlist();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,7 +37,7 @@ export function WishlistPageContent() {
     return (
       <div className="flex flex-col items-center gap-4 py-32 text-center">
         <Heart className="size-12 text-luxe-gray-dark" strokeWidth={1} />
-        <h1 className="font-heading text-2xl">Your wishlist is empty</h1>
+        <h1 className="font-heading text-2xl">{t("empty")}</h1>
         <p className="text-sm text-luxe-gray-dark">Save items you love to find them here later.</p>
         <Link
           href="/"
@@ -51,9 +53,9 @@ export function WishlistPageContent() {
     try {
       const url = await share();
       await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied", description: "Anyone with this link can view your wishlist.", tone: "success" });
+      toast({ title: t("linkCopied"), description: t("linkCopiedBody"), tone: "success" });
     } catch {
-      toast({ title: "Couldn't create a share link", tone: "error" });
+      toast({ title: t("shareLinkFailed"), tone: "error" });
     }
   };
 

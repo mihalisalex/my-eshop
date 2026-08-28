@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NUMERIC_SIZE_NOTE, SIZE_GUIDE_ROWS } from "@/lib/size-guide";
+import { useTranslations } from "next-intl";
 
 interface SizeGuideDialogProps {
   open: boolean;
@@ -13,10 +14,11 @@ interface SizeGuideDialogProps {
 }
 
 export function SizeGuideDialog({ open, onOpenChange }: SizeGuideDialogProps) {
+  const t = useTranslations("Pdp");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg rounded-none border-none p-8">
-        <DialogTitle className="font-heading text-xl">Size Guide</DialogTitle>
+        <DialogTitle className="font-heading text-xl">{t("sizeGuide")}</DialogTitle>
         <p className="mt-1 text-sm text-luxe-gray-dark">EU sizing, with UK and US conversions.</p>
 
         <table className="mt-6 w-full text-left text-sm">
@@ -26,7 +28,7 @@ export function SizeGuideDialog({ open, onOpenChange }: SizeGuideDialogProps) {
               <th className="py-2">UK</th>
               <th className="py-2">US (Men)</th>
               <th className="py-2">US (Women)</th>
-              <th className="py-2">Foot Length</th>
+              <th className="py-2">{t("footLength")}</th>
             </tr>
           </thead>
           <tbody>

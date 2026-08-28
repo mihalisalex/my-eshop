@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { isSizePurchasable } from "@/lib/product";
 import type { Product } from "@/types";
 
@@ -24,6 +25,7 @@ export function VariantSelector({
   onOpenSizeGuide,
   onRequestNotify,
 }: VariantSelectorProps) {
+  const t = useTranslations("Pdp");
   return (
     <div className="space-y-6">
       {/* Omitted entirely for a product with no colour variants, which previously still
@@ -53,7 +55,7 @@ export function VariantSelector({
 
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-eyebrow">Size</p>
+          <p className="text-eyebrow">{t("size")}</p>
           {onOpenSizeGuide ? (
             <button
               type="button"
@@ -86,7 +88,7 @@ export function VariantSelector({
               >
                 {size.name}
                 {purchasable && lowStock && selectedSize !== size.name ? (
-                  <span className="absolute -top-1.5 -right-1.5 size-2 rounded-full bg-destructive" title="Low stock" />
+                  <span className="absolute -top-1.5 -right-1.5 size-2 rounded-full bg-destructive" title={t("lowStock")} />
                 ) : null}
               </button>
             );

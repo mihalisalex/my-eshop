@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
   Dialog,
@@ -20,6 +21,7 @@ interface QuickViewDialogProps {
 }
 
 export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialogProps) {
+  const t = useTranslations("Pdp");
   const { addItem, isMutating } = useCart();
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name ?? "");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
             <p className="mt-4 text-sm text-luxe-gray-dark">{product.description}</p>
 
             <div className="mt-6">
-              <p className="text-eyebrow mb-2">Color — {selectedColor}</p>
+              <p className="text-eyebrow mb-2">{t("color")} — {selectedColor}</p>
               <div className="flex items-center gap-2">
                 {product.colors.map((color) => (
                   <button
@@ -72,7 +74,7 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
             </div>
 
             <div className="mt-6">
-              <p className="text-eyebrow mb-2">Size</p>
+              <p className="text-eyebrow mb-2">{t("size")}</p>
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => {
                   const purchasable = isSizePurchasable(product, size.name);
@@ -106,13 +108,13 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
               }}
               className="mt-8 flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90 disabled:opacity-40"
             >
-              {selectedSize ? "Add to Bag" : "Select a Size"}
+              {selectedSize ? t("addToBagCta") : t("selectASize")}
             </button>
             <a
               href={`/products/${product.slug}`}
               className="mt-3 text-center text-xs tracking-[0.05em] text-luxe-gray-dark uppercase underline underline-offset-4"
             >
-              View Full Details
+              {t("viewFullDetails")}
             </a>
           </div>
         </div>

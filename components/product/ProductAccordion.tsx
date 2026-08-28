@@ -5,6 +5,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { getDeliveryEstimate } from "@/lib/delivery";
+import { useTranslations } from "next-intl";
 import type { Product } from "@/types";
 
 interface ProductAccordionProps {
@@ -30,6 +31,7 @@ const TRIGGER_CLASS =
  * policy rather than per-product data.
  */
 export function ProductAccordion({ product }: ProductAccordionProps) {
+  const t = useTranslations("Pdp");
   const hasMaterials = product.materials.length > 0;
   const hasCare = product.careInstructions.length > 0;
 
@@ -37,7 +39,7 @@ export function ProductAccordion({ product }: ProductAccordionProps) {
     <Accordion className="border-t border-border">
       {hasMaterials ? (
         <AccordionItem value="composition">
-          <AccordionTrigger className={TRIGGER_CLASS}>Composition</AccordionTrigger>
+          <AccordionTrigger className={TRIGGER_CLASS}>{t("composition")}</AccordionTrigger>
           <AccordionContent>
             <ul className="list-inside list-disc text-sm text-luxe-gray-dark">
               {product.materials.map((material) => (
@@ -50,7 +52,7 @@ export function ProductAccordion({ product }: ProductAccordionProps) {
 
       {hasCare ? (
         <AccordionItem value="care">
-          <AccordionTrigger className={TRIGGER_CLASS}>Care Instructions</AccordionTrigger>
+          <AccordionTrigger className={TRIGGER_CLASS}>{t("careInstructions")}</AccordionTrigger>
           <AccordionContent>
             <ul className="list-inside list-disc text-sm text-luxe-gray-dark">
               {product.careInstructions.map((instruction) => (
@@ -77,7 +79,7 @@ export function ProductAccordion({ product }: ProductAccordionProps) {
       </AccordionItem>
 
       <AccordionItem value="returns">
-        <AccordionTrigger className={TRIGGER_CLASS}>Returns</AccordionTrigger>
+        <AccordionTrigger className={TRIGGER_CLASS}>{t("returns")}</AccordionTrigger>
         <AccordionContent>
           <p className="text-sm text-luxe-gray-dark">
             Free returns within 30 days of delivery. Items must be unworn, unwashed, and with tags attached.
