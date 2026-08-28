@@ -68,7 +68,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
                         <Link
                           href={item.href}
                           onClick={close}
-                          className="block text-sm font-medium text-luxe-black"
+                          className="font-heading block text-sm font-medium text-luxe-black"
                         >
                           {t("viewAll", { label: item.label })}
                         </Link>
@@ -78,7 +78,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
                           <Link
                             href={child.href}
                             onClick={close}
-                            className="block text-sm text-luxe-gray-dark no-underline"
+                            className="font-heading block text-sm text-luxe-gray-dark no-underline"
                           >
                             {child.label}
                           </Link>
@@ -92,7 +92,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
                   <Link
                     href={item.href}
                     onClick={close}
-                    className="block text-[13px] font-medium tracking-[0.08em] uppercase no-underline"
+                    className="font-heading block text-[13px] font-medium tracking-[0.08em] uppercase no-underline"
                   >
                     {item.label}
                   </Link>
@@ -103,7 +103,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
         </nav>
 
         <div className="border-t border-border px-6 py-6">
-          <ul className="flex flex-col gap-3 text-sm text-luxe-gray-dark">
+          <ul className="font-heading flex flex-col gap-3 text-sm text-luxe-gray-dark">
             <li>
               <Link href="/account" onClick={close} className="no-underline">
                 {t("account")}
@@ -117,7 +117,7 @@ export function MobileMenu({ items, supportLinks = [], open, onOpenChange, trigg
           </ul>
 
           {supportLinks.length > 0 ? (
-            <ul className="mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm text-luxe-gray-dark">
+            <ul className="font-heading mt-5 flex flex-col gap-3 border-t border-border pt-5 text-sm text-luxe-gray-dark">
               {supportLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} onClick={close} className="no-underline">
