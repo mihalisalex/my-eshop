@@ -45,6 +45,17 @@ const CHECKS: { file: string; markers: { marker: string; why: string }[] }[] = [
     file: "data/careers.json",
     markers: [{ marker: "alexandris-demo.example", why: "Applicants are told to write to an address that cannot receive mail." }],
   },
+  {
+    // This file was not checked until 2026-08-28, and a demo disclaimer sat in the shared
+    // email footer for the whole of launch — every real order confirmation told the customer
+    // no order had been charged. Nothing in the repo pointed at it because the audit only ever
+    // looked at data/*.json, and an email is the one surface nobody re-reads after shipping it.
+    file: "lib/email/templates.ts",
+    markers: [
+      { marker: "demo store", why: "Demo disclaimer would be sent to real customers on every transactional email." },
+      { marker: "no real order was charged", why: "Tells a paying customer their order was not charged." },
+    ],
+  },
 ];
 
 const findings: Finding[] = [];

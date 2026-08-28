@@ -8,9 +8,17 @@ interface RenderedEmail {
 }
 
 const SERIF = "Georgia, 'Times New Roman', Times, serif";
+const SANS = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 const INK = "#111111";
-const MUTED = "#8A8A8A";
-const HAIRLINE = "#EDEDED";
+const MUTED = "#9A9A9A";
+const BODY = "#5F5F5F";
+const HAIRLINE = "#E6E6E6";
+const WIDTH = 600;
+
+/** Footer links need an absolute URL, and emails are rendered from contexts with no request. */
+function siteUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://shopalexandris.vercel.app";
+}
 
 /**
  * Escapes values that reach an email body from a configurable source rather than
@@ -32,37 +40,49 @@ function escapeHtml(value: string): string {
 /**
  * Table-based layout with inline styles, not a <style> block — the only markup
  * pattern that renders consistently across real email clients (Gmail/Outlook both
- * strip <head> styles). Editorial treatment (black masthead, serif display type,
- * generous whitespace) deliberately mirrors the storefront's own luxury-editorial
- * design language (see app/globals.css's font-heading + luxe-* tokens) without
- * sharing code with it — email CSS and web CSS are different enough dialects that
- * "sharing" would just mean constantly working around what email clients don't support.
+ * strip <head> styles).
+ *
+ * The design deliberately does NOT frame the message as a card floating on grey.
+ * That treatment reads as "transactional template" however good the type inside it
+ * is, because every SaaS receipt uses it. Luxury fashion mail is white to the edges,
+ * with the wordmark small and black on white rather than reversed out of a heavy
+ * masthead slab, and it buys presence with whitespace and scale instead of with
+ * rules, borders and filled panels. The only element permitted to be large is the
+ * photography.
+ *
+ * `color-scheme: light` is declared because Gmail and Outlook in dark mode otherwise
+ * invert the palette themselves — turning the wordmark into a white-on-dark slab and,
+ * worse, punching grey boxes around product shots photographed on white.
  */
-function layout(siteName: string, preheader: string, bodyHtml: string): string {
+function layout(siteName: string, preheader: string, bodyHtml: string, hero?: { src: string; alt: string }): string {
+  const url = siteUrl();
   return `<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background-color:#EDEDED;font-family:Helvetica,Arial,sans-serif;">
-    <span style="display:none;font-size:1px;color:#EDEDED;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#EDEDED;padding:48px 16px;">
+<html lang="el">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>${siteName}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#FFFFFF;font-family:${SANS};-webkit-font-smoothing:antialiased;">
+    <span style="display:none;font-size:1px;color:#FFFFFF;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;">
       <tr>
-        <td align="center">
-          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#FFFFFF;">
+        <td align="center" style="padding:0 12px;">
+          <table role="presentation" width="${WIDTH}" cellpadding="0" cellspacing="0" style="max-width:${WIDTH}px;width:100%;">
             <tr>
-              <td align="center" style="padding:44px 40px 36px;background-color:${INK};">
-                <span style="font-family:${SERIF};font-size:21px;letter-spacing:6px;font-weight:400;color:#FFFFFF;text-transform:uppercase;">${siteName}</span>
+              <td align="center" style="padding:56px 0 52px;">
+                <a href="${url}" style="font-family:${SERIF};font-size:15px;letter-spacing:9px;font-weight:400;color:${INK};text-transform:uppercase;text-decoration:none;">${siteName}</a>
               </td>
             </tr>
             <tr>
-              <td style="padding:48px 44px;">
-                ${bodyHtml}
+              <td style="padding:0 0 64px;">
+                ${hero ? heroImage(hero.src, hero.alt) : ""}
+                ${pad(bodyHtml)}
               </td>
             </tr>
-            <tr>
-              <td align="center" style="padding:28px 40px;border-top:1px solid ${HAIRLINE};">
-                <p style="margin:0;font-family:${SERIF};font-size:11px;letter-spacing:2px;color:${MUTED};text-transform:uppercase;">${siteName}</p>
-                <p style="margin:8px 0 0;color:#B8B8B8;font-size:11px;">This is a demo store — no real order was charged.</p>
-              </td>
-            </tr>
+            ${footer(siteName, url)}
           </table>
         </td>
       </tr>
@@ -71,20 +91,63 @@ function layout(siteName: string, preheader: string, bodyHtml: string): string {
 </html>`;
 }
 
+/**
+ * Carries no demo disclaimer. One lived in this footer through launch and shipped on every
+ * real email the shop sent, telling paying customers their order had not been charged.
+ * `scripts/check-launch-placeholders.ts` never looked at this file; it does now.
+ */
+function footer(siteName: string, url: string): string {
+  const link = (label: string, href: string) =>
+    `<a href="${href}" style="color:${MUTED};text-decoration:none;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:0 10px;">${label}</a>`;
+  return `<tr>
+    <td align="center" style="padding:36px 24px 56px;border-top:1px solid ${HAIRLINE};">
+      <p style="margin:0 0 18px;">${link("Επικοινωνία", `${url}/contact`)}${link("Επιστροφές", `${url}/returns`)}${link("Απόρρητο", `${url}/privacy`)}</p>
+      <p style="margin:0;font-family:${SERIF};font-size:11px;letter-spacing:4px;color:${INK};text-transform:uppercase;">${siteName}</p>
+      <p style="margin:10px 0 0;color:${MUTED};font-size:11px;line-height:1.6;">Αυτό το μήνυμα στάλθηκε αυτόματα με βάση την παραγγελία ή τον λογαριασμό σας.</p>
+    </td>
+  </tr>`;
+}
+
+/** Full-bleed to the 600px column — the one element allowed to be large. */
+function heroImage(src: string, alt: string): string {
+  return `<img src="${src}" alt="${escapeHtml(alt)}" width="${WIDTH}" style="display:block;width:100%;max-width:${WIDTH}px;height:auto;border:0;margin:0 0 44px;background-color:#F5F5F5;" />`;
+}
+
+/**
+ * Horizontal breathing room for text, applied per-block rather than once on the
+ * container, so an image can still run edge to edge while the copy stays inset.
+ */
+function pad(inner: string): string {
+  return `<div style="padding:0 32px;">${inner}</div>`;
+}
+
 function eyebrow(text: string): string {
-  return `<p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;color:${MUTED};text-transform:uppercase;">${text}</p>`;
+  return `<p style="margin:0 0 18px;font-size:10px;letter-spacing:3.5px;color:${MUTED};text-transform:uppercase;font-weight:400;">${text}</p>`;
 }
 
 function heading(text: string): string {
-  return `<h1 style="font-family:${SERIF};font-weight:400;font-size:26px;line-height:1.3;color:${INK};margin:0 0 14px;">${text}</h1>`;
+  return `<h1 style="font-family:${SERIF};font-weight:400;font-size:32px;line-height:1.25;color:${INK};margin:0 0 20px;letter-spacing:-0.2px;">${text}</h1>`;
 }
 
 function bodyText(text: string): string {
-  return `<p style="color:#555555;font-size:14px;line-height:1.65;margin:0 0 28px;">${text}</p>`;
+  return `<p style="color:${BODY};font-size:14px;line-height:1.8;margin:0 0 34px;">${text}</p>`;
 }
 
 function ctaButton(label: string, href: string): string {
-  return `<a href="${href}" style="display:inline-block;background-color:${INK};color:#FFFFFF;text-decoration:none;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:16px 40px;">${label}</a>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px;"><tr>
+    <td style="background-color:${INK};">
+      <a href="${href}" style="display:inline-block;color:#FFFFFF;text-decoration:none;font-size:11px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;padding:18px 46px;">${label}</a>
+    </td>
+  </tr></table>`;
+}
+
+/** A quieter secondary action — luxury mail rarely stacks two filled buttons. */
+function textLink(label: string, href: string): string {
+  return `<a href="${href}" style="color:${INK};text-decoration:none;border-bottom:1px solid ${INK};padding-bottom:2px;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;">${label}</a>`;
+}
+
+function sectionLabel(text: string): string {
+  return `<p style="font-size:10px;letter-spacing:3px;color:${MUTED};text-transform:uppercase;margin:0 0 14px;">${text}</p>`;
 }
 
 function addressLines(address: Address): string {
@@ -100,20 +163,24 @@ function addressLines(address: Address): string {
     .join("\n");
 }
 
-/** Each line item gets a real product thumbnail — a fashion email with no imagery at all was the single biggest "boring" complaint to fix. */
+/**
+ * Product imagery at 100px rather than the old 64px thumbnail. In a fashion email the
+ * photograph is the product; a thumbnail small enough to be a favicon turns the message
+ * into a receipt. 4:5 matches the aspect the storefront already shoots to.
+ */
 function lineItemsHtml(lineItems: CartLineItem[]): string {
   return lineItems
     .map(
       (item) => `
       <tr>
-        <td width="64" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
-          <img src="${item.image.src}" alt="${item.image.alt}" width="64" height="80" style="display:block;width:64px;height:80px;object-fit:cover;background-color:#F5F5F5;" />
+        <td width="100" style="padding:24px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
+          <img src="${item.image.src}" alt="${escapeHtml(item.image.alt)}" width="100" height="125" style="display:block;width:100px;height:125px;object-fit:cover;border:0;background-color:#F5F5F5;" />
         </td>
-        <td style="padding:16px 0 16px 16px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;vertical-align:top;">
-          ${item.name}<br/>
-          <span style="color:${MUTED};font-size:12px;">${item.color} · ${item.size} · Qty ${item.quantity}</span>
+        <td style="padding:24px 0 24px 22px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;line-height:1.5;vertical-align:top;">
+          ${escapeHtml(item.name)}
+          <span style="display:block;color:${MUTED};font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-top:8px;">${escapeHtml(item.color)} · ${escapeHtml(item.size)} · ×${item.quantity}</span>
         </td>
-        <td align="right" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;white-space:nowrap;vertical-align:top;">
+        <td align="right" style="padding:24px 0;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;white-space:nowrap;vertical-align:top;">
           ${formatMoney({ amount: item.unitPrice.amount * item.quantity, currencyCode: item.unitPrice.currencyCode })}
         </td>
       </tr>`
@@ -122,22 +189,28 @@ function lineItemsHtml(lineItems: CartLineItem[]): string {
 }
 
 function totalsHtml(totals: CartTotals): string {
-  const row = (label: string, money: { amount: number; currencyCode: string }, bold = false) => `
+  const row = (label: string, money: { amount: number; currencyCode: string }) => `
     <tr>
-      <td style="padding:5px 0;color:${bold ? INK : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${label}</td>
-      <td align="right" style="padding:5px 0;color:${bold ? INK : "#555555"};font-size:${bold ? "15px" : "13px"};font-weight:${bold ? "600" : "400"};">${formatMoney(money)}</td>
+      <td style="padding:7px 0;color:${BODY};font-size:13px;">${label}</td>
+      <td align="right" style="padding:7px 0;color:${BODY};font-size:13px;">${formatMoney(money)}</td>
     </tr>`;
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;">
-      ${row("Subtotal", totals.subtotal)}
-      ${totals.discountTotal.amount > 0 ? row("Discount", { amount: -totals.discountTotal.amount, currencyCode: totals.discountTotal.currencyCode }) : ""}
-      ${totals.giftCardTotal.amount > 0 ? row("Gift Card", { amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode }) : ""}
-      ${row("Shipping", totals.shippingTotal)}
-      ${totals.giftWrapTotal.amount > 0 ? row("Gift Wrapping", totals.giftWrapTotal) : ""}
-      ${totals.paymentFeeTotal.amount > 0 ? row("Payment Fee", totals.paymentFeeTotal) : ""}
-      <tr><td colspan="2" style="padding-top:10px;border-top:1px solid ${HAIRLINE};"></td></tr>
-      ${row("Total", totals.total, true)}
-      ${row("Includes VAT", totals.taxTotal)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:26px;">
+      ${row("Υποσύνολο", totals.subtotal)}
+      ${totals.discountTotal.amount > 0 ? row("Έκπτωση", { amount: -totals.discountTotal.amount, currencyCode: totals.discountTotal.currencyCode }) : ""}
+      ${totals.giftCardTotal.amount > 0 ? row("Δωροκάρτα", { amount: -totals.giftCardTotal.amount, currencyCode: totals.giftCardTotal.currencyCode }) : ""}
+      ${row("Αποστολή", totals.shippingTotal)}
+      ${totals.giftWrapTotal.amount > 0 ? row("Συσκευασία δώρου", totals.giftWrapTotal) : ""}
+      ${totals.paymentFeeTotal.amount > 0 ? row("Επιβάρυνση πληρωμής", totals.paymentFeeTotal) : ""}
+      <tr><td colspan="2" style="padding-top:16px;border-top:1px solid ${HAIRLINE};"></td></tr>
+      <tr>
+        <td style="padding:4px 0;font-family:${SERIF};font-size:17px;color:${INK};">Σύνολο</td>
+        <td align="right" style="padding:4px 0;font-family:${SERIF};font-size:17px;color:${INK};">${formatMoney(totals.total)}</td>
+      </tr>
+      <tr>
+        <td style="padding:2px 0;color:${MUTED};font-size:11px;">Περιλαμβάνεται ΦΠΑ</td>
+        <td align="right" style="padding:2px 0;color:${MUTED};font-size:11px;">${formatMoney(totals.taxTotal)}</td>
+      </tr>
     </table>`;
 }
 
@@ -159,7 +232,7 @@ export function orderConfirmationEmail(input: {
   paymentInstructions?: { label: string; value: string }[] | null;
 }): RenderedEmail {
   const { siteName, orderId, lineItems, totals, shippingAddress, shippingRate, giftWrap, giftMessage, paymentInstructions } = input;
-  const subject = `Order confirmed — #${orderId.slice(-8).toUpperCase()}`;
+  const subject = `Η παραγγελία σας επιβεβαιώθηκε — #${orderId.slice(-8).toUpperCase()}`;
   const giftNoteHtml =
     giftWrap && giftMessage
       ? `<p style="color:#555555;font-size:13px;font-style:italic;margin:0 0 24px;">"${giftMessage}"</p>`
@@ -168,7 +241,7 @@ export function orderConfirmationEmail(input: {
     paymentInstructions && paymentInstructions.length > 0
       ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;border:1px solid ${HAIRLINE};">
           <tr><td style="padding:16px 16px 4px;">
-            <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 12px;">Payment details</p>
+            ${sectionLabel("Στοιχεία πληρωμής")}
           </td></tr>
           ${paymentInstructions
             .map(
@@ -183,11 +256,11 @@ export function orderConfirmationEmail(input: {
       : "";
   const html = layout(
     siteName,
-    `Your order is confirmed. Total ${formatMoney(totals.total)}.`,
+    `Η παραγγελία σας επιβεβαιώθηκε. Σύνολο ${formatMoney(totals.total)}.`,
     `
-    ${eyebrow("Order Confirmation")}
-    ${heading("Thank you for your order")}
-    ${bodyText(`Order #${orderId.slice(-8).toUpperCase()} — we'll email you again once it ships.`)}
+    ${eyebrow("Επιβεβαίωση παραγγελίας")}
+    ${heading("Ευχαριστούμε για την παραγγελία σας")}
+    ${bodyText(`Παραγγελία #${orderId.slice(-8).toUpperCase()} — θα σας ενημερώσουμε ξανά μόλις αποσταλεί.`)}
     ${giftNoteHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
     ${totalsHtml(totals)}
@@ -195,23 +268,23 @@ export function orderConfirmationEmail(input: {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:36px;">
       <tr>
         <td style="width:50%;vertical-align:top;">
-          <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 8px;">Shipping to</p>
+          ${sectionLabel("Διεύθυνση αποστολής")}
           <p style="font-size:13px;color:${INK};white-space:pre-line;margin:0;">${addressLines(shippingAddress)}</p>
         </td>
         <td style="width:50%;vertical-align:top;">
-          <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 8px;">Delivery method</p>
+          ${sectionLabel("Τρόπος παράδοσης")}
           <p style="font-size:13px;color:${INK};margin:0;">${shippingRate.label}<br/>${shippingRate.estimatedDelivery}</p>
         </td>
       </tr>
     </table>`
   );
-  const text = `Thank you for your order\n\nOrder #${orderId.slice(-8).toUpperCase()}\n\n${lineItems
+  const text = `Ευχαριστούμε για την παραγγελία σας\n\nΠαραγγελία #${orderId.slice(-8).toUpperCase()}\n\n${lineItems
     .map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity} — ${formatMoney({ amount: i.unitPrice.amount * i.quantity, currencyCode: i.unitPrice.currencyCode })}`)
-    .join("\n")}\n\nTotal: ${formatMoney(totals.total)}${
+    .join("\n")}\n\nΣύνολο: ${formatMoney(totals.total)}${
     paymentInstructions && paymentInstructions.length > 0
-      ? `\n\nPayment details:\n${paymentInstructions.map((line) => `${line.label}: ${line.value}`).join("\n")}`
+      ? `\n\nΣτοιχεία πληρωμής:\n${paymentInstructions.map((line) => `${line.label}: ${line.value}`).join("\n")}`
       : ""
-  }\n\nShipping to:\n${addressLines(shippingAddress)}\n\nDelivery: ${shippingRate.label} (${shippingRate.estimatedDelivery})`;
+  }\n\nΔιεύθυνση αποστολής:\n${addressLines(shippingAddress)}\n\nΠαράδοση: ${shippingRate.label} (${shippingRate.estimatedDelivery})`;
   return { subject, html, text };
 }
 
@@ -228,34 +301,34 @@ export function shippingUpdateEmail(input: {
   const orderNumber = `#${orderId.slice(-8).toUpperCase()}`;
   const copy: Record<typeof status, { subject: string; eyebrow: string; headline: string; body: string }> = {
     processing: {
-      subject: `Order ${orderNumber} is being prepared`,
-      eyebrow: "Order Update",
-      headline: "Your order is being prepared",
-      body: "We're picking and packing your items now — we'll email you again as soon as it ships.",
+      subject: `Η παραγγελία ${orderNumber} ετοιμάζεται`,
+      eyebrow: "Ενημέρωση παραγγελίας",
+      headline: "Η παραγγελία σας ετοιμάζεται",
+      body: "Ετοιμάζουμε τα προϊόντα σας — θα σας ενημερώσουμε ξανά μόλις η παραγγελία αποσταλεί.",
     },
     shipped: {
-      subject: `Order ${orderNumber} has shipped`,
-      eyebrow: "Order Update",
-      headline: "Your order is on its way",
-      body: "Your package has left our warehouse. You can check its status any time from your account.",
+      subject: `Η παραγγελία ${orderNumber} απεστάλη`,
+      eyebrow: "Ενημέρωση παραγγελίας",
+      headline: "Η παραγγελία σας είναι καθ' οδόν",
+      body: "Το δέμα σας αναχώρησε από την αποθήκη μας. Μπορείτε να παρακολουθείτε την πορεία του ανά πάσα στιγμή από τον λογαριασμό σας.",
     },
     delivered: {
-      subject: `Order ${orderNumber} was delivered`,
-      eyebrow: "Order Update",
-      headline: "Your order has been delivered",
-      body: "We hope you love it. If anything's not right, you can start a return from your account.",
+      subject: `Η παραγγελία ${orderNumber} παραδόθηκε`,
+      eyebrow: "Ενημέρωση παραγγελίας",
+      headline: "Η παραγγελία σας παραδόθηκε",
+      body: "Ελπίζουμε να σας ενθουσιάσει. Αν κάτι δεν είναι όπως το περιμένατε, μπορείτε να ξεκινήσετε επιστροφή από τον λογαριασμό σας.",
     },
     cancelled: {
-      subject: `Order ${orderNumber} was cancelled`,
-      eyebrow: "Order Update",
-      headline: "Your order has been cancelled",
-      body: "This order has been cancelled and will not be charged or shipped.",
+      subject: `Η παραγγελία ${orderNumber} ακυρώθηκε`,
+      eyebrow: "Ενημέρωση παραγγελίας",
+      headline: "Η παραγγελία σας ακυρώθηκε",
+      body: "Η παραγγελία ακυρώθηκε — δεν πρόκειται να χρεωθεί ούτε να αποσταλεί.",
     },
     refunded: {
-      subject: `Order ${orderNumber} was refunded`,
-      eyebrow: "Order Update",
-      headline: "Your order has been refunded",
-      body: "A refund for this order has been processed.",
+      subject: `Επιστροφή χρημάτων για την παραγγελία ${orderNumber}`,
+      eyebrow: "Ενημέρωση παραγγελίας",
+      headline: "Η επιστροφή χρημάτων ολοκληρώθηκε",
+      body: "Η επιστροφή χρημάτων για αυτή την παραγγελία έχει πραγματοποιηθεί.",
     },
   };
   const { subject, eyebrow: eyebrowText, headline, body } = copy[status];
@@ -264,9 +337,9 @@ export function shippingUpdateEmail(input: {
       ? `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;background-color:#FAFAFA;border:1px solid ${HAIRLINE};">
       <tr><td style="padding:20px 24px;">
-        <p style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin:0 0 6px;">${carrier ?? "Tracking"}</p>
+        ${sectionLabel(carrier ?? "Παρακολούθηση")}
         <p style="font-size:14px;color:${INK};margin:0 0 10px;">${trackingNumber}</p>
-        ${trackingUrl ? `<a href="${trackingUrl}" style="font-size:13px;color:${INK};text-decoration:underline;">Track your package</a>` : ""}
+        ${trackingUrl ? textLink("Παρακολούθηση δέματος", trackingUrl) : ""}
       </td></tr>
     </table>`
       : "";
@@ -276,13 +349,13 @@ export function shippingUpdateEmail(input: {
     `
     ${eyebrow(eyebrowText)}
     ${heading(headline)}
-    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Order ${orderNumber}</p>
+    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Παραγγελία ${orderNumber}</p>
     ${bodyText(body)}
     ${trackingHtml}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>`
   );
-  const trackingText = status === "shipped" && trackingNumber ? `\n\n${carrier ?? "Tracking"}: ${trackingNumber}${trackingUrl ? ` — ${trackingUrl}` : ""}` : "";
-  const text = `${headline}\n\nOrder ${orderNumber}\n\n${body}${trackingText}\n\n${lineItems.map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity}`).join("\n")}`;
+  const trackingText = status === "shipped" && trackingNumber ? `\n\n${carrier ?? "Παρακολούθηση"}: ${trackingNumber}${trackingUrl ? ` — ${trackingUrl}` : ""}` : "";
+  const text = `${headline}\n\nΠαραγγελία ${orderNumber}\n\n${body}${trackingText}\n\n${lineItems.map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity}`).join("\n")}`;
   return { subject, html, text };
 }
 
@@ -294,56 +367,56 @@ export function referralRewardEmail(input: {
   giftCardAmount: { amount: number; currencyCode: string };
 }): RenderedEmail {
   const { siteName, firstName, friendFirstName, giftCardCode, giftCardAmount } = input;
-  const subject = `You earned a ${formatMoney(giftCardAmount)} gift card`;
+  const subject = `Κερδίσατε δωροκάρτα ${formatMoney(giftCardAmount)}`;
   const html = layout(
     siteName,
-    `${friendFirstName} just placed their first order — here's your reward.`,
+    `Ο/Η ${friendFirstName} έκανε την πρώτη του/της παραγγελία — ορίστε η ανταμοιβή σας.`,
     `
-    ${eyebrow("Referral Reward")}
-    ${heading(`Thanks for the referral, ${firstName}`)}
-    ${bodyText(`${friendFirstName} just placed their first order using your link — here's a ${formatMoney(giftCardAmount)} gift card as a thank you.`)}
+    ${eyebrow("Ανταμοιβή σύστασης")}
+    ${heading(`Ευχαριστούμε για τη σύσταση, ${firstName}`)}
+    ${bodyText(`Ο/Η ${friendFirstName} μόλις έκανε την πρώτη παραγγελία μέσω του συνδέσμου σας — ορίστε μια δωροκάρτα ${formatMoney(giftCardAmount)} ως ευχαριστώ.`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;background-color:${INK};">
       <tr><td style="padding:28px;text-align:center;">
-        <p style="font-size:11px;letter-spacing:2px;color:#B8B8B8;text-transform:uppercase;margin:0 0 10px;">Your gift card code</p>
+        <p style="font-size:11px;letter-spacing:2px;color:#B8B8B8;text-transform:uppercase;margin:0 0 10px;">Ο κωδικός της δωροκάρτας σας</p>
         <p style="font-family:${SERIF};font-size:22px;letter-spacing:3px;color:#FFFFFF;margin:0;">${giftCardCode}</p>
       </td></tr>
     </table>
-    <p style="color:${MUTED};font-size:13px;margin:0;">Apply it at checkout any time.</p>`
+    <p style="color:${MUTED};font-size:13px;margin:0;">Χρησιμοποιήστε τον στο ταμείο όποτε θέλετε.</p>`
   );
-  const text = `Thanks for the referral, ${firstName}\n\n${friendFirstName} just placed their first order using your link — here's a ${formatMoney(giftCardAmount)} gift card as a thank you.\n\nCode: ${giftCardCode}\n\nApply it at checkout any time.`;
+  const text = `Ευχαριστούμε για τη σύσταση, ${firstName}\n\nΟ/Η ${friendFirstName} μόλις έκανε την πρώτη παραγγελία μέσω του συνδέσμου σας — ορίστε μια δωροκάρτα ${formatMoney(giftCardAmount)} ως ευχαριστώ.\n\nΚωδικός: ${giftCardCode}\n\nΧρησιμοποιήστε τον στο ταμείο όποτε θέλετε.`;
   return { subject, html, text };
 }
 
 export function welcomeEmail(input: { siteName: string; firstName: string; shopUrl: string }): RenderedEmail {
   const { siteName, firstName, shopUrl } = input;
-  const subject = `Welcome to ${siteName}`;
+  const subject = `Καλώς ήρθατε στο ${siteName}`;
   const html = layout(
     siteName,
-    `Welcome to ${siteName}, ${firstName}.`,
+    `Καλώς ήρθατε στο ${siteName}, ${firstName}.`,
     `
-    ${eyebrow("Welcome")}
-    ${heading(`Welcome, ${firstName}`)}
-    ${bodyText("Your account is ready. Track orders, save addresses, and build your wishlist any time from your account.")}
-    ${ctaButton("Start Shopping", shopUrl)}`
+    ${eyebrow("Καλώς ήρθατε")}
+    ${heading(`Καλώς ήρθατε, ${firstName}`)}
+    ${bodyText("Ο λογαριασμός σας είναι έτοιμος. Παρακολουθήστε τις παραγγελίες σας, αποθηκεύστε διευθύνσεις και δημιουργήστε τη λίστα επιθυμιών σας όποτε θέλετε.")}
+    ${ctaButton("Ανακαλύψτε τη συλλογή", shopUrl)}`
   );
-  const text = `Welcome, ${firstName}\n\nYour account is ready. Track orders, save addresses, and build your wishlist any time from your account.\n\n${shopUrl}`;
+  const text = `Καλώς ήρθατε, ${firstName}\n\nΟ λογαριασμός σας είναι έτοιμος. Παρακολουθήστε τις παραγγελίες σας, αποθηκεύστε διευθύνσεις και δημιουργήστε τη λίστα επιθυμιών σας όποτε θέλετε.\n\n${shopUrl}`;
   return { subject, html, text };
 }
 
 export function passwordResetEmail(input: { siteName: string; resetUrl: string; expiresInMinutes: number }): RenderedEmail {
   const { siteName, resetUrl, expiresInMinutes } = input;
-  const subject = "Reset your password";
+  const subject = "Επαναφορά κωδικού πρόσβασης";
   const html = layout(
     siteName,
-    "Reset your password.",
+    "Επαναφορά κωδικού πρόσβασης.",
     `
-    ${eyebrow("Account Security")}
-    ${heading("Reset your password")}
-    ${bodyText(`We received a request to reset your password. This link expires in ${expiresInMinutes} minutes.`)}
-    ${ctaButton("Reset Password", resetUrl)}
-    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">If you didn't request this, you can safely ignore this email.</p>`
+    ${eyebrow("Ασφάλεια λογαριασμού")}
+    ${heading("Επαναφορά κωδικού πρόσβασης")}
+    ${bodyText(`Λάβαμε αίτημα επαναφοράς του κωδικού πρόσβασής σας. Ο σύνδεσμος λήγει σε ${expiresInMinutes} λεπτά.`)}
+    ${ctaButton("Επαναφορά κωδικού", resetUrl)}
+    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">Αν δεν ζητήσατε εσείς την επαναφορά, αγνοήστε αυτό το μήνυμα.</p>`
   );
-  const text = `Reset your password\n\nWe received a request to reset your password. This link expires in ${expiresInMinutes} minutes.\n\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email.`;
+  const text = `Επαναφορά κωδικού πρόσβασης\n\nΛάβαμε αίτημα επαναφοράς του κωδικού πρόσβασής σας. Ο σύνδεσμος λήγει σε ${expiresInMinutes} λεπτά.\n\n${resetUrl}\n\nΑν δεν ζητήσατε εσείς την επαναφορά, αγνοήστε αυτό το μήνυμα.`;
   return { subject, html, text };
 }
 
@@ -355,18 +428,18 @@ export function passwordResetEmail(input: { siteName: string; resetUrl: string; 
  */
 export function accountAlreadyExistsEmail(input: { siteName: string; loginUrl: string }): RenderedEmail {
   const { siteName, loginUrl } = input;
-  const subject = "Someone tried to create an account with your email";
+  const subject = "Κάποιος προσπάθησε να δημιουργήσει λογαριασμό με το email σας";
   const html = layout(
     siteName,
-    "A sign-up attempt used your email address.",
+    "Έγινε προσπάθεια εγγραφής με τη διεύθυνση email σας.",
     `
-    ${eyebrow("Account Security")}
-    ${heading("You already have an account")}
-    ${bodyText(`Someone just tried to create a new ${siteName} account using this email address. If that was you, sign in instead — your existing account is unaffected.`)}
-    ${ctaButton("Sign In", loginUrl)}
-    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">If you didn't try this, you can safely ignore this email — no account was created.</p>`
+    ${eyebrow("Ασφάλεια λογαριασμού")}
+    ${heading("Έχετε ήδη λογαριασμό")}
+    ${bodyText(`Κάποιος μόλις προσπάθησε να δημιουργήσει νέο λογαριασμό ${siteName} με αυτή τη διεύθυνση email. Αν ήσασταν εσείς, συνδεθείτε στον υπάρχοντα λογαριασμό σας — δεν έχει επηρεαστεί.`)}
+    ${ctaButton("Σύνδεση", loginUrl)}
+    <p style="color:${MUTED};font-size:12px;margin:24px 0 0;">Αν δεν ήσασταν εσείς, αγνοήστε αυτό το μήνυμα — δεν δημιουργήθηκε νέος λογαριασμός.</p>`
   );
-  const text = `You already have an account\n\nSomeone just tried to create a new ${siteName} account using this email address. If that was you, sign in instead.\n\n${loginUrl}\n\nIf you didn't try this, you can safely ignore this email — no account was created.`;
+  const text = `Έχετε ήδη λογαριασμό\n\nΚάποιος μόλις προσπάθησε να δημιουργήσει νέο λογαριασμό ${siteName} με αυτή τη διεύθυνση email. Αν ήσασταν εσείς, συνδεθείτε στον υπάρχοντα λογαριασμό σας.\n\n${loginUrl}\n\nΑν δεν ήσασταν εσείς, αγνοήστε αυτό το μήνυμα — δεν δημιουργήθηκε νέος λογαριασμός.`;
   return { subject, html, text };
 }
 
@@ -379,17 +452,17 @@ export function contactMessageNotificationEmail(input: {
   message: string;
 }): RenderedEmail {
   const { siteName, name, email, subject, message } = input;
-  const emailSubject = `New contact message: ${subject}`;
+  const emailSubject = `Νέο μήνυμα επικοινωνίας: ${subject}`;
   const html = layout(
     siteName,
-    `New message from ${name}`,
+    `Νέο μήνυμα από ${name}`,
     `
-    <h1 style="font-size:22px;color:${INK};margin:0 0 8px;">New contact message</h1>
-    <p style="color:#555555;font-size:13px;margin:0 0 4px;"><strong>From:</strong> ${name} (${email})</p>
-    <p style="color:#555555;font-size:13px;margin:0 0 20px;"><strong>Topic:</strong> ${subject}</p>
+    <h1 style="font-size:22px;color:${INK};margin:0 0 8px;">Νέο μήνυμα επικοινωνίας</h1>
+    <p style="color:#555555;font-size:13px;margin:0 0 4px;"><strong>Από:</strong> ${name} (${email})</p>
+    <p style="color:#555555;font-size:13px;margin:0 0 20px;"><strong>Θέμα:</strong> ${subject}</p>
     <p style="color:${INK};font-size:14px;white-space:pre-line;margin:0;">${message}</p>`
   );
-  const text = `New contact message\n\nFrom: ${name} (${email})\nTopic: ${subject}\n\n${message}`;
+  const text = `Νέο μήνυμα επικοινωνίας\n\nΑπό: ${name} (${email})\nΘέμα: ${subject}\n\n${message}`;
   return { subject: emailSubject, html, text };
 }
 
@@ -400,21 +473,22 @@ export function abandonedCartEmail(input: {
   resumeUrl: string;
 }): RenderedEmail {
   const { siteName, firstName, lineItems, resumeUrl } = input;
-  const greeting = firstName ? `Still thinking it over, ${firstName}?` : "Still thinking it over?";
-  const subject = "You left something in your bag";
+  const greeting = firstName ? `Το σκέφτεστε ακόμη, ${firstName};` : "Το σκέφτεστε ακόμη;";
+  const subject = "Αφήσατε κάτι στο καλάθι σας";
   const html = layout(
     siteName,
-    "Your bag is still saved — pick up right where you left off.",
+    "Το καλάθι σας είναι αποθηκευμένο — συνεχίστε από εκεί που μείνατε.",
     `
-    ${eyebrow("Still Shopping?")}
+    ${eyebrow("Το καλάθι σας")}
     ${heading(greeting)}
-    ${bodyText("Your bag is still saved. Prices and availability aren't guaranteed to hold, so it's worth coming back soon.")}
+    ${bodyText("Το καλάθι σας είναι ακόμη αποθηκευμένο. Οι τιμές και η διαθεσιμότητα ενδέχεται να αλλάξουν, οπότε αξίζει να επιστρέψετε σύντομα.")}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${lineItemsHtml(lineItems)}</table>
-    <div style="margin-top:32px;">${ctaButton("Return to Your Bag", resumeUrl)}</div>`
+    <div style="margin-top:32px;">${ctaButton("Επιστροφή στο καλάθι", resumeUrl)}</div>`,
+    lineItems[0] ? { src: lineItems[0].image.src, alt: lineItems[0].image.alt } : undefined
   );
-  const text = `${greeting}\n\nYour bag is still saved:\n\n${lineItems
+  const text = `${greeting}\n\nΤο καλάθι σας είναι ακόμη αποθηκευμένο:\n\n${lineItems
     .map((i) => `${i.name} (${i.color}, ${i.size}) x${i.quantity}`)
-    .join("\n")}\n\nReturn to your bag: ${resumeUrl}`;
+    .join("\n")}\n\nΕπιστροφή στο καλάθι: ${resumeUrl}`;
   return { subject, html, text };
 }
 
@@ -432,32 +506,32 @@ export function reviewRequestEmail(input: {
 }): RenderedEmail {
   const { siteName, orderId, lineItems, siteUrl } = input;
   const orderNumber = `#${orderId.slice(-8).toUpperCase()}`;
-  const subject = "How's everything fitting?";
+  const subject = "Πώς σας φάνηκαν;";
   const itemLinksHtml = lineItems
     .map(
       (item) => `
       <tr>
-        <td width="64" style="padding:16px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
-          <img src="${item.image.src}" alt="${item.image.alt}" width="64" height="80" style="display:block;width:64px;height:80px;object-fit:cover;background-color:#F5F5F5;" />
+        <td width="100" style="padding:24px 0;border-bottom:1px solid ${HAIRLINE};vertical-align:top;">
+          <img src="${item.image.src}" alt="${escapeHtml(item.image.alt)}" width="100" height="125" style="display:block;width:100px;height:125px;object-fit:cover;border:0;background-color:#F5F5F5;" />
         </td>
-        <td style="padding:16px 0 16px 16px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;vertical-align:top;">
-          <a href="${siteUrl}/products/${item.slug}" style="color:${INK};text-decoration:underline;">${item.name}</a><br/>
-          <span style="color:${MUTED};font-size:12px;">${item.color} · ${item.size}</span>
+        <td style="padding:24px 0 24px 22px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;line-height:1.5;vertical-align:top;">
+          <a href="${siteUrl}/products/${item.slug}" style="color:${INK};text-decoration:none;border-bottom:1px solid ${HAIRLINE};">${escapeHtml(item.name)}</a>
+          <span style="display:block;color:${MUTED};font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-top:8px;">${escapeHtml(item.color)} · ${escapeHtml(item.size)}</span>
         </td>
       </tr>`
     )
     .join("");
   const html = layout(
     siteName,
-    `How's your order ${orderNumber} working out?`,
+    `Πώς σας φάνηκε η παραγγελία ${orderNumber};`,
     `
-    ${eyebrow("Tell Us What You Think")}
-    ${heading("How's everything fitting?")}
-    ${bodyText(`Order ${orderNumber} was delivered a few days ago — take another look at what you ordered, or start shopping your next piece.`)}
+    ${eyebrow("Η γνώμη σας μετράει")}
+    ${heading("Πώς σας φάνηκαν;")}
+    ${bodyText(`Η παραγγελία ${orderNumber} παραδόθηκε πριν από λίγες ημέρες — δείτε ξανά τι παραγγείλατε ή ανακαλύψτε το επόμενο κομμάτι σας.`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemLinksHtml}</table>
-    <div style="margin-top:32px;">${ctaButton("Continue Shopping", siteUrl)}</div>`
+    <div style="margin-top:32px;">${ctaButton("Συνεχίστε τις αγορές", siteUrl)}</div>`
   );
-  const text = `How's everything fitting?\n\nOrder ${orderNumber} was delivered a few days ago.\n\n${lineItems
+  const text = `Πώς σας φάνηκαν;\n\nΗ παραγγελία ${orderNumber} παραδόθηκε πριν από λίγες ημέρες.\n\n${lineItems
     .map((i) => `${i.name} — ${siteUrl}/products/${i.slug}`)
     .join("\n")}\n\n${siteUrl}`;
   return { subject, html, text };
@@ -470,17 +544,17 @@ export function backInStockEmail(input: {
   productUrl: string;
 }): RenderedEmail {
   const { siteName, productName, sizeName, productUrl } = input;
-  const subject = `${productName} is back in stock`;
+  const subject = `${productName} — ξανά διαθέσιμο`;
   const html = layout(
     siteName,
-    `${productName} (${sizeName}) is back in stock.`,
+    `${productName} (${sizeName}) είναι ξανά διαθέσιμο.`,
     `
-    ${eyebrow("Back In Stock")}
-    ${heading("Good news — it's back")}
-    ${bodyText(`<strong>${productName}</strong> in size <strong>${sizeName}</strong> is back in stock. Popular sizes tend to sell out again quickly.`)}
-    ${ctaButton("Shop Now", productUrl)}`
+    ${eyebrow("Ξανά διαθέσιμο")}
+    ${heading("Καλά νέα — επέστρεψε")}
+    ${bodyText(`Το <strong>${productName}</strong> σε μέγεθος <strong>${sizeName}</strong> είναι ξανά διαθέσιμο. Τα δημοφιλή μεγέθη εξαντλούνται γρήγορα.`)}
+    ${ctaButton("Δείτε το προϊόν", productUrl)}`
   );
-  const text = `Good news — it's back\n\n${productName} in size ${sizeName} is back in stock.\n\n${productUrl}`;
+  const text = `Καλά νέα — επέστρεψε\n\nΤο ${productName} σε μέγεθος ${sizeName} είναι ξανά διαθέσιμο.\n\n${productUrl}`;
   return { subject, html, text };
 }
 
@@ -493,24 +567,24 @@ export function returnStatusUpdateEmail(input: {
   const orderNumber = `#${orderId.slice(-8).toUpperCase()}`;
   const copy: Record<typeof status, { subject: string; headline: string; body: string }> = {
     approved: {
-      subject: `Return approved for order ${orderNumber}`,
-      headline: "Your return has been approved",
-      body: "Pack up the item(s) and send them back using the instructions in your account.",
+      subject: `Η επιστροφή για την παραγγελία ${orderNumber} εγκρίθηκε`,
+      headline: "Η επιστροφή σας εγκρίθηκε",
+      body: "Συσκευάστε τα προϊόντα και στείλτε τα πίσω ακολουθώντας τις οδηγίες στον λογαριασμό σας.",
     },
     rejected: {
-      subject: `Return request update for order ${orderNumber}`,
-      headline: "Your return request wasn't approved",
-      body: "Check your account for details, or reach out if you think this is a mistake.",
+      subject: `Ενημέρωση για το αίτημα επιστροφής — παραγγελία ${orderNumber}`,
+      headline: "Το αίτημα επιστροφής δεν εγκρίθηκε",
+      body: "Δείτε τις λεπτομέρειες στον λογαριασμό σας ή επικοινωνήστε μαζί μας αν πιστεύετε ότι πρόκειται για λάθος.",
     },
     received: {
-      subject: `We received your return for order ${orderNumber}`,
-      headline: "We've received your return",
-      body: "We're inspecting the item(s) now — your refund will follow shortly.",
+      subject: `Λάβαμε την επιστροφή σας για την παραγγελία ${orderNumber}`,
+      headline: "Λάβαμε την επιστροφή σας",
+      body: "Ελέγχουμε τα προϊόντα — η επιστροφή των χρημάτων σας θα ακολουθήσει σύντομα.",
     },
     refunded: {
-      subject: `Refund processed for order ${orderNumber}`,
-      headline: "Your refund has been processed",
-      body: "The refund for this return has been issued to your original payment method.",
+      subject: `Η επιστροφή χρημάτων για την παραγγελία ${orderNumber} ολοκληρώθηκε`,
+      headline: "Η επιστροφή χρημάτων ολοκληρώθηκε",
+      body: "Το ποσό επιστράφηκε στον αρχικό τρόπο πληρωμής σας.",
     },
   };
   const { subject, headline, body } = copy[status];
@@ -518,11 +592,11 @@ export function returnStatusUpdateEmail(input: {
     siteName,
     body,
     `
-    ${eyebrow("Return Update")}
+    ${eyebrow("Ενημέρωση επιστροφής")}
     ${heading(headline)}
-    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Order ${orderNumber}</p>
+    <p style="color:${MUTED};font-size:12px;letter-spacing:0.5px;margin:-8px 0 20px;">Παραγγελία ${orderNumber}</p>
     ${bodyText(body)}`
   );
-  const text = `${headline}\n\nOrder ${orderNumber}\n\n${body}`;
+  const text = `${headline}\n\nΠαραγγελία ${orderNumber}\n\n${body}`;
   return { subject, html, text };
 }
