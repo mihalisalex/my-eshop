@@ -8,10 +8,10 @@ import { canAccessOrder } from "@/lib/order-access-cookie";
 import { getPrimaryPaymentForOrder, verifyPaymentWithProvider } from "@/services/payments";
 import { sendOrderConfirmationEmail } from "@/services/checkout";
 import { paymentProviderRegistry } from "@/lib/payments/registry";
-import { PAYMENT_STATUS_LABEL } from "@/lib/payments/status";
 import { PurchaseAnalytics } from "@/components/checkout/PurchaseAnalytics";
 import type { PaymentRecord } from "@/lib/payments/types";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 /**
  * Rebuilt as a Server Component.
@@ -35,13 +35,16 @@ import type { Metadata } from "next";
  * signed-in customer. The id stays in the URL because redirect-based payment providers
  * need a stable return URL, built before the payment exists.
  */
-export const metadata: Metadata = {
-  title: "Order Confirmation",
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("Confirmation");
+  return {
+  title: t("metaTitle"),
   robots: { index: false, follow: false },
   // Belt and braces alongside the access check: never send this URL — which contains the
   // order id — to any third-party host the page happens to reach out to.
   referrer: "no-referrer",
-};
+  };
+}
 
 interface ConfirmationPageProps {
   searchParams: Promise<{ order?: string; verify?: string; cancelled?: string }>;
@@ -49,17 +52,20 @@ interface ConfirmationPageProps {
 
 export default async function CheckoutConfirmationPage({ searchParams }: ConfirmationPageProps) {
   const { order: orderId, verify, cancelled } = await searchParams;
+  const t = await getTranslations("Confirmation");
+  const tCart = await getTranslations("Cart");
+  const tStatus = await getTranslations("PaymentStatus");
 
   if (!orderId) {
     return (
       <div className="container-luxe flex flex-col items-center gap-4 py-32 text-center">
-        <h1 className="font-heading text-2xl">No recent order found</h1>
-        <p className="text-sm text-luxe-gray-dark">This page is only available right after placing an order.</p>
+        <h1 className="font-heading text-2xl">{t("noRecentOrder")}</h1>
+        <p className="text-sm text-luxe-gray-dark">{t("noRecentOrderBody")}</p>
         <Link
           href="/"
           className="mt-2 flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
         >
-          Continue Shopping
+          {tCart("continueShopping")}
         </Link>
       </div>
     );
@@ -116,37 +122,31 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
           <Clock className="size-12 text-luxe-black" strokeWidth={1} />
         )}
         <h1 className="mt-4 font-heading text-3xl">
-          {isFailed ? "Your payment didn't go through" : "Thank you for your order"}
+          {isFailed ? t("paymentFailedTitle") : t("thankYou")}
         </h1>
         <p className="mt-2 text-sm text-luxe-gray-dark">
-          {isFailed ? (
-            <>
-              Your order <span className="text-luxe-black">#{reference}</span> is saved, but we haven&apos;t received
-              payment. Please get in touch and we&apos;ll help you complete it.
-            </>
-          ) : (
-            <>
-              A confirmation has been sent to <span className="text-luxe-black">{order.customerEmail}</span>.
-            </>
-          )}
+          {isFailed
+            ? t("failedBody", { reference: `#${reference}` })
+            : t.rich("confirmationSentTo", {
+                email: () => <span className="text-luxe-black">{order.customerEmail}</span>,
+              })}
         </p>
-        <p className="mt-1 text-sm text-luxe-gray-dark">Order number: #{reference}</p>
+        <p className="mt-1 text-sm text-luxe-gray-dark">{t("orderNumber", { reference })}</p>
       </div>
 
       {payment ? (
         <div className="mt-8 border border-border p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-eyebrow">Payment</p>
+            <p className="text-eyebrow">{t("payment")}</p>
             <span className="text-xs tracking-[0.05em] uppercase text-luxe-gray-dark">
-              {PAYMENT_STATUS_LABEL[payment.status]}
+              {tStatus(payment.status)}
             </span>
           </div>
           <p className="mt-2 text-sm">{method?.defaultDisplayName ?? payment.methodId}</p>
 
           {cancelled === "1" && awaitingCustomer ? (
             <p className="mt-3 text-sm text-luxe-gray-dark">
-              It looks like you came back without finishing. Your order is held — contact us and we can send you a fresh
-              payment link.
+              {t("cameBackUnfinished")}
             </p>
           ) : null}
 
@@ -154,7 +154,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
             <>
               <div className="mt-4 flex items-center gap-2 text-xs tracking-[0.05em] uppercase text-luxe-gray-dark">
                 <Landmark className="size-3.5" strokeWidth={1.5} />
-                How to pay
+                {t("howToPay")}
               </div>
               <dl className="mt-2 divide-y divide-border border-t border-border">
                 {instructions.map((line) => (
@@ -182,7 +182,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
             <div className="min-w-0 flex-1">
               <p className="text-sm">{item.name}</p>
               <p className="text-xs text-luxe-gray-dark">
-                {item.color} · {item.size} · Qty {item.quantity}
+                {item.color} · {item.size} · {t("quantityShort")} {item.quantity}
               </p>
             </div>
             <p className="shrink-0 text-sm">
@@ -194,38 +194,38 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
 
       <div className="mt-6 space-y-1.5 text-sm">
         <div className="flex justify-between">
-          <span className="text-luxe-gray-dark">Subtotal</span>
+          <span className="text-luxe-gray-dark">{tCart("subtotal")}</span>
           <span>{formatMoney(order.totals.subtotal)}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-luxe-gray-dark">Shipping</span>
+          <span className="text-luxe-gray-dark">{tCart("shipping")}</span>
           <span>{formatMoney(order.totals.shippingTotal)}</span>
         </div>
         {order.totals.giftWrapTotal.amount > 0 ? (
           <div className="flex justify-between">
-            <span className="text-luxe-gray-dark">Gift Wrapping</span>
+            <span className="text-luxe-gray-dark">{tCart("giftWrapping")}</span>
             <span>{formatMoney(order.totals.giftWrapTotal)}</span>
           </div>
         ) : null}
         {order.totals.paymentFeeTotal.amount > 0 ? (
           <div className="flex justify-between">
-            <span className="text-luxe-gray-dark">Payment Fee</span>
+            <span className="text-luxe-gray-dark">{tCart("paymentFee")}</span>
             <span>{formatMoney(order.totals.paymentFeeTotal)}</span>
           </div>
         ) : null}
         <div className="flex justify-between border-t border-border pt-1.5 text-base font-medium">
-          <span>Total</span>
+          <span>{tCart("total")}</span>
           <span>{formatMoney(order.totals.total)}</span>
         </div>
         <div className="flex justify-between text-xs text-luxe-gray-dark">
-          <span>Includes VAT</span>
+          <span>{tCart("estimatedTax")}</span>
           <span>{formatMoney(order.totals.taxTotal)}</span>
         </div>
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2">
         <div>
-          <p className="text-eyebrow mb-1.5">Shipping to</p>
+          <p className="text-eyebrow mb-1.5">{t("shippingTo")}</p>
           <address className="text-sm not-italic text-luxe-gray-dark">
             {order.shippingAddress.firstName} {order.shippingAddress.lastName}
             <br />
@@ -239,24 +239,24 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
           </address>
         </div>
         <div>
-          <p className="text-eyebrow mb-1.5">Delivery method</p>
+          <p className="text-eyebrow mb-1.5">{t("deliveryMethod")}</p>
           <p className="text-sm text-luxe-gray-dark">
             {order.shippingRate.label} · {order.shippingRate.estimatedDelivery}
           </p>
           {order.giftWrap ? (
             <p className="mt-3 text-sm text-luxe-gray-dark">
-              Gift wrapped{order.giftMessage ? ` — "${order.giftMessage}"` : ""}
+              {t("giftWrapped")}{order.giftMessage ? ` — "${order.giftMessage}"` : ""}
             </p>
           ) : null}
         </div>
       </div>
 
       <div className="mt-12 border border-border p-6 text-center">
-        <p className="text-eyebrow mb-1.5">What&apos;s next</p>
+        <p className="text-eyebrow mb-1.5">{t("whatsNext")}</p>
         <p className="text-sm text-luxe-gray-dark">
           {payment?.status === "awaiting_bank_transfer"
-            ? "We'll confirm your payment as soon as the transfer reaches our account, then get your order on its way."
-            : "We'll email you as soon as your order ships. You can track its status any time from your account."}
+            ? t("nextBankTransfer")
+            : t("nextDefault")}
         </p>
       </div>
 
@@ -265,7 +265,7 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
           href="/"
           className="flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
         >
-          Continue Shopping
+          {tCart("continueShopping")}
         </Link>
       </div>
     </div>
@@ -281,26 +281,25 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
  * them "not found" would suggest their order failed. It points at the two routes that
  * genuinely work instead.
  */
-function OrderNotViewable() {
+async function OrderNotViewable() {
+  const t = await getTranslations("Confirmation");
+  const tCart = await getTranslations("Cart");
   return (
     <div className="container-luxe flex flex-col items-center gap-4 py-32 text-center">
-      <h1 className="font-heading text-2xl">We can&apos;t show this order here</h1>
-      <p className="max-w-md text-sm text-luxe-gray-dark">
-        For your privacy, order details are only shown in the browser that placed the order. If you opened this link
-        on another device, sign in to see it — or check the confirmation email we sent you.
-      </p>
+      <h1 className="font-heading text-2xl">{t("notViewableTitle")}</h1>
+      <p className="max-w-md text-sm text-luxe-gray-dark">{t("notViewableBody")}</p>
       <div className="mt-2 flex flex-wrap justify-center gap-3">
         <Link
           href="/account/orders"
           className="flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
         >
-          Sign in to view
+          {t("signInToView")}
         </Link>
         <Link
           href="/"
           className="flex h-12 items-center justify-center border border-luxe-black px-8 text-xs font-medium tracking-[0.08em] uppercase"
         >
-          Continue Shopping
+          {tCart("continueShopping")}
         </Link>
       </div>
     </div>

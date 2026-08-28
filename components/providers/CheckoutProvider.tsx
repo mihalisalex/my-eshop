@@ -15,6 +15,7 @@ import type { Address, Checkout, CompleteCheckoutResult, ShippingRate } from "@/
 import type { Money } from "@/types";
 import { useCart } from "@/components/providers/CartProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useTranslations } from "next-intl";
 
 /**
  * Mirrors `AvailablePaymentMethod` in services/payments.ts — the JSON the backend
@@ -83,6 +84,7 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
   const commerce = useMemo(() => getCommerceProvider(), []);
   const { cart, clearCart } = useCart();
   const { toast } = useToast();
+  const t = useTranslations("Checkout");
 
   const [checkout, setCheckout] = useState<Checkout | null>(null);
   const [step, setStep] = useState<CheckoutStep>("contact");
@@ -288,12 +290,12 @@ export function CheckoutProvider({ children }: { children: ReactNode }) {
         error instanceof Error && error.message
           ? error.message
           : "Please check your details and try again.";
-      toast({ title: "Couldn't place your order", description, tone: "error" });
+      toast({ title: t("couldNotPlaceOrder"), description, tone: "error" });
       return null;
     } finally {
       setIsPlacingOrder(false);
     }
-  }, [checkout, cart, sameBillingAsShipping, shippingAddress, billingAddress, commerce, clearCart, toast]);
+  }, [checkout, cart, sameBillingAsShipping, shippingAddress, billingAddress, commerce, clearCart, toast, t]);
 
   const value: CheckoutContextValue = {
     step,

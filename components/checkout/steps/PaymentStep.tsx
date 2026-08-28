@@ -189,13 +189,13 @@ export function PaymentStep() {
         <div className="space-y-4 border-t border-border pt-6">
           <p className="text-eyebrow">{t("billingAddress")}</p>
           <div className="grid grid-cols-2 gap-4">
-            <Field form={billingForm} name="firstName" id="billingFirstName" label="First name" />
-            <Field form={billingForm} name="lastName" id="billingLastName" label="Last name" />
+            <Field form={billingForm} name="firstName" id="billingFirstName" label={t("firstName")} />
+            <Field form={billingForm} name="lastName" id="billingLastName" label={t("lastName")} />
           </div>
-          <Field form={billingForm} name="address1" id="billingAddress1" label="Street address" />
+          <Field form={billingForm} name="address1" id="billingAddress1" label={t("streetAddress")} />
           <div className="grid grid-cols-2 gap-4">
-            <Field form={billingForm} name="city" id="billingCity" label="City" />
-            <Field form={billingForm} name="postalCode" id="billingPostalCode" label="Postal code" />
+            <Field form={billingForm} name="city" id="billingCity" label={t("city")} />
+            <Field form={billingForm} name="postalCode" id="billingPostalCode" label={t("postalCode")} />
           </div>
           <div>
             <label htmlFor="billingCountryCode" className="mb-1.5 block text-eyebrow">

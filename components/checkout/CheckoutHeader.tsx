@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 
 interface CheckoutHeaderProps {
@@ -6,6 +7,7 @@ interface CheckoutHeaderProps {
 }
 
 export function CheckoutHeader({ siteName }: CheckoutHeaderProps) {
+  const t = useTranslations("Checkout");
   return (
     <header className="border-b border-border bg-luxe-white">
       <div className="container-luxe flex h-16 items-center justify-between">
@@ -14,10 +16,10 @@ export function CheckoutHeader({ siteName }: CheckoutHeaderProps) {
         </Link>
         <div className="flex items-center gap-1.5 text-xs text-luxe-gray-dark">
           <Lock className="size-3.5" strokeWidth={1.5} />
-          Secure Checkout
+          {t("secureCheckout")}
         </div>
         <Link href="/cart" className="text-xs font-medium tracking-[0.05em] uppercase underline underline-offset-4">
-          Back to Bag
+          {t("backToBag")}
         </Link>
       </div>
     </header>

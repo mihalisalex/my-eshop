@@ -44,7 +44,21 @@
     "yourBag": "Your Bag",
     "shoppingBag": "Shopping bag",
     "emptyBag": "Your bag is empty",
-    "emptyBagSentence": "Your bag is empty."
+    "emptyBagSentence": "Your bag is empty.",
+    "continueShopping": "Continue shopping",
+    "continueToCheckout": "Continue to checkout",
+    "promoCode": "Promo code",
+    "promoPlaceholder": "e.g. WELCOME10",
+    "giftCardPlaceholder": "e.g. GIFT25",
+    "apply": "Apply",
+    "youMightAlsoLike": "You might also like",
+    "added": "Added to bag",
+    "removed": "Removed from bag",
+    "savedForLater": "Saved for later",
+    "movedToBag": "Moved to bag",
+    "promoApplied": "Promo code applied",
+    "giftCardApplied": "Gift card applied",
+    "somethingWentWrong": "Something went wrong"
   },
   "Checkout": {
     "contactTitle": "Contact",
@@ -89,7 +103,16 @@
     "stepPayment": "Payment",
     "stepReview": "Review",
     "showOrderSummary": "Show order summary",
-    "hideOrderSummary": "Hide order summary"
+    "hideOrderSummary": "Hide order summary",
+    "secureCheckout": "Secure checkout",
+    "backToBag": "Back to bag",
+    "couldNotPlaceOrder": "Couldn't place your order",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "streetAddress": "Street address",
+    "city": "City",
+    "postalCode": "Postal code",
+    "country": "Country"
   },
   "Plp": {
     "filter": "Filter",
@@ -283,5 +306,40 @@
     "viewAll": "View All",
     "shopByCategory": "Shop by Category",
     "discover": "Discover"
+  },
+  "Confirmation": {
+    "metaTitle": "Order confirmation",
+    "noRecentOrder": "No recent order found",
+    "noRecentOrderBody": "This page is only available right after placing an order.",
+    "paymentFailedTitle": "Your payment didn't go through",
+    "thankYou": "Thank you for your order",
+    "failedBody": "Order {reference} is saved, but we haven't received payment. Please get in touch and we'll help you complete it.",
+    "confirmationSentTo": "A confirmation has been sent to {email}.",
+    "orderNumber": "Order number: #{reference}",
+    "payment": "Payment",
+    "cameBackUnfinished": "It looks like you came back without finishing. Your order is held — contact us and we can send you a fresh payment link.",
+    "howToPay": "How to pay",
+    "quantityShort": "Qty",
+    "shippingTo": "Shipping to",
+    "deliveryMethod": "Delivery method",
+    "giftWrapped": "Gift wrapped",
+    "whatsNext": "What's next",
+    "nextBankTransfer": "We'll confirm your payment as soon as the transfer reaches our account, then get your order on its way.",
+    "nextDefault": "We'll email you as soon as your order ships. You can track its status any time from your account.",
+    "notViewableTitle": "We can't show this order here",
+    "notViewableBody": "For your privacy, order details are only shown in the browser that placed the order. If you opened this link on another device, sign in to see it — or check the confirmation email we sent you.",
+    "signInToView": "Sign in to view"
+  },
+  "PaymentStatus": {
+    "pending": "Pending",
+    "awaiting_customer_action": "Awaiting customer",
+    "awaiting_bank_transfer": "Awaiting bank transfer",
+    "processing": "Processing",
+    "paid": "Paid",
+    "failed": "Failed",
+    "cancelled": "Cancelled",
+    "refunded": "Refunded",
+    "partially_refunded": "Partially refunded",
+    "expired": "Expired"
   }
 }

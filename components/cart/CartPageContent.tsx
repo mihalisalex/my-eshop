@@ -32,7 +32,7 @@ export function CartPageContent() {
           href="/"
           className="mt-2 flex h-12 items-center justify-center bg-luxe-black px-8 text-xs font-medium tracking-[0.08em] text-luxe-white uppercase"
         >
-          Continue Shopping
+          {t("continueShopping")}
         </Link>
       </div>
     );
@@ -87,7 +87,7 @@ export function CartPageContent() {
                 href="/checkout"
                 className="flex h-12 w-full items-center justify-center bg-luxe-black text-sm font-medium tracking-[0.08em] text-luxe-white uppercase transition-opacity hover:opacity-90"
               >
-                Continue to Checkout
+                {t("continueToCheckout")}
               </Link>
             </div>
           </div>

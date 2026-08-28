@@ -13,6 +13,7 @@ import { getCommerceProvider } from "@/lib/commerce";
 import { CommerceError, type AddLineItemInput, type Cart } from "@/lib/commerce/types";
 import { readStorage, writeStorage } from "@/lib/client-storage";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useTranslations } from "next-intl";
 
 const CART_ID_KEY = "alexandris_cart_id";
 
@@ -43,6 +44,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const commerce = useMemo(() => getCommerceProvider(), []);
   const { toast } = useToast();
+  const t = useTranslations("Cart");
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -87,9 +89,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const reportError = useCallback(
     (error: unknown, fallback: string) => {
       const message = error instanceof CommerceError ? error.message : fallback;
-      toast({ title: "Something went wrong", description: message, tone: "error" });
+      toast({ title: t("somethingWentWrong"), description: message, tone: "error" });
     },
-    [toast]
+    [toast, t]
   );
 
   const withMutation = useCallback(
@@ -112,13 +114,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         await withMutation((cartId) => commerce.cart.addLineItem(cartId, input));
         commerce.analytics.track({ name: "add_to_cart", properties: { productId: input.productId, quantity: input.quantity } });
-        toast({ title: "Added to bag", tone: "success" });
+        toast({ title: t("added"), tone: "success" });
         setIsDrawerOpen(true);
       } catch (error) {
         reportError(error, "Couldn't add that item to your bag.");
       }
     },
-    [cart, commerce, withMutation, reportError, toast]
+    [cart, commerce, withMutation, reportError, toast, t]
   );
 
   const updateQuantity = useCallback(
@@ -147,7 +149,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCart(updated);
         commerce.analytics.track({ name: "remove_from_cart", properties: { productId: removed.productId } });
         toast({
-          title: "Removed from bag",
+          title: t("removed"),
           description: removed.name,
           action: {
             label: "Undo",
@@ -162,43 +164,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
         reportError(error, "Couldn't remove that item.");
       }
     },
-    [cart, commerce, toast, reportError]
+    [cart, commerce, toast, reportError, t]
   );
 
   const saveForLater = useCallback(
     async (lineItemId: string) => {
       try {
         await withMutation((cartId) => commerce.cart.saveForLater(cartId, lineItemId));
-        toast({ title: "Saved for later" });
+        toast({ title: t("savedForLater") });
       } catch (error) {
         reportError(error, "Couldn't save that item for later.");
       }
     },
-    [commerce, withMutation, reportError, toast]
+    [commerce, withMutation, reportError, toast, t]
   );
 
   const moveToCart = useCallback(
     async (lineItemId: string) => {
       try {
         await withMutation((cartId) => commerce.cart.moveToCart(cartId, lineItemId));
-        toast({ title: "Moved to bag" });
+        toast({ title: t("movedToBag") });
       } catch (error) {
         reportError(error, "Couldn't move that item to your bag.");
       }
     },
-    [commerce, withMutation, reportError, toast]
+    [commerce, withMutation, reportError, toast, t]
   );
 
   const applyDiscountCode = useCallback(
     async (code: string) => {
       try {
         await withMutation((cartId) => commerce.cart.applyDiscountCode(cartId, code));
-        toast({ title: "Promo code applied", tone: "success" });
+        toast({ title: t("promoApplied"), tone: "success" });
       } catch (error) {
         reportError(error, "That code isn't valid.");
       }
     },
-    [commerce, withMutation, reportError, toast]
+    [commerce, withMutation, reportError, toast, t]
   );
 
   const removeDiscountCode = useCallback(
@@ -212,12 +214,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async (code: string) => {
       try {
         await withMutation((cartId) => commerce.cart.applyGiftCard(cartId, code));
-        toast({ title: "Gift card applied", tone: "success" });
+        toast({ title: t("giftCardApplied"), tone: "success" });
       } catch (error) {
         reportError(error, "That gift card code isn't valid.");
       }
     },
-    [commerce, withMutation, reportError, toast]
+    [commerce, withMutation, reportError, toast, t]
   );
 
   const removeGiftCard = useCallback(

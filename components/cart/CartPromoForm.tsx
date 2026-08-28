@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { formatMoney } from "@/lib/format";
 import { useCart } from "@/components/providers/CartProvider";
 
 export function CartPromoForm() {
+  const t = useTranslations("Cart");
   const { cart, applyDiscountCode, removeDiscountCode, applyGiftCard, removeGiftCard, isMutating } = useCart();
   const [promoInput, setPromoInput] = useState("");
   const [giftCardInput, setGiftCardInput] = useState("");
@@ -16,7 +18,7 @@ export function CartPromoForm() {
     <div className="space-y-4">
       <div>
         <label className="mb-1.5 block text-xs font-medium tracking-[0.05em] text-luxe-gray-dark uppercase">
-          Promo Code
+          {t("promoCode")}
         </label>
         <form
           onSubmit={async (e) => {
@@ -30,7 +32,7 @@ export function CartPromoForm() {
           <input
             value={promoInput}
             onChange={(e) => setPromoInput(e.target.value)}
-            placeholder="e.g. WELCOME10"
+            placeholder={t("promoPlaceholder")}
             className="h-10 w-full border border-border px-3 text-sm outline-none focus:border-luxe-black"
           />
           <button
@@ -38,7 +40,7 @@ export function CartPromoForm() {
             disabled={isMutating || !promoInput.trim()}
             className="h-10 shrink-0 border border-luxe-black px-4 text-xs font-medium tracking-[0.05em] uppercase disabled:opacity-40"
           >
-            Apply
+            {t("apply")}
           </button>
         </form>
         {cart.discounts.length > 0 ? (
@@ -59,7 +61,7 @@ export function CartPromoForm() {
 
       <div>
         <label className="mb-1.5 block text-xs font-medium tracking-[0.05em] text-luxe-gray-dark uppercase">
-          Gift Card
+          {t("giftCard")}
         </label>
         <form
           onSubmit={async (e) => {
@@ -73,7 +75,7 @@ export function CartPromoForm() {
           <input
             value={giftCardInput}
             onChange={(e) => setGiftCardInput(e.target.value)}
-            placeholder="e.g. GIFT25"
+            placeholder={t("giftCardPlaceholder")}
             className="h-10 w-full border border-border px-3 text-sm outline-none focus:border-luxe-black"
           />
           <button
@@ -81,7 +83,7 @@ export function CartPromoForm() {
             disabled={isMutating || !giftCardInput.trim()}
             className="h-10 shrink-0 border border-luxe-black px-4 text-xs font-medium tracking-[0.05em] uppercase disabled:opacity-40"
           >
-            Apply
+            {t("apply")}
           </button>
         </form>
         {cart.giftCards.length > 0 ? (

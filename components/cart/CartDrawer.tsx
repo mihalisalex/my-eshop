@@ -34,7 +34,7 @@ export function CartDrawer() {
               onClick={closeDrawer}
               className="h-10 border border-luxe-black px-6 text-xs font-medium tracking-[0.05em] uppercase"
             >
-              Continue Shopping
+              {t("continueShopping")}
             </button>
           </div>
         ) : (
