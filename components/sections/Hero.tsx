@@ -12,8 +12,22 @@ interface HeroProps {
   data: HeroSection["data"];
 }
 
-/** Proof-of-concept for lib/experiments.ts — a real, live test, not just a declared seam (same bar the feature-flags rollout set for itself). */
-const VARIANT_PRIMARY_CTA_LABEL = "Shop New Arrivals";
+/**
+ * Proof-of-concept for lib/experiments.ts — a real, live test, not just a declared seam
+ * (same bar the feature-flags rollout set for itself).
+ *
+ * This read "Shop New Arrivals" until 28 August, which broke the test twice over. Visitors
+ * are bucketed deterministically, so roughly half of a Greek shop saw an English button in
+ * the most prominent position on the homepage. And it moved two variables at once —
+ * language AND phrasing — so whichever bucket won, the result could not be attributed;
+ * on a Greek storefront the English label was always going to lose for the wrong reason.
+ * It also said "New Arrivals" while linking to /women.
+ *
+ * Now it varies exactly one thing against the control ("Γυναικεία", from the homepage row):
+ * a bare category noun versus the same destination phrased as an action. Greek only, like
+ * the control, which comes from the database and has no English form.
+ */
+const VARIANT_PRIMARY_CTA_LABEL = "Δείτε τα γυναικεία";
 
 export function Hero({ data }: HeroProps) {
   const ref = useRef<HTMLDivElement>(null);
