@@ -179,7 +179,13 @@
   },
   "Newsletter": {
     "emailLabel": "Email address",
-    "emailPlaceholder": "Your email address"
+    "emailPlaceholder": "Your email address",
+    "subscribe": "Subscribe"
+  },
+  "Cookies": {
+    "text": "We use essential cookies to keep your cart and account working, and optional cookies to understand site usage. See our <policy>Cookie Policy</policy>.",
+    "decline": "Decline non-essential",
+    "accept": "Accept all"
   },
   "Auth": {
     "signIn": "Sign In",
@@ -270,7 +276,8 @@
     "mobileNav": "Mobile primary",
     "search": "Search",
     "scrollLeft": "Scroll left",
-    "scrollRight": "Scroll right"
+    "scrollRight": "Scroll right",
+    "next": "Next"
   },
   "Nav": {
     "viewAll": "View All",

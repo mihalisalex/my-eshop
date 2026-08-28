@@ -179,7 +179,13 @@
   },
   "Newsletter": {
     "emailLabel": "Διεύθυνση email",
-    "emailPlaceholder": "Η διεύθυνση email σας"
+    "emailPlaceholder": "Η διεύθυνση email σας",
+    "subscribe": "Εγγραφή"
+  },
+  "Cookies": {
+    "text": "Χρησιμοποιούμε απαραίτητα cookies για να λειτουργούν το καλάθι και ο λογαριασμός σας, και προαιρετικά cookies για να κατανοούμε τη χρήση του site. Δείτε την <policy>Πολιτική Cookies</policy>.",
+    "decline": "Απόρριψη προαιρετικών",
+    "accept": "Αποδοχή όλων"
   },
   "Auth": {
     "signIn": "Σύνδεση",
@@ -270,7 +276,8 @@
     "mobileNav": "Κύρια πλοήγηση κινητού",
     "search": "Αναζήτηση",
     "scrollLeft": "Κύλιση αριστερά",
-    "scrollRight": "Κύλιση δεξιά"
+    "scrollRight": "Κύλιση δεξιά",
+    "next": "Επόμενο"
   },
   "Nav": {
     "viewAll": "Δείτε τα όλα",

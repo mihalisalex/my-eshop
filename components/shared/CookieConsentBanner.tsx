@@ -19,6 +19,7 @@ import { getConsentChoice, setConsentChoice } from "@/lib/consent";
  */
 export function CookieConsentBanner() {
   const tA11y = useTranslations("A11y");
+  const t = useTranslations("Cookies");
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -46,12 +47,13 @@ export function CookieConsentBanner() {
     >
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-luxe-gray-dark">
-          We use essential cookies to keep your cart and account working, and optional cookies to understand site usage.
-          See our{" "}
-          <Link href="/legal/cookie-policy" className="underline hover:text-luxe-black">
-            Cookie Policy
-          </Link>
-          .
+          {t.rich("text", {
+            policy: (chunks) => (
+              <Link href="/legal/cookie-policy" className="underline hover:text-luxe-black">
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
         <div className="flex shrink-0 gap-2">
           <button
@@ -59,14 +61,14 @@ export function CookieConsentBanner() {
             onClick={() => decide(false)}
             className="h-10 border border-border px-4 text-xs font-medium tracking-[0.05em] uppercase hover:border-luxe-black"
           >
-            Decline Non-Essential
+            {t("decline")}
           </button>
           <button
             type="button"
             onClick={() => decide(true)}
             className="h-10 bg-luxe-black px-4 text-xs font-medium tracking-[0.05em] text-luxe-white uppercase"
           >
-            Accept All
+            {t("accept")}
           </button>
         </div>
       </div>

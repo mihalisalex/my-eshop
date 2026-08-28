@@ -128,7 +128,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
             </button>
             <button
               type="button"
-              aria-label="Next"
+              aria-label={tA11y("next")}
               onClick={() => goTo(activeIndex + 1)}
               className="absolute top-1/2 right-3 flex size-9 -translate-y-1/2 items-center justify-center bg-luxe-white/90"
             >
@@ -170,7 +170,7 @@ export function Gallery({ images, videos = [], productName }: GalleryProps) {
                 </button>
                 <button
                   type="button"
-                  aria-label="Next"
+                  aria-label={tA11y("next")}
                   onClick={() => goTo(activeIndex + 1)}
                   className="absolute right-4 flex size-11 items-center justify-center text-luxe-white sm:right-8"
                 >

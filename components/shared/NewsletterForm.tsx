@@ -21,7 +21,7 @@ interface NewsletterFormProps {
 }
 
 export function NewsletterForm({
-  ctaLabel = "Subscribe",
+  ctaLabel,
   compact = false,
   onDark = false,
   className,
@@ -30,6 +30,9 @@ export function NewsletterForm({
 }: NewsletterFormProps) {
   const [submitted, setSubmitted] = useState(false);
   const t = useTranslations("Newsletter");
+  // The footer renders this with no ctaLabel; the homepage passes one from editable
+  // section data. The fallback has to be translated, not a hardcoded "Subscribe".
+  const label = ctaLabel ?? t("subscribe");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     register,
@@ -98,10 +101,10 @@ export function NewsletterForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          aria-label={ctaLabel}
+          aria-label={label}
           className="flex shrink-0 items-center gap-1 py-3 pl-3 text-xs font-medium tracking-[0.1em] uppercase disabled:opacity-50"
         >
-          {ctaLabel}
+          {label}
           <ArrowRight className="size-4" strokeWidth={1.5} />
         </button>
       </div>
