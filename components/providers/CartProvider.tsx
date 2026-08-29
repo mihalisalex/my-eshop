@@ -117,7 +117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         toast({ title: t("added"), tone: "success" });
         setIsDrawerOpen(true);
       } catch (error) {
-        reportError(error, "Couldn't add that item to your bag.");
+        reportError(error, t("couldNotAdd"));
       }
     },
     [cart, commerce, withMutation, reportError, toast, t]
@@ -128,21 +128,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         await withMutation((cartId) => commerce.cart.updateLineItemQuantity(cartId, lineItemId, quantity));
       } catch (error) {
-        reportError(error, "Couldn't update that quantity.");
+        reportError(error, t("couldNotUpdateQuantity"));
       }
     },
-    [commerce, withMutation, reportError]
+    [commerce, withMutation, reportError, t]
   );
 
   const removeItem = useCallback(
     async (lineItemId: string) => {
       if (!cart) return;
-      const removed = cart.lineItems.find((item) => item.id === lineItemId);
+      // BOTH lists. toCart splits a cart into active `lineItems` and `savedItems`, so looking
+      // only in the first meant the × on a saved-for-later row found nothing and returned
+      // before doing anything at all — no request, no toast, no error. The button looked
+      // live and was inert.
+      const removed =
+        cart.lineItems.find((item) => item.id === lineItemId) ??
+        cart.savedItems.find((item) => item.id === lineItemId);
       if (!removed) return;
 
       // Optimistic: pull it out of view immediately, before the (instant, but
-      // interface-generic) service call resolves.
-      setCart((prev) => (prev ? { ...prev, lineItems: prev.lineItems.filter((i) => i.id !== lineItemId) } : prev));
+      // interface-generic) service call resolves. Filters both lists for the same reason.
+      setCart((prev) =>
+        prev
+          ? {
+              ...prev,
+              lineItems: prev.lineItems.filter((i) => i.id !== lineItemId),
+              savedItems: prev.savedItems.filter((i) => i.id !== lineItemId),
+            }
+          : prev
+      );
 
       try {
         const updated = await commerce.cart.removeLineItem(cart.id, lineItemId);
@@ -154,14 +168,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
           action: {
             label: t("undo"),
             onClick: () => {
+              // Undo has to put it back where it was. addLineItem always creates an ACTIVE
+              // row, so a saved item is re-saved afterwards — otherwise "undo" quietly moves
+              // it into the bag, which is a different cart than the one it undid.
               commerce.cart
                 .addLineItem(updated.id, { productId: removed.productId, color: removed.color, size: removed.size, quantity: removed.quantity })
-                .then(setCart);
+                .then((next) => {
+                  if (!removed.savedForLater) return setCart(next);
+                  const restored = next.lineItems.find(
+                    (i) => i.productId === removed.productId && i.color === removed.color && i.size === removed.size
+                  );
+                  if (!restored) return setCart(next);
+                  return commerce.cart.saveForLater(next.id, restored.id).then(setCart);
+                });
             },
           },
         });
       } catch (error) {
-        reportError(error, "Couldn't remove that item.");
+        reportError(error, t("couldNotRemove"));
       }
     },
     [cart, commerce, toast, reportError, t]
@@ -173,7 +197,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await withMutation((cartId) => commerce.cart.saveForLater(cartId, lineItemId));
         toast({ title: t("savedForLater") });
       } catch (error) {
-        reportError(error, "Couldn't save that item for later.");
+        reportError(error, t("couldNotSaveForLater"));
       }
     },
     [commerce, withMutation, reportError, toast, t]
@@ -185,7 +209,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await withMutation((cartId) => commerce.cart.moveToCart(cartId, lineItemId));
         toast({ title: t("movedToBag") });
       } catch (error) {
-        reportError(error, "Couldn't move that item to your bag.");
+        reportError(error, t("couldNotMoveToBag"));
       }
     },
     [commerce, withMutation, reportError, toast, t]
@@ -197,7 +221,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await withMutation((cartId) => commerce.cart.applyDiscountCode(cartId, code));
         toast({ title: t("promoApplied"), tone: "success" });
       } catch (error) {
-        reportError(error, "That code isn't valid.");
+        reportError(error, t("invalidPromoCode"));
       }
     },
     [commerce, withMutation, reportError, toast, t]
@@ -216,7 +240,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await withMutation((cartId) => commerce.cart.applyGiftCard(cartId, code));
         toast({ title: t("giftCardApplied"), tone: "success" });
       } catch (error) {
-        reportError(error, "That gift card code isn't valid.");
+        reportError(error, t("invalidGiftCard"));
       }
     },
     [commerce, withMutation, reportError, toast, t]

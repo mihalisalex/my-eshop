@@ -53,7 +53,7 @@ export function CartDrawer() {
                     onClick={() => setShowSaved((prev) => !prev)}
                     className="text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark"
                   >
-                    Saved for Later ({savedItems.length})
+                    {t("savedForLaterHeading")} ({savedItems.length})
                   </button>
                   {showSaved ? (
                     <div className="mt-2 divide-y divide-border">

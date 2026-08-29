@@ -60,7 +60,17 @@
     "promoApplied": "Promo code applied",
     "giftCardApplied": "Gift card applied",
     "somethingWentWrong": "Something went wrong",
-    "undo": "Undo"
+    "undo": "Undo",
+    "savedForLaterHeading": "Saved for later",
+    "couldNotAdd": "Couldn't add that item to your bag.",
+    "couldNotUpdateQuantity": "Couldn't update that quantity.",
+    "couldNotRemove": "Couldn't remove that item.",
+    "couldNotSaveForLater": "Couldn't save that item for later.",
+    "couldNotMoveToBag": "Couldn't move that item to your bag.",
+    "invalidPromoCode": "That code isn't valid.",
+    "invalidGiftCard": "That gift card code isn't valid.",
+    "emptyBagBlurb": "Looks like you haven’t added anything yet.",
+    "onlySavedItems": "No items in your bag — check your saved items below."
   },
   "Checkout": {
     "contactTitle": "Contact",
