@@ -128,7 +128,12 @@
     "itemsOne": "{count} προϊόν",
     "itemsOther": "{count} προϊόντα",
     "noMatches": "Δεν βρέθηκαν προϊόντα με αυτά τα φίλτρα.",
-    "clearFilters": "Καθαρισμός φίλτρων"
+    "clearFilters": "Καθαρισμός φίλτρων",
+    "gender": "Για",
+    "allGenders": "Όλα",
+    "genderWomen": "Γυναικεία",
+    "genderMen": "Ανδρικά",
+    "genderUnisex": "Unisex"
   },
   "Pdp": {
     "quantity": "Ποσότητα",

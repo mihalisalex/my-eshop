@@ -10,6 +10,8 @@ export interface PlpFilters {
   sizes: string[];
   availability: "in-stock" | "all";
   priceRange: [number, number];
+  /** null means "all" — the scope's own genders, unfiltered. */
+  gender: string | null;
 }
 
 interface PlpFilterSidebarProps {
@@ -20,6 +22,12 @@ interface PlpFilterSidebarProps {
   onClearAll: () => void;
   /** Set false when the parent (e.g. the mobile filter sheet) already renders a "Filter" title. */
   showTitle?: boolean;
+  /**
+   * Hidden on a listing that is already one gender. /women pins gender in its baseFilters,
+   * so offering the choice there would either be a no-op or would contradict the page's own
+   * heading — the facet would show a single value with the full count next to it.
+   */
+  showGender?: boolean;
 }
 
 function getFacetValues(facets: SearchFacet[], key: string) {
@@ -30,14 +38,24 @@ function toggle(list: string[], value: string): string[] {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onClearAll, showTitle = true }: PlpFilterSidebarProps) {
+const GENDER_LABEL: Record<string, string> = {
+  women: "genderWomen",
+  men: "genderMen",
+  unisex: "genderUnisex",
+};
+
+export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onClearAll, showTitle = true, showGender = false }: PlpFilterSidebarProps) {
   const t = useTranslations("Plp");
   const colorFacets = getFacetValues(facets, "color");
   const sizeFacets = getFacetValues(facets, "size");
+  // Only worth a control when the scope actually holds more than one gender. A collection of
+  // women's shoes would otherwise render a "For" group with one option in it.
+  const genderFacets = showGender ? getFacetValues(facets, "gender") : [];
   const hasActiveFilters =
     filters.colors.length > 0 ||
     filters.sizes.length > 0 ||
     filters.availability === "in-stock" ||
+    filters.gender !== null ||
     filters.priceRange[0] !== priceBounds[0] ||
     filters.priceRange[1] !== priceBounds[1];
 
@@ -51,6 +69,33 @@ export function PlpFilterSidebar({ facets, priceBounds, filters, onChange, onCle
           </button>
         ) : null}
       </div>
+
+      {genderFacets.length > 1 ? (
+        <div>
+          <p className="mb-3 text-sm font-medium">{t("gender")}</p>
+          <div className="flex flex-wrap gap-2">
+            {[{ value: null as string | null, count: genderFacets.reduce((sum, f) => sum + f.count, 0) }, ...genderFacets].map(
+              ({ value, count }) => {
+                const active = filters.gender === value;
+                return (
+                  <button
+                    key={value ?? "all"}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => onChange({ gender: value })}
+                    className={cn(
+                      "border px-3 py-1.5 text-xs transition-colors",
+                      active ? "border-luxe-black bg-luxe-black text-luxe-white" : "border-border hover:border-luxe-black"
+                    )}
+                  >
+                    {value === null ? t("allGenders") : t(GENDER_LABEL[value] ?? "genderUnisex")} ({count})
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {colorFacets.length > 0 ? (
         <div>

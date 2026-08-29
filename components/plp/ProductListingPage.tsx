@@ -42,6 +42,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   const colors = parseCsv(searchParams.get("color"));
   const sizes = parseCsv(searchParams.get("size"));
   const availability = searchParams.get("availability") === "in-stock" ? "in-stock" : "all";
+  // Only meaningful where the page has not already pinned a gender. On /women the scope's
+  // own gender wins below, so a stray ?gender=men in the URL cannot contradict the heading.
+  const genderParam = searchParams.get("gender");
   const sort = (searchParams.get("sort") as PlpSort | null) ?? defaultSort;
   const minPriceParam = searchParams.get("minPrice");
   const maxPriceParam = searchParams.get("maxPrice");
@@ -53,6 +56,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Offered only where the listing is not already one gender. On /women the page IS the
+  // gender, so the control would be a no-op that contradicts its own heading.
+  const showGenderFilter = !baseFilters.gender;
   const scopeFilters = { ...baseFilters, category: category ?? baseFilters.category, isNew: isNew || baseFilters.isNew };
   const baseFiltersKey = JSON.stringify(scopeFilters);
 
@@ -87,7 +93,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
     setIsLoading(true);
 
-    const signature = JSON.stringify({ baseFiltersKey, colors, sizes, tags, availability, sort, minPriceFilter, maxPriceFilter });
+    const signature = JSON.stringify({ baseFiltersKey, genderParam, colors, sizes, tags, availability, sort, minPriceFilter, maxPriceFilter });
     let entry = pageCacheRef.current.get(signature);
     if (!entry) {
       entry = { pages: new Map<number, Product[]>(), facets: [], total: 0 };
@@ -100,6 +106,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
         if (cacheEntry.pages.has(page)) continue;
         const result = (await commerce.search.search("", {
           ...scopeFilters,
+          // A REFINEMENT, not scope — see SearchOptions.genders. Sent this way so the facet
+          // keeps reporting every gender in the listing and "Όλα" stays reachable.
+          genders: showGenderFilter && genderParam ? [genderParam] : undefined,
           colors: colors.length ? colors : undefined,
           sizes: sizes.length ? sizes : undefined,
           tags: tags.length ? tags : undefined,
@@ -130,7 +139,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- colors/sizes are re-derived from searchParams each render; joining keeps the effect keyed on their content
-  }, [baseFiltersKey, colors.join(","), sizes.join(","), tags.join(","), availability, sort, minPriceFilter, maxPriceFilter, urlPage, commerce]);
+  }, [baseFiltersKey, genderParam, colors.join(","), sizes.join(","), tags.join(","), availability, sort, minPriceFilter, maxPriceFilter, urlPage, commerce]);
 
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -150,6 +159,9 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
       if (patch.colors) next.color = patch.colors.length ? patch.colors.join(",") : null;
       if (patch.sizes) next.size = patch.sizes.length ? patch.sizes.join(",") : null;
       if (patch.availability) next.availability = patch.availability === "in-stock" ? "in-stock" : null;
+      // Present-but-null is a real instruction here ("all"), which is why this checks the key
+      // rather than the value — `if (patch.gender)` would silently ignore clearing it.
+      if ("gender" in patch) next.gender = patch.gender ?? null;
       if (patch.priceRange && priceBounds) {
         next.minPrice = patch.priceRange[0] !== priceBounds[0] ? String(patch.priceRange[0]) : null;
         next.maxPrice = patch.priceRange[1] !== priceBounds[1] ? String(patch.priceRange[1]) : null;
@@ -167,7 +179,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   );
 
   const handleClearAll = useCallback(
-    () => updateParams({ color: null, size: null, availability: null, minPrice: null, maxPrice: null, page: null }),
+    () => updateParams({ color: null, size: null, availability: null, minPrice: null, maxPrice: null, gender: null, page: null }),
     [updateParams]
   );
 
@@ -188,7 +200,13 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     return () => observer.disconnect();
   }, [canLoadMore, isLoading, urlPage, updateParams]);
 
-  const filters: PlpFilters = { colors, sizes, availability, priceRange: displayPriceRange };
+  const filters: PlpFilters = {
+    colors,
+    sizes,
+    availability,
+    priceRange: displayPriceRange,
+    gender: showGenderFilter ? genderParam : null,
+  };
 
   return (
     <div className="container-luxe py-10 md:py-14">
@@ -217,6 +235,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
                 filters={filters}
                 onChange={handleFiltersChange}
                 onClearAll={handleClearAll}
+                showGender={showGenderFilter}
               />
             ) : null}
           </aside>
@@ -232,6 +251,7 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
               filters={filters}
               onFiltersChange={handleFiltersChange}
               onClearAll={handleClearAll}
+              showGender={showGenderFilter}
             />
 
             {isLoading && products.length === 0 ? (

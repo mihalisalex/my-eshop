@@ -96,6 +96,9 @@ function scopeWhere(scope: ScopeInput): Prisma.Sql {
 function refinementWhere(options: SearchOptions): Prisma.Sql[] {
   const clauses: Prisma.Sql[] = [];
 
+  if (options.genders?.length) {
+    clauses.push(Prisma.sql`p.gender IN (${Prisma.join(options.genders)})`);
+  }
   if (options.colors?.length) {
     clauses.push(
       Prisma.sql`EXISTS (SELECT 1 FROM product_colors c WHERE c."productId" = p.id AND c.name IN (${Prisma.join(options.colors)}))`

@@ -19,9 +19,12 @@ interface PlpToolbarProps {
   filters: PlpFilters;
   onFiltersChange: (patch: Partial<PlpFilters>) => void;
   onClearAll: () => void;
+  /** Threaded to the sheet's sidebar; see PlpFilterSidebar for why a gendered listing hides it. */
+  showGender?: boolean;
 }
 
 export function PlpToolbar({
+  showGender = false,
   total,
   isLoading = false,
   sort,
@@ -77,6 +80,7 @@ export function PlpToolbar({
               onChange={onFiltersChange}
               onClearAll={onClearAll}
               showTitle={false}
+              showGender={showGender}
             />
           </div>
         </SheetContent>

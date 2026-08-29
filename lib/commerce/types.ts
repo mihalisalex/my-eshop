@@ -231,7 +231,19 @@ export interface Wishlist {
 
 export interface SearchOptions {
   category?: string;
+  /**
+   * SCOPE. What slice of the catalogue is being browsed — /women IS a gendered listing.
+   * Facet counts are computed over the scope, so anything set here narrows the counts too.
+   */
   gender?: ProductGender;
+  /**
+   * REFINEMENT. The shopper's own gender choice inside a listing that is not already
+   * gendered — the "Για" control on /new-in, /sale and collections. Separate from `gender`
+   * on purpose: a refinement must NOT narrow the facet counts, or picking "Ανδρικά" would
+   * leave the gender facet holding one value and the shopper with no way back to "Όλα".
+   * Exactly the reason `colors` is a refinement rather than scope.
+   */
+  genders?: string[];
   collectionId?: string;
   colors?: string[];
   sizes?: string[];

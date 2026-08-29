@@ -128,7 +128,12 @@
     "itemsOne": "{count} item",
     "itemsOther": "{count} items",
     "noMatches": "No products match your filters.",
-    "clearFilters": "Clear filters"
+    "clearFilters": "Clear filters",
+    "gender": "For",
+    "allGenders": "All",
+    "genderWomen": "Women",
+    "genderMen": "Men",
+    "genderUnisex": "Unisex"
   },
   "Pdp": {
     "quantity": "Quantity",

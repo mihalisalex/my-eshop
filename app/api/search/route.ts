@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       category: params.get("category") ?? undefined,
       gender: (params.get("gender") as SearchOptions["gender"]) ?? undefined,
       collectionId: params.get("collectionId") ?? undefined,
+      genders: csv(params.get("genders")),
       colors: csv(params.get("colors")),
       sizes: csv(params.get("sizes")),
       tags: csv(params.get("tags")),
