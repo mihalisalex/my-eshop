@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "instagram:status": "node --conditions=react-server --import tsx scripts/connect-instagram.ts status",
+    "instagram:connect": "node --conditions=react-server --import tsx scripts/connect-instagram.ts connect",
+    "instagram:refresh": "node --conditions=react-server --import tsx scripts/connect-instagram.ts refresh"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -16,3 +16,4 @@ export * from "./content";
 export * from "./campaigns";
 export * from "./lookbooks";
 export * from "./landing-pages";
+export * from "./instagram";

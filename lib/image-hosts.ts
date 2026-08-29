@@ -8,7 +8,14 @@
  */
 export interface RemoteImageHost {
   protocol: "https";
-  /** May start with `*.` to match any single-level subdomain (Vercel Blob gives each store its own). */
+  /**
+   * May start with a wildcard, using Next's own two levels of it:
+   *   `*.`  matches exactly one label   — Vercel Blob gives each store its own subdomain
+   *   `**.` matches one or more labels  — Meta's CDN nests them (scontent-ath3-1.xx.fbcdn.net)
+   *
+   * `**.` is the looser of the two and is only worth reaching for when a host genuinely
+   * varies in depth, because it also matches everything `*.` would.
+   */
   hostname: string;
 }
 
@@ -26,9 +33,30 @@ export const REMOTE_IMAGE_HOSTS: RemoteImageHost[] = [
     protocol: "https",
     hostname: "*.public.blob.vercel-storage.com",
   },
+  {
+    // Instagram's media CDN, for the homepage feed. Meta serves each photo from a
+    // region-suffixed host (scontent-ath3-1, scontent-fra5-2, …) that varies per request,
+    // so the wildcard is the host, not a convenience.
+    protocol: "https",
+    hostname: "**.cdninstagram.com",
+  },
+  {
+    // Some Instagram media comes back on fbcdn.net instead. Same feed, same images —
+    // Meta simply does not commit to which of its two CDNs a given file is served from.
+    protocol: "https",
+    hostname: "**.fbcdn.net",
+  },
 ];
 
 function hostnameMatches(hostname: string, pattern: string): boolean {
+  // Checked before `*.`, since every `**.` pattern also starts with `*.`.
+  if (pattern.startsWith("**.")) {
+    const suffix = pattern.slice(2); // ".fbcdn.net"
+    if (!hostname.endsWith(suffix)) return false;
+    // One or more labels, but still at least one: `fbcdn.net` itself must not match, or the
+    // pattern would permit the apex domain nobody meant to allow.
+    return hostname.length > suffix.length;
+  }
   if (!pattern.startsWith("*.")) return hostname === pattern;
   const suffix = pattern.slice(1); // ".public.blob.vercel-storage.com"
   if (!hostname.endsWith(suffix)) return false;

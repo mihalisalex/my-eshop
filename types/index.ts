@@ -13,3 +13,4 @@ export * from "./review";
 export * from "./content";
 export * from "./commerce";
 export * from "./shipping";
+export * from "./instagram";

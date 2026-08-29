@@ -1,5 +1,12 @@
 {
   "crons": [
-    { "path": "/api/cron/email-followups", "schedule": "0 8 * * *" }
+    {
+      "path": "/api/cron/email-followups",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/instagram-token",
+      "schedule": "0 4 * * *"
+    }
   ]
 }

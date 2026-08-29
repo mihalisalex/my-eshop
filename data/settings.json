@@ -6,7 +6,12 @@
   "contactEmail": "alexandrisstores@gmail.com",
   "currency": "EUR",
   "locale": "en-US",
-  "socialLinks": [],
+  "socialLinks": [
+    {
+      "platform": "instagram",
+      "url": "https://www.instagram.com/alexandrisstores/"
+    }
+  ],
   "announcementMessages": [
     "Δωρεάν αποστολή για παραγγελίες άνω των 150 €",
     "Δωρεάν επιστροφές εντός 30 ημερών",

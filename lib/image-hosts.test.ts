@@ -20,7 +20,22 @@ describe("isOptimizableImageUrl", () => {
     expect(isOptimizableImageUrl("https://a.b.public.blob.vercel-storage.com/x.jpg")).toBe(false);
   });
 
+  it("accepts any depth of subdomain against a `**.` pattern", () => {
+    // Meta serves the same feed from hosts of differing depth, and which one a given photo
+    // comes from is not ours to predict — a `*.` pattern here would work in testing and
+    // then reject an image in production.
+    expect(isOptimizableImageUrl("https://scontent.cdninstagram.com/v/t51/x.jpg")).toBe(true);
+    expect(isOptimizableImageUrl("https://scontent-ath3-1.cdninstagram.com/v/t51/x.jpg")).toBe(true);
+    expect(isOptimizableImageUrl("https://scontent-fra5-2.xx.fbcdn.net/v/t51/x.jpg")).toBe(true);
+  });
+
+  it("rejects the apex domain of a `**.` pattern, which has no subdomain at all", () => {
+    expect(isOptimizableImageUrl("https://fbcdn.net/x.jpg")).toBe(false);
+    expect(isOptimizableImageUrl("https://cdninstagram.com/x.jpg")).toBe(false);
+  });
+
   it("rejects a lookalike host that merely ends with the pattern", () => {
+    expect(isOptimizableImageUrl("https://evilcdninstagram.com/x.jpg")).toBe(false);
     expect(isOptimizableImageUrl("https://evilpublic.blob.vercel-storage.com/x.jpg")).toBe(false);
     expect(isOptimizableImageUrl("https://notalexandrisstores.gr/x.jpg")).toBe(false);
   });

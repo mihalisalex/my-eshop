@@ -7,7 +7,7 @@ import { NewArrivals } from "@/components/sections/NewArrivals";
 import { BrandStory } from "@/components/sections/BrandStory";
 import { SocialGrid } from "@/components/sections/SocialGrid";
 import { Newsletter } from "@/components/sections/Newsletter";
-import { getCollectionsByIds, getPublishedProductsByIds, getSiteSettings } from "@/services";
+import { getCollectionsByIds, getInstagramPosts, getPublishedProductsByIds, getSiteSettings } from "@/services";
 import { localizeCollections, localizeProducts } from "@/lib/localize";
 import type { Locale } from "@/i18n/config";
 import type { HomepageSection } from "@/types";
@@ -70,9 +70,14 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
       // page. The destination isn't part of the section's own data, so it comes from the
       // store's configured Instagram link — and when that isn't set the tiles render as
       // plain images rather than as links that go nowhere.
-      const settings = await getSiteSettings();
+      //
+      // The images are the shop's live Instagram posts when an account is connected, and
+      // the curated ones stored on the section when it is not. Both reads run together:
+      // the settings row is a database round trip and the feed is an hourly-cached HTTP
+      // call, and there is no reason for the second to wait on the first.
+      const [settings, posts] = await Promise.all([getSiteSettings(), getInstagramPosts(6)]);
       const instagramUrl = settings.socialLinks.find((link) => link.platform === "instagram")?.url;
-      return <SocialGrid data={section.data} profileUrl={instagramUrl} />;
+      return <SocialGrid data={section.data} profileUrl={instagramUrl} posts={posts} />;
     }
 
     case "newsletter":
