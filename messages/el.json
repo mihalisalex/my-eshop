@@ -223,7 +223,8 @@
     "relevance": "Συνάφεια",
     "newest": "Νεότερα",
     "priceAsc": "Τιμή: Αύξουσα",
-    "priceDesc": "Τιμή: Φθίνουσα"
+    "priceDesc": "Τιμή: Φθίνουσα",
+    "discount": "Μεγαλύτερη έκπτωση"
   },
   "Pages": {
     "womenTitle": "Γυναικεία",

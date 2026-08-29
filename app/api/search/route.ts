@@ -28,7 +28,7 @@ function numeric(value: string | null): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const SORTS = new Set(["relevance", "newest", "price-asc", "price-desc"]);
+const SORTS = new Set(["relevance", "newest", "discount", "price-asc", "price-desc"]);
 
 export async function GET(request: NextRequest) {
   try {

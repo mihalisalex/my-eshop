@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * server; the labels are translated at render. They were hard-coded English on a shop whose
  * default language is Greek, and this control sits on every listing page.
  */
-const SORT_VALUES = ["relevance", "newest", "price-asc", "price-desc"] as const;
+const SORT_VALUES = ["relevance", "newest", "discount", "price-asc", "price-desc"] as const;
 
 export type PlpSort = (typeof SORT_VALUES)[number];
 
@@ -16,6 +16,7 @@ export type PlpSort = (typeof SORT_VALUES)[number];
 const SORT_LABEL_KEY: Record<PlpSort, string> = {
   relevance: "relevance",
   newest: "newest",
+  discount: "discount",
   "price-asc": "priceAsc",
   "price-desc": "priceDesc",
 };

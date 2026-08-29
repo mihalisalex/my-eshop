@@ -27,6 +27,28 @@ import type { SearchFacet, SearchOptions, SearchResult } from "@/lib/commerce/ty
 
 const EFFECTIVE_PRICE = Prisma.sql`COALESCE(p."salePriceAmount", p."priceAmount")`;
 
+/**
+ * How deep the discount is, as a fraction of the price it is measured against.
+ *
+ * PROPORTIONAL, not absolute: €10 off a €20 shoe is a better deal than €10 off a €200 one,
+ * and "biggest sale" is what a shopper reads on the badge — a percentage. Ordering by the
+ * cash saved instead would just re-sort the sale page by how expensive things are.
+ *
+ * `compareAtPrice` is the reference because that is the number struck through on the card;
+ * ordering against `priceAmount` would disagree with what the shopper can see. Rows with no
+ * compareAtPrice, or a nonsensical one, score 0 rather than dividing by zero or going
+ * negative, so a mispriced row sinks to the bottom instead of topping the page.
+ */
+const DISCOUNT_RATIO = Prisma.sql`
+  CASE
+    WHEN p."compareAtPriceAmount" IS NOT NULL
+     AND p."compareAtPriceAmount" > 0
+     AND p."compareAtPriceAmount" > ${EFFECTIVE_PRICE}
+    THEN (p."compareAtPriceAmount" - ${EFFECTIVE_PRICE})::float / p."compareAtPriceAmount"::float
+    ELSE 0
+  END
+`;
+
 /** A size a shopper can actually buy: both signals agree, since imported data can disagree. */
 const HAS_BUYABLE_SIZE = Prisma.sql`
   EXISTS (SELECT 1 FROM product_sizes s WHERE s."productId" = p.id AND s.quantity > 0 AND s."inStock" = true)
@@ -133,6 +155,8 @@ function orderBy(sort: SearchOptions["sort"]): Prisma.Sql {
       return Prisma.sql`${EFFECTIVE_PRICE} DESC, p.id ASC`;
     case "newest":
       return Prisma.sql`p."createdAt" DESC, p.id ASC`;
+    case "discount":
+      return Prisma.sql`${DISCOUNT_RATIO} DESC, ${EFFECTIVE_PRICE} ASC, p.id ASC`;
     default:
       // `p.id` is the tiebreaker on every branch. Without a total order, two products
       // with the same price can swap between pages and one of them is never seen.

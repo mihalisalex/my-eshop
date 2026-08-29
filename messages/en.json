@@ -223,7 +223,8 @@
     "relevance": "Relevance",
     "newest": "Newest",
     "priceAsc": "Price: Low to High",
-    "priceDesc": "Price: High to Low"
+    "priceDesc": "Price: High to Low",
+    "discount": "Biggest discount"
   },
   "Pages": {
     "womenTitle": "Women",
