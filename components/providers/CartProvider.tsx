@@ -30,6 +30,8 @@ interface CartContextValue {
   removeItem: (lineItemId: string) => Promise<void>;
   saveForLater: (lineItemId: string) => Promise<void>;
   moveToCart: (lineItemId: string) => Promise<void>;
+  /** One box for both kinds of code — see the implementation for why the UI cannot do this itself. */
+  applyCode: (code: string) => Promise<void>;
   applyDiscountCode: (code: string) => Promise<void>;
   removeDiscountCode: (code: string) => Promise<void>;
   applyGiftCard: (code: string) => Promise<void>;
@@ -45,6 +47,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const commerce = useMemo(() => getCommerceProvider(), []);
   const { toast } = useToast();
   const t = useTranslations("Cart");
+  const tError = useTranslations("CartError");
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
@@ -86,12 +89,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [commerce]);
 
+  /**
+   * Translates by ERROR CODE, not by the server's message.
+   *
+   * This used to prefer `error.message`, which is written in English at the throw site deep
+   * in services/carts.ts — so every cart failure a Greek shopper saw was in English, and the
+   * translated strings here only ever appeared for errors that were not CommerceErrors at
+   * all. The code is the stable contract between server and client; the message is a
+   * developer-facing detail that happened to be rendered to customers.
+   *
+   * An unrecognised code falls back to the caller's string rather than to the raw message,
+   * so a new code added server-side degrades to something translated and generic instead of
+   * leaking English.
+   */
   const reportError = useCallback(
     (error: unknown, fallback: string) => {
-      const message = error instanceof CommerceError ? error.message : fallback;
-      toast({ title: t("somethingWentWrong"), description: message, tone: "error" });
+      const code = error instanceof CommerceError ? error.code : null;
+      const description = code && tError.has(code) ? tError(code) : fallback;
+      toast({ title: t("somethingWentWrong"), description, tone: "error" });
     },
-    [toast, t]
+    [toast, t, tError]
   );
 
   const withMutation = useCallback(
@@ -215,6 +232,49 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [commerce, withMutation, reportError, toast, t]
   );
 
+  /**
+   * A shopper has "a code". They do not know, and should not have to know, whether the shop
+   * filed it as a discount rule or as stored value — so there is one box, and this works out
+   * which it is.
+   *
+   * This cannot live in the form, because `applyDiscountCode` and `applyGiftCard` each raise
+   * their own toast and swallow their own error. Calling them in sequence from the UI would
+   * show a failure toast for the discount attempt before the gift-card attempt had even run.
+   *
+   * It only falls through on INVALID_DISCOUNT_CODE — "there is no such discount". Any other
+   * failure means the code WAS a discount and something else was wrong with it (already
+   * applied, expired), and reporting that beats retrying it as a gift card and then claiming
+   * the code does not exist.
+   */
+  const applyCode = useCallback(
+    async (rawCode: string) => {
+      const code = rawCode.trim();
+      if (!code) return;
+
+      try {
+        await withMutation((cartId) => commerce.cart.applyDiscountCode(cartId, code));
+        toast({ title: t("promoApplied"), tone: "success" });
+        return;
+      } catch (error) {
+        const noSuchDiscount = error instanceof CommerceError && error.code === "INVALID_DISCOUNT_CODE";
+        if (!noSuchDiscount) {
+          reportError(error, t("invalidCode"));
+          return;
+        }
+      }
+
+      try {
+        await withMutation((cartId) => commerce.cart.applyGiftCard(cartId, code));
+        toast({ title: t("giftCardApplied"), tone: "success" });
+      } catch (error) {
+        // Neither kind matched. One message for both, which also avoids telling a stranger
+        // which of the two code namespaces a guess landed in.
+        reportError(error, t("invalidCode"));
+      }
+    },
+    [commerce, withMutation, reportError, toast, t]
+  );
+
   const applyDiscountCode = useCallback(
     async (code: string) => {
       try {
@@ -279,6 +339,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     removeItem,
     saveForLater,
     moveToCart,
+    applyCode,
     applyDiscountCode,
     removeDiscountCode,
     applyGiftCard,

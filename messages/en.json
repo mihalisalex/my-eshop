@@ -70,7 +70,21 @@
     "invalidPromoCode": "That code isn't valid.",
     "invalidGiftCard": "That gift card code isn't valid.",
     "emptyBagBlurb": "Looks like you haven’t added anything yet.",
-    "onlySavedItems": "No items in your bag — check your saved items below."
+    "onlySavedItems": "No items in your bag — check your saved items below.",
+    "codeOrGiftCard": "Discount code or gift card",
+    "codePlaceholder": "e.g. WELCOME10 or GIFT25",
+    "invalidCode": "That code isn't valid.",
+    "percentOff": "{value}% off",
+    "removeCode": "Remove code {code}"
+  },
+  "CartError": {
+    "OUT_OF_STOCK": "That size is out of stock.",
+    "INVALID_DISCOUNT_CODE": "That code isn't valid or has expired.",
+    "DISCOUNT_ALREADY_APPLIED": "That code is already applied.",
+    "INVALID_GIFT_CARD": "That gift card isn't valid, or is already applied.",
+    "CART_NOT_FOUND": "We couldn't find your bag. Refresh the page.",
+    "LINE_ITEM_NOT_FOUND": "That item is no longer in your bag.",
+    "INVALID_VARIANT": "That option isn't available."
   },
   "Checkout": {
     "contactTitle": "Contact",
