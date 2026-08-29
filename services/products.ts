@@ -75,6 +75,52 @@ export async function getAllProducts(filter?: ProductListFilter): Promise<Produc
 }
 
 /**
+ * What the shop has just got in, optionally for one gender.
+ *
+ * "New" means what the shop SAYS is new — the `isNew` checkbox on the product form —
+ * because a shoe shop knows what it unpacked this week and a database does not. That flag
+ * has been sitting unused on all 175 products, which is why the homepage had eight
+ * hand-typed product ids under a heading reading "Μόλις παραλάβαμε".
+ *
+ * When nothing is flagged, or too little is, the row is topped up with the most recently
+ * created products so it is never short. That fallback is doing real work today and will
+ * quietly stop mattering: every product in the catalogue was imported from WooCommerce
+ * inside the same minute, so ordering them by `createdAt` is really ordering them by row
+ * number in the import file — but anything added from now on has a truthful timestamp.
+ *
+ * Unisex products appear in every gendered row, matching how the rest of the storefront
+ * treats them.
+ */
+export async function getNewArrivals(options: { gender?: string; limit?: number } = {}): Promise<Product[]> {
+  const { gender, limit = 8 } = options;
+  if (limit <= 0) return [];
+
+  const scope: Prisma.ProductWhereInput = {
+    ...PUBLISHED,
+    ...(gender ? { gender: { in: [gender, "unisex"] } } : {}),
+  };
+
+  const flagged = await prisma.product.findMany({
+    where: { ...scope, isNew: true },
+    include: productInclude,
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  if (flagged.length >= limit) return flagged.map(toProduct);
+
+  const filler = await prisma.product.findMany({
+    // Excluding what we already have, or a flagged product would appear twice in one row.
+    where: { ...scope, id: { notIn: flagged.map((row) => row.id) } },
+    include: productInclude,
+    orderBy: { createdAt: "desc" },
+    take: limit - flagged.length,
+  });
+
+  // Flagged first, so a deliberate choice always outranks the fallback.
+  return [...flagged, ...filler].map(toProduct);
+}
+
+/**
  * Storefront lookup (PDP, /api/products?slug=) — published only, so a draft or archived
  * product 404s for customers. The admin reaches products by id, not slug, which is why
  * the publication split lands cleanly on these two functions.

@@ -64,7 +64,35 @@ export function SectionEditForm({ section, onChange }: SectionEditFormProps) {
             <Field label="Title" value={section.data.title} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
             <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
           </div>
-          <IdChipList label="Products" ids={section.data.productIds} onChange={(ids) => onChange({ ...section, data: { ...section.data, productIds: ids } })} />
+          {section.data.rows?.length ? (
+            // Rows are queried, so there is no product list to edit here — only what each
+            // row is called and where its link goes. Which products appear follows from the
+            // "New arrival" checkbox on each product, which is the point of the change:
+            // this section stops being a list somebody has to remember to rewrite.
+            <div className="space-y-3">
+              {section.data.rows.map((row, index) => (
+                <div key={row.gender} className="grid grid-cols-1 gap-4 border border-border p-3 sm:grid-cols-3">
+                  <Field
+                    label={`Row ${index + 1} — ${row.gender}`}
+                    value={row.title}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, title: v } : r)) } })}
+                  />
+                  <Field
+                    label="Link label"
+                    value={row.viewAllLabel}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, viewAllLabel: v } : r)) } })}
+                  />
+                  <Field
+                    label="Link"
+                    value={row.viewAllHref}
+                    onChange={(v) => onChange({ ...section, data: { ...section.data, rows: section.data.rows?.map((r) => (r.gender === row.gender ? { ...r, viewAllHref: v } : r)) } })}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <IdChipList label="Products" ids={section.data.productIds} onChange={(ids) => onChange({ ...section, data: { ...section.data, productIds: ids } })} />
+          )}
         </div>
       );
 

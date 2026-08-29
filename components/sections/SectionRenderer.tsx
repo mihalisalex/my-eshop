@@ -7,7 +7,7 @@ import { NewArrivals } from "@/components/sections/NewArrivals";
 import { BrandStory } from "@/components/sections/BrandStory";
 import { SocialGrid } from "@/components/sections/SocialGrid";
 import { Newsletter } from "@/components/sections/Newsletter";
-import { getCollectionsByIds, getInstagramPosts, getPublishedProductsByIds, getSiteSettings } from "@/services";
+import { getCollectionsByIds, getInstagramPosts, getNewArrivals, getPublishedProductsByIds, getSiteSettings } from "@/services";
 import { localizeCollections, localizeProducts } from "@/lib/localize";
 import type { Locale } from "@/i18n/config";
 import type { HomepageSection } from "@/types";
@@ -56,10 +56,23 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
       return <EditorialBanner data={section.data} />;
 
     case "newArrivals": {
-      const products = localizeProducts(await getPublishedProductsByIds(section.data.productIds), locale);
-      return (
-        <NewArrivals title={section.data.title} subtitle={section.data.subtitle} products={products} />
-      );
+      const { rows, limit = 8 } = section.data;
+
+      // Queried per gender when the section defines rows; otherwise the original pinned
+      // list, which landing pages still use to show an exact, curated set.
+      const content = rows?.length
+        ? await Promise.all(
+            rows.map(async (row) => ({
+              key: row.gender,
+              title: row.title,
+              products: localizeProducts(await getNewArrivals({ gender: row.gender, limit }), locale),
+              viewAllHref: row.viewAllHref,
+              viewAllLabel: row.viewAllLabel,
+            }))
+          )
+        : [{ key: "pinned", products: localizeProducts(await getPublishedProductsByIds(section.data.productIds), locale) }];
+
+      return <NewArrivals title={section.data.title} subtitle={section.data.subtitle} rows={content} />;
     }
 
     case "brandStory":
