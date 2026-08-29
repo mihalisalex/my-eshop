@@ -16,6 +16,7 @@ import {
   Mail,
   Search,
   Settings,
+  Truck,
   Palette,
   UserCog,
   Boxes,
@@ -98,6 +99,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "Configuration",
     items: [
       { label: "Payment Settings", href: "/admin/settings/payments", icon: Wallet, capability: "payments:configure" },
+      { label: "Shipping", href: "/admin/settings/shipping", icon: Truck, capability: "admin:settings" },
       { label: "SEO Settings", href: "/admin/seo", icon: Search, capability: "admin:settings" },
       { label: "Site Settings", href: "/admin/settings", icon: Settings, capability: "admin:settings" },
       // No capability: a read-only list of design tokens, with no data or actions to protect.

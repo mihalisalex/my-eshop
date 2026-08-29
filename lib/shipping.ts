@@ -1,4 +1,5 @@
 import type { ShippingRate } from "@/lib/commerce/types";
+import type { ShippingSettings } from "@/types";
 
 /**
  * Single source of truth for shipping/tax constants. Previously duplicated
@@ -34,50 +35,56 @@ export const VAT_RATE = 0.24;
 export function vatIncludedIn(grossAmount: number): number {
   return (grossAmount * VAT_RATE) / (1 + VAT_RATE);
 }
-export const FREE_SHIPPING_THRESHOLD = 150;
-export const STANDARD_SHIPPING_AMOUNT = 6.95;
-export const EXPRESS_SHIPPING_AMOUNT = 14.95;
-
-export const STANDARD_SHIPPING_RATE: ShippingRate = {
-  id: "standard",
-  label: "Standard Shipping",
-  description: "3–5 business days",
-  price: { amount: STANDARD_SHIPPING_AMOUNT, currencyCode: "EUR" },
-  estimatedDelivery: "3–5 business days",
-};
-
-export const EXPRESS_SHIPPING_RATE: ShippingRate = {
-  id: "express",
-  label: "Express Shipping",
-  description: "1–2 business days",
-  price: { amount: EXPRESS_SHIPPING_AMOUNT, currencyCode: "EUR" },
-  estimatedDelivery: "1–2 business days",
-};
-
-export function getShippingRates(): ShippingRate[] {
-  return [STANDARD_SHIPPING_RATE, EXPRESS_SHIPPING_RATE];
-}
-
-export function resolveShippingRate(rateId: string): ShippingRate {
-  return rateId === "express" ? EXPRESS_SHIPPING_RATE : STANDARD_SHIPPING_RATE;
-}
-
-export function computeShippingAmount(taxableAmount: number, hasActiveItems: boolean): number {
-  if (!hasActiveItems || taxableAmount >= FREE_SHIPPING_THRESHOLD) return 0;
-  return STANDARD_SHIPPING_AMOUNT;
+/**
+ * Turns the editable settings into the rates the rest of the app prices against.
+ *
+ * The free-shipping threshold is folded ONTO each eligible rate here, once, at the single
+ * point where configuration becomes domain objects. Everything downstream — cart totals,
+ * checkout totals, the review step in the browser — then prices from the rate alone and
+ * needs no access to settings at all.
+ *
+ * Disabled rates are dropped: a rate a shopper cannot pick should not appear at checkout.
+ */
+export function buildShippingRates(settings: ShippingSettings, currencyCode = "EUR"): ShippingRate[] {
+  return settings.rates
+    .filter((rate) => rate.enabled)
+    .map((rate) => ({
+      id: rate.id,
+      label: rate.label,
+      description: rate.description,
+      estimatedDelivery: rate.estimatedDelivery,
+      price: { amount: rate.amount, currencyCode },
+      freeOverAmount: rate.freeShippingEligible ? settings.freeShippingThreshold : null,
+    }));
 }
 
 /**
- * Once a shopper has picked a specific rate at checkout, this is what actually
- * gets charged. Express is a paid upgrade and always costs its listed price —
- * but Standard is the same rate the free-shipping-over-threshold promise
- * applies to, so picking it explicitly must not bypass that promise. Without
- * this, `resolveCartAmounts`'s override path charged Standard's flat €6.95 on
- * every order regardless of subtotal, contradicting the "free shipping over
- * €150" banner shown sitewide and silently overcharging every checkout.
+ * The rate a shopper picked, or the first available one when they have not picked yet or
+ * picked something that no longer exists — a rate can be disabled between a cart being
+ * built and its checkout being completed, and an order must still price against something.
+ */
+export function resolveShippingRate(rates: ShippingRate[], rateId?: string | null): ShippingRate | undefined {
+  return rates.find((rate) => rate.id === rateId) ?? rates[0];
+}
+
+
+
+/**
+ * What a rate actually costs for a given basket — the single source of truth, used both to
+ * QUOTE a charge at checkout and to CHARGE it server-side, so the two cannot disagree.
+ *
+ * Express is a paid upgrade and costs its listed price at any basket size; Standard is the
+ * rate the sitewide free-shipping promise is about. Without this, `resolveCartAmounts`'s
+ * override path charged Standard's flat fee on every order regardless of subtotal,
+ * contradicting the "free shipping over €150" banner and silently overcharging every
+ * checkout.
+ *
+ * The threshold now travels on the rate (see `buildShippingRates`) rather than being a
+ * constant compared against a hardcoded rate id, so a third rate can be made free-eligible
+ * from the admin without touching this function.
  */
 export function computeShippingChargeForRate(rate: ShippingRate, taxableAmount: number, hasActiveItems: boolean): number {
   if (!hasActiveItems) return 0;
-  if (rate.id === STANDARD_SHIPPING_RATE.id && taxableAmount >= FREE_SHIPPING_THRESHOLD) return 0;
+  if (rate.freeOverAmount != null && taxableAmount >= rate.freeOverAmount) return 0;
   return rate.price.amount;
 }

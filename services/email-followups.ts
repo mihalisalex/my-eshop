@@ -7,6 +7,7 @@ import { getEmailProvider } from "@/lib/email";
 import { abandonedCartEmail, reviewRequestEmail } from "@/lib/email/templates";
 import { getSiteSettings } from "@/services/settings";
 import { getSiteUrl } from "@/lib/site-url";
+import { getDefaultShippingRate } from "@/services/shipping";
 
 const ABANDONED_CART_IDLE_MS = 24 * 60 * 60 * 1000;
 const REVIEW_REQUEST_DELAY_MS = 5 * 24 * 60 * 60 * 1000;
@@ -111,7 +112,7 @@ export async function runAbandonedCartRecovery({ dryRun = false }: FollowupOptio
     }
 
     try {
-      const cart = toCart(row);
+      const cart = toCart(row, await getDefaultShippingRate());
       const message = abandonedCartEmail({
         siteName: settings.siteName,
         lineItems: cart.lineItems.filter((item) => !item.savedForLater),

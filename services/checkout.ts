@@ -5,7 +5,8 @@ import { cartInclude, toCart, toCheckout, toJsonInput, toOrder } from "@/lib/com
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
 import { storedAddressSchema } from "@/lib/validation/checkout";
 import { shippingRateSchema } from "@/lib/validation/commerce";
-import { resolveShippingRate, STANDARD_SHIPPING_RATE } from "@/lib/shipping";
+import { buildShippingRates, resolveShippingRate } from "@/lib/shipping";
+import { getShippingSettings } from "@/services/shipping";
 import { GIFT_MESSAGE_MAX_LENGTH } from "@/lib/gift-wrap";
 import { CommerceError, type Address, type Checkout, type CompleteCheckoutResult, type Order } from "@/lib/commerce/types";
 import { getEmailProvider, orderConfirmationEmail } from "@/lib/email";
@@ -13,6 +14,7 @@ import { getSiteSettings } from "@/services/settings";
 import { rewardReferralIfPending } from "@/services/referrals";
 import { initiatePayment, resolveSelectedMethod } from "@/services/payments";
 import { getSiteUrl } from "@/lib/site-url";
+import { getDefaultShippingRate } from "@/services/shipping";
 
 async function requireCheckoutRow(checkoutId: string) {
   const row = await prisma.checkout.findUnique({ where: { id: checkoutId } });
@@ -64,7 +66,10 @@ export async function updateBillingAddress(checkoutId: string, address: Address)
 
 export async function setShippingRate(checkoutId: string, rateId: string): Promise<Checkout> {
   await requireCheckoutRow(checkoutId);
-  const rate = resolveShippingRate(rateId);
+  // No rate at all means the store has none enabled — a misconfiguration rather than bad
+  // input, so this reports the same "checkout can't proceed" shape the other gates use.
+  const rate = resolveShippingRate(buildShippingRates(await getShippingSettings()), rateId);
+  if (!rate) throw new CommerceError("CHECKOUT_INCOMPLETE", "No shipping rate is available.");
   const row = await prisma.checkout.update({
     where: { id: checkoutId },
     data: { shippingRate: toJsonInput(rate), status: "awaiting_payment" },
@@ -106,8 +111,12 @@ export async function resolveCheckoutAmounts(checkoutId: string, paymentFeeOverr
   const checkoutRow = await requireCheckoutRow(checkoutId);
   const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");
-  const cart = toCart(cartRow);
-  const shippingRate = checkoutRow.shippingRate ? shippingRateSchema.parse(checkoutRow.shippingRate) : STANDARD_SHIPPING_RATE;
+  const cart = toCart(cartRow, await getDefaultShippingRate());
+  // A checkout that never reached the delivery step has no stored rate; fall back to the
+  // store's default rather than to a constant this module used to hardcode.
+  const shippingRate = checkoutRow.shippingRate
+    ? shippingRateSchema.parse(checkoutRow.shippingRate)
+    : resolveShippingRate(buildShippingRates(await getShippingSettings()));
 
   const resolved = resolveCartAmounts({
     lineItems: cart.lineItems.map((item) => ({ unitPriceAmount: item.unitPrice.amount, quantity: item.quantity, savedForLater: false })),
@@ -163,11 +172,13 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
   const email = checkoutRow.email;
   const shippingAddress = storedAddressSchema.parse(checkoutRow.shippingAddress);
   const billingAddress = checkoutRow.billingAddress ? storedAddressSchema.parse(checkoutRow.billingAddress) : shippingAddress;
-  const shippingRate = checkoutRow.shippingRate ? shippingRateSchema.parse(checkoutRow.shippingRate) : STANDARD_SHIPPING_RATE;
+  const shippingRate = checkoutRow.shippingRate
+    ? shippingRateSchema.parse(checkoutRow.shippingRate)
+    : resolveShippingRate(buildShippingRates(await getShippingSettings()));
 
   const cartRow = await prisma.cart.findUnique({ where: { id: checkoutRow.cartId }, include: cartInclude });
   if (!cartRow) throw new CommerceError("CART_NOT_FOUND", "Cart not found.");
-  const cart = toCart(cartRow);
+  const cart = toCart(cartRow, await getDefaultShippingRate());
 
   const lineItemsForTotals = cart.lineItems.map((item) => ({
     unitPriceAmount: item.unitPrice.amount,
@@ -197,7 +208,7 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
         amount: withoutFee.totals.total.amount,
         currencyCode: cart.currencyCode,
         countryCode: shippingAddress.countryCode,
-        shippingRateId: shippingRate.id,
+        shippingRateId: shippingRate?.id,
       })
     : null;
 

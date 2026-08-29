@@ -124,6 +124,16 @@ export interface ShippingRate {
   description: string;
   price: Money;
   estimatedDelivery: string;
+  /**
+   * Basket value at or above which THIS rate costs nothing, or null/absent when it never
+   * does. Carried on the rate rather than passed alongside it so the pure pricing functions
+   * need no configuration parameter — which is what keeps them usable from a client
+   * component and from a unit test without either reaching for the database.
+   *
+   * Absent on rates persisted before shipping became configurable. Those live on completed
+   * orders and are only ever displayed, never re-priced.
+   */
+  freeOverAmount?: number | null;
 }
 
 /** Thrown by CartService methods instead of a generic Error, so UI can branch on `.code`. */

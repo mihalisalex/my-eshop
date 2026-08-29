@@ -7,7 +7,7 @@ import { findSizeVariant, isSizePurchasable } from "@/lib/product";
 import { getProductById, getRelatedProducts } from "@/services/products";
 import { getDiscountByCode } from "@/services/discounts";
 import { getGiftCardByCode } from "@/services/gift-cards";
-import { getShippingRates } from "@/lib/shipping";
+import { getDefaultShippingRate, getShippingRates } from "@/services/shipping";
 import { CommerceError, type AddLineItemInput, type Address, type Cart, type ShippingRate } from "@/lib/commerce/types";
 import type { Product } from "@/types";
 
@@ -32,21 +32,21 @@ async function requireCartRow(cartId: string): Promise<CartRow> {
 
 async function reloadCart(cartId: string): Promise<Cart> {
   const row = await requireCartRow(cartId);
-  return toCart(row);
+  return toCart(row, await getDefaultShippingRate());
 }
 
 export async function getOrCreateCart(cartId?: string | null): Promise<Cart> {
   if (cartId) {
     const row = await loadCartRow(cartId);
-    if (row) return toCart(row);
+    if (row) return toCart(row, await getDefaultShippingRate());
   }
   const created = await prisma.cart.create({ data: {}, include: cartInclude });
-  return toCart(created);
+  return toCart(created, await getDefaultShippingRate());
 }
 
 export async function getCart(cartId: string): Promise<Cart | null> {
   const row = await loadCartRow(cartId);
-  return row ? toCart(row) : null;
+  return row ? toCart(row, await getDefaultShippingRate()) : null;
 }
 
 function resolveMaxQuantity(product: Product, sizeName: string): number {
@@ -214,7 +214,7 @@ export async function applyGiftCard(cartId: string, code: string): Promise<Cart>
     throw new CommerceError("INVALID_GIFT_CARD", "That gift card is already applied.");
   }
 
-  const cart = toCart(row);
+  const cart = toCart(row, await getDefaultShippingRate());
   const existingApplied = row.giftCards.reduce((sum, g) => sum + toNumber(g.amountApplied), 0);
   // Fixed from the mock's `|| match.balance.amount` quirk: a fully-covered cart now
   // correctly gets amountApplied = 0 for a newly-applied card instead of double-applying.
@@ -242,6 +242,7 @@ export async function estimateShipping(cartId: string, _address?: Partial<Addres
   await requireCartRow(cartId);
   return getShippingRates();
 }
+
 
 /** Union line items from the guest cart into the customer's existing cart, deduped by variant, capped at maxQuantity; deletes the guest cart row. */
 export async function mergeCarts(guestCartId: string, customerCartId: string): Promise<Cart> {
@@ -300,7 +301,7 @@ export async function mergeCarts(guestCartId: string, customerCartId: string): P
 /** Associates a cart with a just-signed-in customer — adopts it if they have no cart yet, else merges into their existing one. */
 export async function linkCustomerCart(cartId: string, customerId: string): Promise<Cart> {
   const cartRow = await requireCartRow(cartId);
-  if (cartRow.customerId === customerId) return toCart(cartRow);
+  if (cartRow.customerId === customerId) return toCart(cartRow, await getDefaultShippingRate());
 
   const existingCustomerCart = await prisma.cart.findFirst({
     where: { customerId, id: { not: cartId } },
@@ -311,10 +312,10 @@ export async function linkCustomerCart(cartId: string, customerId: string): Prom
     if (cartRow.customerId && cartRow.customerId !== customerId) {
       // Cart belongs to a different customer — don't hijack it, start the caller fresh instead.
       const created = await prisma.cart.create({ data: { customerId }, include: cartInclude });
-      return toCart(created);
+      return toCart(created, await getDefaultShippingRate());
     }
     const updated = await prisma.cart.update({ where: { id: cartId }, data: { customerId }, include: cartInclude });
-    return toCart(updated);
+    return toCart(updated, await getDefaultShippingRate());
   }
 
   return mergeCarts(cartId, existingCustomerCart.id);

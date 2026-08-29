@@ -1,12 +1,27 @@
 import { describe, it, expect } from "vitest";
 import { resolveCartAmounts, type ComputeTotalsLineItem } from "./cart-totals";
-import {
-  STANDARD_SHIPPING_RATE,
-  EXPRESS_SHIPPING_RATE,
-  FREE_SHIPPING_THRESHOLD,
-  VAT_RATE,
-  vatIncludedIn,
-} from "@/lib/shipping";
+import { buildShippingRates, VAT_RATE, vatIncludedIn } from "@/lib/shipping";
+import shippingFallback from "@/data/shipping.json";
+import type { ShippingRate } from "@/lib/commerce/types";
+import type { ShippingSettings } from "@/types";
+
+// Built from the shipped defaults rather than from literals, so these assertions describe the
+// configuration a fresh install actually runs on — a test hardcoding 150 keeps passing after
+// someone changes the default and stops describing the shop.
+const DEFAULTS = shippingFallback as ShippingSettings;
+const FREE_SHIPPING_THRESHOLD = DEFAULTS.freeShippingThreshold!;
+const RATES = buildShippingRates(DEFAULTS);
+const STANDARD_SHIPPING_RATE = RATES.find((rate) => rate.id === "standard")!;
+const EXPRESS_SHIPPING_RATE = RATES.find((rate) => rate.id === "express")!;
+
+/**
+ * resolveCartAmounts REQUIRES a rate now, so a production caller cannot forget one and
+ * silently price against constants the admin can no longer see. Most cases here are not about
+ * shipping, so this defaults it to Standard and lets a test override when it is the subject.
+ */
+type Input = Parameters<typeof resolveCartAmounts>[0];
+const totals = (input: Omit<Input, "selectedShippingRate"> & { selectedShippingRate?: ShippingRate }) =>
+  resolveCartAmounts({ selectedShippingRate: STANDARD_SHIPPING_RATE, ...input });
 
 const CURRENCY = "EUR";
 const item = (unitPriceAmount: number, quantity = 1, savedForLater = false): ComputeTotalsLineItem => ({
@@ -17,7 +32,7 @@ const item = (unitPriceAmount: number, quantity = 1, savedForLater = false): Com
 
 describe("resolveCartAmounts", () => {
   it("computes base subtotal/tax/shipping with no discounts, gift cards, or wrap", () => {
-    const result = resolveCartAmounts({ lineItems: [item(50, 2)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const result = totals({ lineItems: [item(50, 2)], discounts: [], giftCards: [], currencyCode: CURRENCY });
     expect(result.totals.subtotal.amount).toBe(100);
     expect(result.totals.shippingTotal.amount).toBe(6.95); // under the free-shipping threshold
     // VAT is contained in the prices, so it does not move the total.
@@ -29,14 +44,14 @@ describe("resolveCartAmounts", () => {
     // The regression that mattered most: a EUR 59 product used to bill at EUR 78.34
     // because 21% was ADDED to a price that already included VAT, contradicting both
     // Greek consumer law and this shop's own Terms of Service.
-    const result = resolveCartAmounts({ lineItems: [item(59)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const result = totals({ lineItems: [item(59)], discounts: [], giftCards: [], currencyCode: CURRENCY });
     expect(result.totals.total.amount).toBe(59 + 6.95);
     expect(result.totals.taxTotal.amount).toBeLessThan(result.totals.total.amount);
   });
 
   it("extracts VAT from the gross amount rather than adding it to a net one", () => {
     // gross x rate / (1 + rate), not gross x rate — confusing the two is the original bug.
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(124)],
       discounts: [],
       giftCards: [],
@@ -49,8 +64,8 @@ describe("resolveCartAmounts", () => {
   });
 
   it("shrinks the VAT figure when a discount shrinks the gross amount", () => {
-    const full = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
-    const discounted = resolveCartAmounts({
+    const full = totals({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const discounted = totals({
       lineItems: [item(100)],
       discounts: [{ code: "TEN", type: "percentage", value: 10 }],
       giftCards: [],
@@ -62,8 +77,8 @@ describe("resolveCartAmounts", () => {
   it("does not reduce VAT when a gift card pays part of the order", () => {
     // A gift card is a means of payment, not a price reduction, so the VAT the sale
     // bore is unchanged by redeeming one.
-    const withoutCard = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
-    const withCard = resolveCartAmounts({
+    const withoutCard = totals({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const withCard = totals({
       lineItems: [item(100)],
       discounts: [],
       giftCards: [{ code: "GC", balanceAmount: 50 }],
@@ -74,7 +89,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("excludes saved-for-later items from the subtotal", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(50), item(30, 1, true)],
       discounts: [],
       giftCards: [],
@@ -84,7 +99,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("applies a percentage discount against the current subtotal", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(100)],
       discounts: [{ code: "TEN", type: "percentage", value: 10 }],
       giftCards: [],
@@ -94,7 +109,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("clamps a fixed discount to the subtotal", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(5)],
       discounts: [{ code: "BIG", type: "fixed", value: 50 }],
       giftCards: [],
@@ -104,7 +119,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("applies gift cards in order, each capped by what's still due", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(20)],
       discounts: [],
       giftCards: [
@@ -118,31 +133,31 @@ describe("resolveCartAmounts", () => {
   });
 
   it("adds the gift wrap fee only when there are active items", () => {
-    const withWrap = resolveCartAmounts({ lineItems: [item(20)], discounts: [], giftCards: [], currencyCode: CURRENCY, giftWrap: true });
+    const withWrap = totals({ lineItems: [item(20)], discounts: [], giftCards: [], currencyCode: CURRENCY, giftWrap: true });
     expect(withWrap.totals.giftWrapTotal.amount).toBeGreaterThan(0);
 
-    const emptyCartWrap = resolveCartAmounts({ lineItems: [], discounts: [], giftCards: [], currencyCode: CURRENCY, giftWrap: true });
+    const emptyCartWrap = totals({ lineItems: [], discounts: [], giftCards: [], currencyCode: CURRENCY, giftWrap: true });
     expect(emptyCartWrap.totals.giftWrapTotal.amount).toBe(0);
   });
 
   it("adds the payment fee to the total, and only when there are active items", () => {
-    const withFee = resolveCartAmounts({
+    const withFee = totals({
       lineItems: [item(100)],
       discounts: [],
       giftCards: [],
       currencyCode: CURRENCY,
       paymentFee: 2,
     });
-    const withoutFee = resolveCartAmounts({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
+    const withoutFee = totals({ lineItems: [item(100)], discounts: [], giftCards: [], currencyCode: CURRENCY });
     expect(withFee.totals.paymentFeeTotal.amount).toBe(2);
     expect(withFee.totals.total.amount).toBeCloseTo(withoutFee.totals.total.amount + 2, 5);
 
-    const emptyCart = resolveCartAmounts({ lineItems: [], discounts: [], giftCards: [], currencyCode: CURRENCY, paymentFee: 2 });
+    const emptyCart = totals({ lineItems: [], discounts: [], giftCards: [], currencyCode: CURRENCY, paymentFee: 2 });
     expect(emptyCart.totals.paymentFeeTotal.amount).toBe(0);
   });
 
   it("never lets a negative payment fee act as a discount", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(100)],
       discounts: [],
       giftCards: [],
@@ -154,7 +169,7 @@ describe("resolveCartAmounts", () => {
 
   it("applies the payment fee before gift cards, so a gift card can cover it", () => {
     // The fee is part of what's owed, not an extra charged after settlement.
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(10)],
       discounts: [],
       giftCards: [{ code: "GC", balanceAmount: 1000 }],
@@ -170,7 +185,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("regression: an explicitly selected Standard rate stays free over the shipping threshold (past revenue bug — see PROGRESS.md)", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(FREE_SHIPPING_THRESHOLD + 50)],
       discounts: [],
       giftCards: [],
@@ -181,7 +196,7 @@ describe("resolveCartAmounts", () => {
   });
 
   it("charges Express in full even when explicitly selected over the threshold", () => {
-    const result = resolveCartAmounts({
+    const result = totals({
       lineItems: [item(FREE_SHIPPING_THRESHOLD + 50)],
       discounts: [],
       giftCards: [],

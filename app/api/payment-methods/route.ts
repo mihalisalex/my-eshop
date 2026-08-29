@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       amount: totals.total.amount,
       currencyCode: cart.currencyCode,
       countryCode: shippingAddress?.countryCode,
-      shippingRateId: shippingRate.id,
+      shippingRateId: shippingRate?.id,
     });
 
     return NextResponse.json(

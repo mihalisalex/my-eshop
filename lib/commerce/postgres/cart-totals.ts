@@ -1,7 +1,7 @@
 import "server-only";
 import type { AppliedDiscount, AppliedGiftCard, CartTotals, ShippingRate } from "@/lib/commerce/types";
 import type { Money } from "@/types";
-import { computeShippingAmount, computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
+import { computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
 
 /** Relocated from the mock's providers/mock/storage.ts — now purely a server-side money-rounding helper. */
@@ -59,8 +59,16 @@ export function resolveCartAmounts(input: {
   discounts: CartDiscountRule[];
   giftCards: CartGiftCardRule[];
   currencyCode: string;
-  /** Set once a shopper has picked a specific rate (Standard or Express) during checkout, so it's actually charged instead of silently falling back to the generic estimate — still honors the free-shipping-over-threshold promise for Standard, unlike a raw price override would. */
-  selectedShippingRate?: ShippingRate;
+  /**
+   * The rate to price against: whichever the shopper picked during checkout, or the store's
+   * default one for a cart that has not reached checkout yet.
+   *
+   * Required rather than optional now that rates are configurable. It used to be omittable,
+   * falling back to a hardcoded Standard rate and a hardcoded threshold inside this module —
+   * which meant a caller that forgot to pass one silently priced against constants the admin
+   * could no longer see. Making it required turns that into a compile error.
+   */
+  selectedShippingRate: ShippingRate | undefined;
   /** Set once a shopper has opted into gift wrapping during checkout — a flat fee, not tied to line items. */
   giftWrap?: boolean;
   /**
@@ -84,9 +92,11 @@ export function resolveCartAmounts(input: {
   const discountAmount = resolvedDiscounts.reduce((sum, d) => sum + d.amount.amount, 0);
 
   const taxableAmount = Math.max(subtotalAmount - discountAmount, 0);
+  // No rate at all means no rate is configured or enabled — charge nothing rather than
+  // inventing a price. The free-shipping rule travels on the rate itself (buildShippingRates).
   const shippingAmount = selectedShippingRate
     ? computeShippingChargeForRate(selectedShippingRate, taxableAmount, activeItems.length > 0)
-    : computeShippingAmount(taxableAmount, activeItems.length > 0);
+    : 0;
   const giftWrapAmount = giftWrap && activeItems.length > 0 ? GIFT_WRAP_FEE : 0;
   // An empty cart can't owe a payment surcharge — same guard as gift wrapping.
   const paymentFeeAmount = activeItems.length > 0 ? Math.max(paymentFee ?? 0, 0) : 0;

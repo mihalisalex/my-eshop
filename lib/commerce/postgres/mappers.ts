@@ -4,6 +4,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import type { Product, ProductGender, ProductSeason, InventoryPolicy, ProductStatus } from "@/types/product";
 import type { Category } from "@/types/category";
 import type { Collection } from "@/types/collection";
+import type { ShippingRate } from "@/lib/commerce/types";
 import type { Discount, GiftCard } from "@/types/commerce";
 import {
   productImagesSchema,
@@ -201,7 +202,14 @@ function toCartLineItem(row: CartRow["lineItems"][number], currencyCode: string)
   };
 }
 
-export function toCart(row: CartRow): Cart {
+/**
+ * `shippingRate` is REQUIRED, and passing `undefined` is a deliberate statement that no rate
+ * applies — not an oversight. Shipping used to be priced from constants inside
+ * `resolveCartAmounts`, so a caller that knew nothing about rates still got a €6.95 estimate;
+ * now that rates are configurable, that estimate has to come from the store's settings, and a
+ * caller silently omitting it would price against nothing at all.
+ */
+export function toCart(row: CartRow, shippingRate: ShippingRate | undefined): Cart {
   const currencyCode = row.currencyCode;
   const allLineItems = row.lineItems.map((li) => toCartLineItem(li, currencyCode));
   const lineItems = allLineItems.filter((li) => !li.savedForLater);
@@ -221,6 +229,7 @@ export function toCart(row: CartRow): Cart {
     discounts: row.discounts.map((d) => ({ code: d.code, type: d.type as "percentage" | "fixed", value: toNumber(d.value) })),
     giftCards: row.giftCards.map((g) => ({ code: g.code, balanceAmount: toNumber(g.balanceAmount) })),
     currencyCode,
+    selectedShippingRate: shippingRate,
   });
 
   return {

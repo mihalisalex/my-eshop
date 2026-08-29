@@ -9,7 +9,8 @@ import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 import { paymentProviderRegistry } from "@/lib/payments/registry";
 import { getAllMethodSettings, toAdminConfigView } from "@/lib/payments/config";
 import { getProviderStates } from "@/services/payments";
-import { getShippingRates } from "@/lib/shipping";
+import { buildShippingRates } from "@/lib/shipping";
+import { getShippingSettings } from "@/services/shipping";
 import { getSiteUrl } from "@/lib/site-url";
 
 /**
@@ -46,7 +47,7 @@ export default async function ProviderSettingsPage({ params }: ProviderSettingsP
   ]);
   const isConnected = states.get(providerId)?.configured ?? view.configured;
   const settingsById = new Map(allSettings.map((settings) => [settings.methodId, settings]));
-  const shippingRates = getShippingRates().map((rate) => ({ id: rate.id, label: rate.label }));
+  const shippingRates = buildShippingRates(await getShippingSettings()).map((rate) => ({ id: rate.id, label: rate.label }));
   const webhookUrl = `${getSiteUrl().replace(/\/$/, "")}/api/payments/webhooks/${provider.id}`;
 
   return (

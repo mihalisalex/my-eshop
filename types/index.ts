@@ -12,3 +12,4 @@ export * from "./admin";
 export * from "./review";
 export * from "./content";
 export * from "./commerce";
+export * from "./shipping";

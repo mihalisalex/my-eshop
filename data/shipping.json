@@ -1,0 +1,23 @@
+{
+  "freeShippingThreshold": 150,
+  "rates": [
+    {
+      "id": "standard",
+      "label": "Παράδοση κατ' οίκον",
+      "description": "3–5 εργάσιμες ημέρες",
+      "estimatedDelivery": "3–5 εργάσιμες ημέρες",
+      "amount": 6.95,
+      "enabled": true,
+      "freeShippingEligible": true
+    },
+    {
+      "id": "express",
+      "label": "Ταχεία παράδοση",
+      "description": "1–2 εργάσιμες ημέρες",
+      "estimatedDelivery": "1–2 εργάσιμες ημέρες",
+      "amount": 14.95,
+      "enabled": true,
+      "freeShippingEligible": false
+    }
+  ]
+}
