@@ -6,6 +6,7 @@ import { EditorialBanner } from "@/components/sections/EditorialBanner";
 import { NewArrivals } from "@/components/sections/NewArrivals";
 import { BrandStory } from "@/components/sections/BrandStory";
 import { SocialGrid } from "@/components/sections/SocialGrid";
+import { BrandStrip } from "@/components/sections/BrandStrip";
 import { Newsletter } from "@/components/sections/Newsletter";
 import { getCollectionsByIds, getInstagramPosts, getNewArrivals, getPublishedProductsByIds, getSiteSettings } from "@/services";
 import { localizeCollections, localizeProducts } from "@/lib/localize";
@@ -92,6 +93,9 @@ export async function SectionRenderer({ section }: SectionRendererProps) {
       const instagramUrl = settings.socialLinks.find((link) => link.platform === "instagram")?.url;
       return <SocialGrid data={section.data} profileUrl={instagramUrl} posts={posts} />;
     }
+
+    case "brandStrip":
+      return <BrandStrip data={section.data} />;
 
     case "newsletter":
       return <Newsletter data={section.data} />;

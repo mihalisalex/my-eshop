@@ -144,6 +144,55 @@ export function SectionEditForm({ section, onChange }: SectionEditFormProps) {
         </div>
       );
 
+    case "brandStrip":
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Title" value={section.data.title ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, title: v } })} />
+            <Field label="Subtitle" value={section.data.subtitle ?? ""} onChange={(v) => onChange({ ...section, data: { ...section.data, subtitle: v } })} />
+          </div>
+          <div className="space-y-2">
+            <label className={labelClass}>Brands</label>
+            {section.data.brands.map((brand, index) => (
+              <div key={index} className="grid grid-cols-1 gap-3 border border-border p-3 sm:grid-cols-3">
+                <Field
+                  label="Name"
+                  value={brand.name}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, name: v } : b)) } })}
+                />
+                {/* Leave blank and the name is set as a wordmark, which is the default and
+                    the reason the row looks uniform. Fill it in only with a logo the brand
+                    supplied — see the note in BrandStrip.tsx. */}
+                <Field
+                  label="Logo URL (optional)"
+                  value={brand.logo ?? ""}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, logo: v || undefined } : b)) } })}
+                />
+                <Field
+                  label="Link (optional)"
+                  value={brand.href ?? ""}
+                  onChange={(v) => onChange({ ...section, data: { ...section.data, brands: section.data.brands.map((b, i) => (i === index ? { ...b, href: v || undefined } : b)) } })}
+                />
+                <button
+                  type="button"
+                  onClick={() => onChange({ ...section, data: { ...section.data, brands: section.data.brands.filter((_, i) => i !== index) } })}
+                  className="justify-self-start text-xs text-destructive hover:underline sm:col-span-3"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => onChange({ ...section, data: { ...section.data, brands: [...section.data.brands, { name: "" }] } })}
+              className="h-9 border border-luxe-black px-4 text-xs font-medium tracking-[0.05em] uppercase"
+            >
+              Add brand
+            </button>
+          </div>
+        </div>
+      );
+
     case "newsletter":
       return (
         <div className="space-y-4">

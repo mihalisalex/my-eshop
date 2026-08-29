@@ -24,6 +24,7 @@ const SECTION_LABELS: Record<HomepageSection["type"], string> = {
   newArrivals: "New Arrivals",
   brandStory: "Brand Story",
   socialGrid: "Social Grid",
+  brandStrip: "Brands",
   newsletter: "Newsletter",
 };
 
@@ -36,6 +37,8 @@ function summarize(section: HomepageSection): string {
     case "newArrivals":
     case "socialGrid":
       return section.data.title;
+    case "brandStrip":
+      return section.data.brands.map((b) => b.name).join(", ");
     case "editorialBanner":
     case "brandStory":
       return section.data.headline;

@@ -15,6 +15,7 @@ export type HomepageSectionType =
   | "newArrivals"
   | "brandStory"
   | "socialGrid"
+  | "brandStrip"
   | "newsletter";
 
 interface SectionBase {
@@ -119,6 +120,33 @@ export interface SocialGridSection extends SectionBase {
   };
 }
 
+export interface Brand {
+  name: string;
+  /**
+   * An official logo file, once the brand supplies one. Absent by default, and absent is a
+   * perfectly good state: the strip then sets the name as a house wordmark, which is how
+   * eight brands end up looking like a set instead of like eight different logos.
+   */
+  logo?: string;
+  /** Only meaningful with `logo`. The name is already the accessible text otherwise. */
+  logoAlt?: string;
+  /**
+   * Where this brand goes, if anywhere. Optional on purpose — most of these are not
+   * separately browsable yet, and a link to nothing is worse than a name that is simply a
+   * name.
+   */
+  href?: string;
+}
+
+export interface BrandStripSection extends SectionBase {
+  type: "brandStrip";
+  data: {
+    title?: string;
+    subtitle?: string;
+    brands: Brand[];
+  };
+}
+
 export interface NewsletterSection extends SectionBase {
   type: "newsletter";
   data: {
@@ -136,6 +164,7 @@ export type HomepageSection =
   | NewArrivalsSection
   | BrandStorySection
   | SocialGridSection
+  | BrandStripSection
   | NewsletterSection;
 
 export interface HomepageConfig {
