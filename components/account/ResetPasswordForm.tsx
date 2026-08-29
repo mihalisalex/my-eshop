@@ -28,8 +28,18 @@ export function ResetPasswordForm() {
 
   const onSubmit = async (values: ResetPasswordFormValues) => {
     const ok = await resetPassword(values.token, values.password);
-    if (ok) router.push("/account");
-    else setFailed(true);
+    if (!ok) {
+      setFailed(true);
+      return;
+    }
+    // Invalidate the client Router Cache before navigating. The session cookie has just
+    // changed, but the cached RSC payload for the destination was fetched under the OLD
+    // session — its layout already ran its session check and baked in the old answer. Without
+    // this the navigation appears to do nothing until a manual reload. The admin never had
+    // this bug because its login is a Server Action that redirects server-side, which does
+    // not consult the cache at all.
+    router.refresh();
+    router.push("/account");
   };
 
   if (!token) {

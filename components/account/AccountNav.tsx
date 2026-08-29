@@ -48,6 +48,10 @@ export function AccountNav() {
         type="button"
         onClick={async () => {
           await signOut();
+          // Same Router Cache problem as signing in, mirrored: the session cookie is gone but
+          // the cached payloads were fetched while signed in, so the header and any visited
+          // account page would still render as authenticated until a reload.
+          router.refresh();
           router.push("/");
         }}
         className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-luxe-gray-dark hover:bg-luxe-gray-light hover:text-luxe-black"

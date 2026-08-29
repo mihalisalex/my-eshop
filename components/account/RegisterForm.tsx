@@ -29,7 +29,15 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
   const onSubmit = async (values: RegisterFormValues) => {
     const ok = await signUp(values);
-    if (ok) router.push("/account");
+    if (!ok) return;
+    // Invalidate the client Router Cache before navigating. The session cookie has just
+    // changed, but the cached RSC payload for the destination was fetched under the OLD
+    // session — its layout already ran its session check and baked in the old answer. Without
+    // this the navigation appears to do nothing until a manual reload. The admin never had
+    // this bug because its login is a Server Action that redirects server-side, which does
+    // not consult the cache at all.
+    router.refresh();
+    router.push("/account");
   };
 
   return (
@@ -43,7 +51,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
 
       <div className="my-8 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-eyebrow">Or</span>
+        <span className="text-eyebrow">{t("or")}</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
@@ -157,7 +165,7 @@ export function RegisterForm({ configuredOAuthProviders }: RegisterFormProps) {
       </form>
 
       <p className="mt-8 text-center text-sm text-luxe-gray-dark">
-        Already have an account?{" "}
+        {t("alreadyHaveAccount")}{" "}
         <Link href="/account/login" className="text-luxe-black underline underline-offset-4">
           {t("signIn")}
         </Link>

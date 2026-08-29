@@ -297,7 +297,11 @@
     "couldNotResetPassword": "Δεν ήταν δυνατή η επαναφορά του κωδικού",
     "linkMayHaveExpired": "Ο σύνδεσμος μπορεί να έχει λήξει.",
     "passwordUpdated": "Ο κωδικός ενημερώθηκε",
-    "couldNotUpdatePassword": "Δεν ήταν δυνατή η ενημέρωση του κωδικού"
+    "couldNotUpdatePassword": "Δεν ήταν δυνατή η ενημέρωση του κωδικού",
+    "or": "ή",
+    "oauthFailed": "Η σύνδεση δεν ολοκληρώθηκε. Δοκιμάστε ξανά ή συνδεθείτε με email και κωδικό.",
+    "noAccountYet": "Δεν έχετε λογαριασμό;",
+    "alreadyHaveAccount": "Έχετε ήδη λογαριασμό;"
   },
   "Address": {
     "firstName": "Όνομα",

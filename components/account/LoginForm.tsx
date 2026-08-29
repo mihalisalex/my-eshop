@@ -34,7 +34,15 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
 
   const onPasswordSubmit = async (values: LoginFormValues) => {
     const ok = await signIn(values);
-    if (ok) router.push(from ?? "/account");
+    if (!ok) return;
+    // Invalidate the client Router Cache before navigating. The session cookie has just
+    // changed, but the cached RSC payload for the destination was fetched under the OLD
+    // session — its layout already ran its session check and baked in the old answer. Without
+    // this the navigation appears to do nothing until a manual reload. The admin never had
+    // this bug because its login is a Server Action that redirects server-side, which does
+    // not consult the cache at all.
+    router.refresh();
+    router.push(from ?? "/account");
   };
 
   const onMagicLinkSubmit = async (values: MagicLinkFormValues) => {
@@ -49,7 +57,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
 
       {oauthError ? (
         <p className="mt-4 text-sm text-destructive">
-          That sign-in didn&apos;t go through. Please try again, or sign in with your email and password.
+          {t("oauthFailed")}
         </p>
       ) : null}
 
@@ -59,7 +67,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
 
       <div className="my-8 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-eyebrow">Or</span>
+        <span className="text-eyebrow">{t("or")}</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
@@ -164,7 +172,7 @@ export function LoginForm({ configuredOAuthProviders, from, oauthError }: LoginF
       )}
 
       <p className="mt-8 text-center text-sm text-luxe-gray-dark">
-        New to ALEXANDRIS?{" "}
+        {t("noAccountYet")}{" "}
         <Link href="/account/register" className="text-luxe-black underline underline-offset-4">
           {t("createAccount")}
         </Link>

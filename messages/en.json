@@ -297,7 +297,11 @@
     "couldNotResetPassword": "Couldn't reset password",
     "linkMayHaveExpired": "That link may have expired.",
     "passwordUpdated": "Password updated",
-    "couldNotUpdatePassword": "Couldn't update password"
+    "couldNotUpdatePassword": "Couldn't update password",
+    "or": "or",
+    "oauthFailed": "That sign-in didn't go through. Please try again, or sign in with your email and password.",
+    "noAccountYet": "New here?",
+    "alreadyHaveAccount": "Already have an account?"
   },
   "Address": {
     "firstName": "First name",
