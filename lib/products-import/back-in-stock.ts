@@ -25,9 +25,16 @@ function isPurchasable(inventoryPolicy: string, quantity: number): boolean {
 export async function notifyBackInStockIfNeeded(
   productId: string,
   oldState: OldProductStockState,
-  newData: ProductFormValues
+  newData: ProductFormValues,
+  /**
+   * The quantities actually WRITTEN, which is no longer the same thing as the quantities
+   * submitted: an admin-form save applies stock as a delta against the current shelf
+   * (see resolveSizeQuantity), so the submitted number can be stale. Diffing against the
+   * submitted value would email "back in stock" for a size that is still empty.
+   */
+  writtenSizes: { name: string; quantity: number }[]
 ): Promise<void> {
-  const newlyPurchasableSizeNames = newData.sizes
+  const newlyPurchasableSizeNames = writtenSizes
     .filter((size) => {
       const oldSize = oldState.sizes.find((old) => old.name === size.name);
       const wasPurchasable = oldSize ? isPurchasable(oldState.inventoryPolicy, oldSize.quantity) : false;

@@ -72,6 +72,20 @@ export const sizeVariantSchema = z.object({
   name: z.string().min(1),
   inStock: z.boolean(),
   quantity: z.number().int().min(0),
+  /**
+   * The stock this size held when the form was LOADED — not a value anyone types.
+   *
+   * Present, `quantity` is applied as a delta (`current + (submitted - baseline)`);
+   * absent, it is applied absolutely. That difference is the whole point: the admin form
+   * round-trips a number the shop has since moved on from, so writing it back absolutely
+   * silently resurrects sold stock. Open a product at quantity 3, sell one, save — and the
+   * shelf goes back to 3 with nothing recording that it happened.
+   *
+   * Absent on purpose for the two callers where the submitted number really is
+   * authoritative: a newly added size (nothing to be stale about) and CSV import, whose
+   * entire job is to state what the stock now is.
+   */
+  quantityBaseline: z.number().int().min(0).optional(),
   sku: z.string().optional(),
   barcode: z.string().optional(),
 });
@@ -152,7 +166,9 @@ export function productToFormValues(product: Product): ProductFormValues {
       imageSrc: color.image?.src,
       imageAlt: color.image?.alt,
     })),
-    sizes: product.sizes,
+    // The baseline is stamped here, at the one place a stored product becomes an editable
+    // form, so every edit carries the stock it started from. See sizeVariantSchema.
+    sizes: product.sizes.map((size) => ({ ...size, quantityBaseline: size.quantity })),
     category: product.category,
     collectionIds: product.collectionIds,
     tags: product.tags,

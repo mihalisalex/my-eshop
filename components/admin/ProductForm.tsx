@@ -422,6 +422,13 @@ export function ProductForm({ defaultValues, collections, categories, onSubmit, 
         <div className="space-y-2">
           {sizes.fields.map((field, index) => (
             <div key={field.id} className="flex items-center gap-2">
+              {/* Carries the stock this size held when the page loaded, so the save can be
+                  applied as a change rather than as an overwrite (see sizeVariantSchema).
+                  Rendered only for sizes that already exist — a size added just now has no
+                  baseline to be stale against, and its quantity is taken literally. */}
+              {field.quantityBaseline !== undefined ? (
+                <input type="hidden" {...register(`sizes.${index}.quantityBaseline`, { valueAsNumber: true })} />
+              ) : null}
               <input className={`${inputClass} max-w-24`} placeholder="Size" {...register(`sizes.${index}.name`)} />
               <Controller
                 name={`sizes.${index}.quantity`}

@@ -241,34 +241,67 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
       const sizeByKey = new Map(sizeRows.map((row) => [`${row.productId}:${row.name}`, row]));
       const productById = new Map(productRows.map((row) => [row.id, row]));
 
-      const decrements: { sizeId: string; amount: number }[] = [];
+      /**
+       * Demand is aggregated PER STOCK ROW before anything is written, because a cart can
+       * legitimately contain the same size twice — two colourways of one product share a
+       * single ProductSize row. Checking each line independently let both pass against the
+       * same single unit.
+       */
+      const demandBySize = new Map<string, { sizeId: string; needed: number; canOversell: boolean; label: string }>();
       for (const item of cart.lineItems) {
         const sizeRow = sizeByKey.get(`${item.productId}:${item.size}`);
-        const product = productById.get(item.productId);
-        const availableQuantity = sizeRow?.quantity ?? 0;
-        const canOversell = product?.inventoryPolicy === "continue";
-        if (availableQuantity < item.quantity && !canOversell) {
-          throw new CommerceError("OUT_OF_STOCK", `${item.name} (${item.size}) is no longer available in that quantity.`);
+        const canOversell = productById.get(item.productId)?.inventoryPolicy === "continue";
+        const label = `${item.name} (${item.size})`;
+        // No stock row at all is zero available — buyable only where overselling is allowed.
+        if (!sizeRow) {
+          if (!canOversell) throw new CommerceError("OUT_OF_STOCK", `${label} is no longer available in that quantity.`);
+          continue;
         }
-        if (sizeRow) {
-          decrements.push({ sizeId: sizeRow.id, amount: Math.min(item.quantity, sizeRow.quantity) });
+        const existing = demandBySize.get(sizeRow.id);
+        if (existing) existing.needed += item.quantity;
+        else demandBySize.set(sizeRow.id, { sizeId: sizeRow.id, needed: item.quantity, canOversell, label });
+      }
+
+      /**
+       * The availability check IS the write.
+       *
+       * This used to read the quantity, compare it in JS, and then decrement — three
+       * statements with a gap in the middle. At Postgres' default Read Committed isolation
+       * two shoppers buying the last unit both read 1, both passed, and the second
+       * decrement applied to the already-decremented row: one unit, two orders, and stock
+       * left at -1. The clamp that looked like it prevented that was computed from the same
+       * stale read, so it prevented nothing.
+       *
+       * A conditional UPDATE closes the gap without table locks or a raised isolation
+       * level: Postgres serialises writers on the row, re-evaluates `quantity >= needed`
+       * against the committed value, and reports how many rows it actually touched. Zero
+       * means somebody else got there first.
+       */
+      for (const { sizeId, needed, canOversell, label } of demandBySize.values()) {
+        if (canOversell) {
+          // Overselling is allowed to exceed the shelf but not to go below zero — the same
+          // floor the previous min() clamp produced, and the one services/restock.ts relies
+          // on when it declines to credit these lines back.
+          await tx.$executeRaw`UPDATE "product_sizes" SET "quantity" = GREATEST("quantity" - ${needed}, 0) WHERE "id" = ${sizeId}`;
+          continue;
+        }
+        const { count } = await tx.productSize.updateMany({
+          where: { id: sizeId, quantity: { gte: needed } },
+          data: { quantity: { decrement: needed } },
+        });
+        if (count === 0) {
+          throw new CommerceError("OUT_OF_STOCK", `${label} is no longer available in that quantity.`);
         }
       }
 
-      // Validation above has to finish (and can throw) before any write starts — these
-      // writes hit distinct rows, so issuing them together is safe once we know every
-      // item passed.
-      await Promise.all([
-        ...decrements.map(({ sizeId, amount }) =>
-          tx.productSize.update({ where: { id: sizeId }, data: { quantity: { decrement: amount } } })
-        ),
-        ...giftCards.map((applied) =>
+      await Promise.all(
+        giftCards.map((applied) =>
           tx.giftCard.updateMany({
             where: { code: applied.code },
             data: { balanceAmount: { decrement: applied.amountApplied.amount } },
           })
-        ),
-      ]);
+        )
+      );
 
       const created = await tx.order.create({
         data: {

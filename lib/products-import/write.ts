@@ -72,62 +72,146 @@ function toProductWriteData(data: ProductFormValues, categoryId: string, previou
 }
 
 /**
- * The one write path for a validated product row — nested colors/sizes/collections are
- * always fully replaced (delete-then-recreate on update) rather than diffed, since
- * there's no stable external identity for a color/size row to diff against. Shared by
- * the single-product admin form (app/admin/(dashboard)/products/actions.ts) and the CSV
- * bulk-import tool's commit route, so there's exactly one place this logic can drift.
+ * What a size's stock should become.
+ *
+ * With a baseline, the submitted number is read as an INTENT TO CHANGE BY a delta rather
+ * than as the new absolute value, so a concurrent sale between form load and form save is
+ * preserved instead of being overwritten. Load at 3, sell one, save an untouched 3:
+ * delta 0, and the shelf stays at 2 rather than jumping back to 3.
+ *
+ * Without a baseline — a newly added size, or any CSV import row — the submitted number is
+ * authoritative and applied as-is.
+ *
+ * Clamped at zero either way: negative stock is not a state this app has ever modelled
+ * (see services/restock.ts), and the database now refuses it outright.
+ */
+export function resolveSizeQuantity(
+  submitted: number,
+  baseline: number | undefined,
+  current: number
+): number {
+  if (baseline === undefined || !Number.isFinite(baseline)) return Math.max(0, submitted);
+  return Math.max(0, current + (submitted - baseline));
+}
+
+/**
+ * The one write path for a validated product row. Shared by the single-product admin form
+ * (app/admin/(dashboard)/products/actions.ts) and the CSV bulk-import tool's commit route,
+ * so there's exactly one place this logic can drift.
+ *
+ * Colors and collections are still fully replaced on update — they hold no state worth
+ * preserving, so there's nothing to lose by recreating them. SIZES ARE NOT, because they
+ * hold stock: delete-then-recreate wrote the form's (or the CSV's) quantity back
+ * unconditionally, which is a lost update every time the shelf moved while the form was
+ * open. They are now reconciled by name, which is also the key BackInStockRequest already
+ * uses, so nothing downstream needed a stable id it wasn't already living without.
  */
 export async function writeProductRow(data: ProductFormValues, existingId?: string): Promise<{ id: string }> {
   const { id: categoryId } = await findOrCreateCategoryBySlug(data.category);
 
-  const nestedWrites = {
-    colors: {
-      create: data.colors.map((color, position) => ({
-        position,
-        name: color.name,
-        hex: color.hex,
-        imageSrc: color.imageSrc,
-        imageAlt: color.imageAlt,
-      })),
-    },
-    sizes: {
-      create: data.sizes.map((size, position) => ({
-        position,
-        name: size.name,
-        inStock: size.inStock,
-        quantity: size.quantity,
-        sku: size.sku,
-        barcode: size.barcode,
-      })),
-    },
-    collections: {
-      create: data.collectionIds.map((collectionId, position) => ({ collectionId, position })),
-    },
+  const colorWrites = {
+    create: data.colors.map((color, position) => ({
+      position,
+      name: color.name,
+      hex: color.hex,
+      imageSrc: color.imageSrc,
+      imageAlt: color.imageAlt,
+    })),
+  };
+  const collectionWrites = {
+    create: data.collectionIds.map((collectionId, position) => ({ collectionId, position })),
   };
 
   if (existingId) {
-    // Read before the transaction — needed to diff old vs. new per-size purchasability
-    // for back-in-stock notifications (the delete-then-recreate below discards it), and
-    // to tell a real archive transition from a save of an already-archived product.
+    // Read before the transaction — needed to diff old vs. new per-size purchasability for
+    // back-in-stock notifications, and to tell a real archive transition from a save of an
+    // already-archived product.
     const oldState = await prisma.product.findUnique({
       where: { id: existingId },
-      select: { inventoryPolicy: true, status: true, sizes: { select: { name: true, quantity: true } } },
+      select: {
+        slug: true,
+        inventoryPolicy: true,
+        status: true,
+        sizes: { select: { id: true, name: true, quantity: true } },
+      },
     });
+    const currentSizes = oldState?.sizes ?? [];
+    const currentByName = new Map(currentSizes.map((size) => [size.name, size]));
+    const submittedNames = new Set(data.sizes.map((size) => size.name));
+
+    // Computed before the transaction opens so the resulting quantities can also be handed
+    // to the back-in-stock diff below — which must compare against what was actually
+    // written, not against what was submitted. Those are no longer the same number.
+    const resolvedSizes = data.sizes.map((size, position) => {
+      const current = currentByName.get(size.name);
+      return {
+        current,
+        position,
+        name: size.name,
+        inStock: size.inStock,
+        quantity: resolveSizeQuantity(size.quantity, size.quantityBaseline, current?.quantity ?? 0),
+        sku: size.sku ?? null,
+        barcode: size.barcode ?? null,
+      };
+    });
+    const removedSizeIds = currentSizes.filter((size) => !submittedNames.has(size.name)).map((size) => size.id);
+
+    /**
+     * A rename records the outgoing slug so the old URL keeps working — see
+     * ProductSlugHistory, and updateCategory, which does exactly this for categories.
+     *
+     * It happens inside the same transaction as the rename because a rename that committed
+     * without its history row would silently 404 a ranked URL, and nothing would report it.
+     * The CSV import path can never reach this branch with a changed slug (it looks the
+     * product up BY slug), so this only ever fires for a real admin rename.
+     */
+    const slugChanged = Boolean(oldState) && oldState!.slug !== data.slug;
 
     await prisma.$transaction([
+      ...(slugChanged
+        ? [
+            prisma.productSlugHistory.upsert({
+              where: { slug: oldState!.slug },
+              create: { slug: oldState!.slug, productId: existingId },
+              // If this slug was previously retired by ANOTHER product and is now being
+              // released again, the newest owner wins — that's who a visitor should land on.
+              update: { productId: existingId },
+            }),
+            // The incoming slug may itself be an old slug of this product (a rename
+            // reverted). Leaving that row would redirect the now-live URL back to itself.
+            prisma.productSlugHistory.deleteMany({ where: { slug: data.slug } }),
+          ]
+        : []),
       prisma.productColor.deleteMany({ where: { productId: existingId } }),
-      prisma.productSize.deleteMany({ where: { productId: existingId } }),
       prisma.productCollection.deleteMany({ where: { productId: existingId } }),
+      // A size dropped from the form is still deleted — removing a size is a real edit.
+      // Only the ones that survive keep their row, and with it their stock.
+      ...(removedSizeIds.length > 0
+        ? [prisma.productSize.deleteMany({ where: { id: { in: removedSizeIds } } })]
+        : []),
+      ...resolvedSizes.map(({ current, ...size }) =>
+        current
+          ? prisma.productSize.update({ where: { id: current.id }, data: size })
+          : prisma.productSize.create({ data: { productId: existingId, ...size } })
+      ),
       prisma.product.update({
         where: { id: existingId },
-        data: { ...toProductWriteData(data, categoryId, oldState?.status), ...nestedWrites },
+        data: {
+          ...toProductWriteData(data, categoryId, oldState?.status),
+          colors: colorWrites,
+          collections: collectionWrites,
+        },
       }),
     ]);
 
     if (oldState) {
       try {
-        await notifyBackInStockIfNeeded(existingId, oldState, data);
+        await notifyBackInStockIfNeeded(
+          existingId,
+          oldState,
+          data,
+          resolvedSizes.map(({ name, quantity }) => ({ name, quantity }))
+        );
       } catch (error) {
         console.error("Failed to process back-in-stock notifications", error);
       }
@@ -137,7 +221,22 @@ export async function writeProductRow(data: ProductFormValues, existingId?: stri
   }
 
   const product = await prisma.product.create({
-    data: { ...toProductWriteData(data, categoryId), ...nestedWrites },
+    data: {
+      ...toProductWriteData(data, categoryId),
+      colors: colorWrites,
+      collections: collectionWrites,
+      sizes: {
+        // Nothing exists yet, so every quantity here is authoritative by definition.
+        create: data.sizes.map((size, position) => ({
+          position,
+          name: size.name,
+          inStock: size.inStock,
+          quantity: Math.max(0, size.quantity),
+          sku: size.sku,
+          barcode: size.barcode,
+        })),
+      },
+    },
   });
   return { id: product.id };
 }
