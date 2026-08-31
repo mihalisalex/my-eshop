@@ -9,10 +9,32 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { PlpToolbar } from "@/components/plp/PlpToolbar";
 import { PlpFilterSidebar, type PlpFilters } from "@/components/plp/PlpFilterSidebar";
 import type { PlpSort } from "@/components/plp/PlpSortSelect";
-import type { SearchFacet, SearchOptions, SearchResult } from "@/lib/commerce/types";
+import type { SearchFacet, SearchOptions } from "@/lib/commerce/types";
 import type { Product } from "@/types";
+import {
+  PLP_PAGE_SIZE,
+  listingSearchOptions,
+  listingSignature,
+  parseListingQuery,
+} from "@/components/plp/listing-query";
 
-const PAGE_SIZE = 8;
+/**
+ * What the server already fetched and rendered for this exact URL.
+ *
+ * Passed down by ProductListingSection so the grid arrives in the HTML rather than
+ * appearing a round-trip after hydration. Absent only if a caller renders this component
+ * without its server wrapper, which still works — it just starts empty and fetches.
+ */
+export interface InitialListing {
+  products: Product[];
+  facets: SearchFacet[];
+  total: number;
+  priceBounds: [number, number] | null;
+  /** The signature the server rendered. Seeded state is used only if the URL still matches. */
+  signature: string;
+  /** How many pages the server accumulated, so infinite scroll resumes rather than restarts. */
+  pages: number;
+}
 
 interface ProductListingPageProps {
   title: string;
@@ -22,13 +44,17 @@ interface ProductListingPageProps {
   showHeader?: boolean;
   /** Sort applied when the shopper has not chosen one. /new-in uses "newest" so the page means something. */
   defaultSort?: PlpSort;
+  initialListing?: InitialListing;
 }
 
-function parseCsv(value: string | null): string[] {
-  return value ? value.split(",").filter(Boolean) : [];
-}
-
-export function ProductListingPage({ title, description, baseFilters, showHeader = true, defaultSort = "relevance" }: ProductListingPageProps) {
+export function ProductListingPage({
+  title,
+  description,
+  baseFilters,
+  showHeader = true,
+  defaultSort = "relevance",
+  initialListing,
+}: ProductListingPageProps) {
   const t = useTranslations("Plp");
   const router = useRouter();
   const pathname = usePathname();
@@ -36,31 +62,35 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
   const commerce = useMemo(() => getCommerceProvider(), []);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const category = searchParams.get("category");
-  const isNew = searchParams.get("isNew") === "true";
-  const tags = parseCsv(searchParams.get("tag"));
-  const colors = parseCsv(searchParams.get("color"));
-  const sizes = parseCsv(searchParams.get("size"));
-  const availability = searchParams.get("availability") === "in-stock" ? "in-stock" : "all";
-  // Only meaningful where the page has not already pinned a gender. On /women the scope's
-  // own gender wins below, so a stray ?gender=men in the URL cannot contradict the heading.
-  const genderParam = searchParams.get("gender");
-  const sort = (searchParams.get("sort") as PlpSort | null) ?? defaultSort;
-  const minPriceParam = searchParams.get("minPrice");
-  const maxPriceParam = searchParams.get("maxPrice");
-  const urlPage = Math.max(1, Number(searchParams.get("page")) || 1);
+  // Parsed by the same function the server used, so the two cannot drift apart.
+  const query = parseListingQuery((key) => searchParams.get(key), defaultSort);
+  // `tags` is deliberately not destructured: it is a scope filter carried straight through
+  // to the search by listingSearchOptions, and this component renders no control for it.
+  const { colors, sizes, availability, sort, page: urlPage } = query;
+  const genderParam = query.gender;
+  const signature = listingSignature(baseFilters, query);
 
-  const [priceBounds, setPriceBounds] = useState<[number, number] | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [facets, setFacets] = useState<SearchFacet[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  /**
+   * The server's work is reused only when the URL still describes the same result set.
+   *
+   * It usually does — this is the first render after a full page load. It does not after a
+   * client-side filter change, where `router.replace` updates the query string without
+   * re-running the server component, and the seeded page would then be the previous
+   * filter's products.
+   */
+  const seeded = initialListing && initialListing.signature === signature ? initialListing : null;
+
+  const [priceBounds, setPriceBounds] = useState<[number, number] | null>(seeded?.priceBounds ?? null);
+  const [products, setProducts] = useState<Product[]>(seeded?.products ?? []);
+  const [facets, setFacets] = useState<SearchFacet[]>(seeded?.facets ?? []);
+  const [total, setTotal] = useState(seeded?.total ?? 0);
+  const [isLoading, setIsLoading] = useState(!seeded);
 
   // Offered only where the listing is not already one gender. On /women the page IS the
   // gender, so the control would be a no-op that contradicts its own heading.
   const showGenderFilter = !baseFilters.gender;
-  const scopeFilters = { ...baseFilters, category: category ?? baseFilters.category, isNew: isNew || baseFilters.isNew };
-  const baseFiltersKey = JSON.stringify(scopeFilters);
+  const minPriceParam = query.minPrice !== undefined ? String(query.minPrice) : null;
+  const maxPriceParam = query.maxPrice !== undefined ? String(query.maxPrice) : null;
 
   // The price-slider bounds used to come from a SECOND request for 500 products, issued
   // on every listing view purely to read a minimum and a maximum. /api/search now returns
@@ -72,74 +102,93 @@ export function ProductListingPage({ title, description, baseFilters, showHeader
     maxPriceParam ? Number(maxPriceParam) : (priceBounds?.[1] ?? 0),
   ];
 
-  // Sent to the search API only when the user actually narrowed the range. Omitting it
-  // otherwise is equivalent to filtering by the full bounds anyway (a no-op), and lets the
-  // results fetch below run immediately instead of waiting on the bounds fetch to resolve —
-  // that wait used to serialize two full round-trips before any product appeared.
-  const minPriceFilter = minPriceParam ? Number(minPriceParam) : undefined;
-  const maxPriceFilter = maxPriceParam ? Number(maxPriceParam) : undefined;
-
-  // Keyed by every filter/sort dimension below (everything except urlPage/commerce) — a
-  // signature change means a genuinely different result set, so it gets a fresh cache
-  // entry; the same signature reuses whatever pages were already fetched. Deliberately
-  // independent of the price-bounds fetch above (see minPriceFilter/maxPriceFilter) so
-  // this effect can run immediately instead of waiting on that one to resolve.
-  // This is what turns "Load More" from a full 1..urlPage refetch into a single new
-  // request per click, without changing any of the state this component exposes.
-  const pageCacheRef = useRef(new Map<string, { pages: Map<number, Product[]>; facets: SearchFacet[]; total: number }>());
+  /**
+   * Keyed by every filter/sort dimension except the page number — a signature change means
+   * a genuinely different result set, so it gets a fresh cache entry; the same signature
+   * reuses whatever pages were already fetched. This is what turns "Load More" from a full
+   * 1..urlPage refetch into a single new request per click.
+   *
+   * Seeded from the server's render, which is the point of the whole exercise: without
+   * this, the browser would immediately refetch the very products it was just handed in
+   * the HTML, and the round trip the server render exists to remove would still happen.
+   */
+  // A lazy `useState` initialiser rather than a `useRef`, because the seeding below has to
+  // happen exactly once and before the first effect runs — and reading or writing a ref
+  // during render is precisely what React forbids.
+  const [pageCache] = useState(() => {
+    const cache = new Map<string, { pages: Map<number, Product[]>; facets: SearchFacet[]; total: number }>();
+    if (seeded) {
+      const pages = new Map<number, Product[]>();
+      // The server accumulated pages 1..N into one array, exactly as this component does
+      // for infinite scroll, so it is re-split along the page size it was fetched with.
+      for (let page = 1; page <= seeded.pages; page += 1) {
+        pages.set(page, seeded.products.slice((page - 1) * PLP_PAGE_SIZE, page * PLP_PAGE_SIZE));
+      }
+      cache.set(seeded.signature, { pages, facets: seeded.facets, total: seeded.total });
+    }
+    return cache;
+  });
 
   useEffect(() => {
     let cancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
-    setIsLoading(true);
 
-    const signature = JSON.stringify({ baseFiltersKey, genderParam, colors, sizes, tags, availability, sort, minPriceFilter, maxPriceFilter });
-    let entry = pageCacheRef.current.get(signature);
+    let entry = pageCache.get(signature);
     if (!entry) {
       entry = { pages: new Map<number, Product[]>(), facets: [], total: 0 };
-      pageCacheRef.current.set(signature, entry);
+      pageCache.set(signature, entry);
     }
     const cacheEntry = entry;
 
-    (async () => {
-      for (let page = 1; page <= urlPage; page += 1) {
-        if (cacheEntry.pages.has(page)) continue;
-        const result = (await commerce.search.search("", {
-          ...scopeFilters,
-          // A REFINEMENT, not scope — see SearchOptions.genders. Sent this way so the facet
-          // keeps reporting every gender in the listing and "Όλα" stays reachable.
-          genders: showGenderFilter && genderParam ? [genderParam] : undefined,
-          colors: colors.length ? colors : undefined,
-          sizes: sizes.length ? sizes : undefined,
-          tags: tags.length ? tags : undefined,
-          availability,
-          minPrice: minPriceFilter,
-          maxPrice: maxPriceFilter,
-          sort,
-          page,
-          pageSize: PAGE_SIZE,
-        })) as SearchResult & { priceBounds?: [number, number] };
-        if (cancelled) return;
-        cacheEntry.pages.set(page, result.products);
-        cacheEntry.facets = result.facets;
-        cacheEntry.total = result.total;
-        if (result.priceBounds) setPriceBounds(result.priceBounds);
-      }
-
-      if (cancelled) return;
+    const applyFromCache = () => {
       const collected: Product[] = [];
       for (let page = 1; page <= urlPage; page += 1) collected.push(...(cacheEntry.pages.get(page) ?? []));
       setProducts(collected);
       setFacets(cacheEntry.facets);
       setTotal(cacheEntry.total);
       setIsLoading(false);
+    };
+
+    let missing = false;
+    for (let page = 1; page <= urlPage; page += 1) {
+      if (!cacheEntry.pages.has(page)) missing = true;
+    }
+
+    if (!missing) {
+      // Every page asked for is already held — going back to a filter that was visited
+      // before, so show it without a request.
+      //
+      // Except on the very first render, where what is already on screen IS this cache
+      // entry: it came from the server. Re-applying it would replace the grid with an
+      // identical copy of itself and cost a render for nothing.
+      const alreadyOnScreen = seeded?.signature === signature && seeded?.pages === urlPage;
+      if (!alreadyOnScreen) applyFromCache();
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
+    setIsLoading(true);
+
+    (async () => {
+      for (let page = 1; page <= urlPage; page += 1) {
+        if (cacheEntry.pages.has(page)) continue;
+        const result = await commerce.search.search("", listingSearchOptions(baseFilters, query, page));
+        if (cancelled) return;
+        const withBounds = result as typeof result & { priceBounds?: [number, number] };
+        cacheEntry.pages.set(page, result.products);
+        cacheEntry.facets = result.facets;
+        cacheEntry.total = result.total;
+        if (withBounds.priceBounds) setPriceBounds(withBounds.priceBounds);
+      }
+
+      if (cancelled) return;
+      applyFromCache();
     })();
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- colors/sizes are re-derived from searchParams each render; joining keeps the effect keyed on their content
-  }, [baseFiltersKey, genderParam, colors.join(","), sizes.join(","), tags.join(","), availability, sort, minPriceFilter, maxPriceFilter, urlPage, commerce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `signature` already encodes every filter dimension `query` carries; listing them again would re-run this effect on each render for no change
+  }, [signature, urlPage, commerce]);
 
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {

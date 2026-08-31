@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { ProductListingPage } from "@/components/plp/ProductListingPage";
+import { ProductListingSection } from "@/components/plp/ProductListingSection";
+import type { ListingPageProps } from "@/components/plp/listing-query";
 import { getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
 import { buildMetadata } from "@/lib/seo";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -19,8 +20,13 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-export default async function NewInPage() {
-  const [navigation, settings, t] = await Promise.all([getNavigation(), getSiteSettings(), getTranslations("Pages")]);
+export default async function NewInPage({ searchParams }: ListingPageProps) {
+  const [navigation, settings, t, resolvedSearchParams] = await Promise.all([
+    getNavigation(),
+    getSiteSettings(),
+    getTranslations("Pages"),
+    searchParams,
+  ]);
 
   return (
     <>
@@ -31,7 +37,13 @@ export default async function NewInPage() {
               showed "0 items" while the catalog held 175 products. Sorting by when a product
               was actually added is what "New In" means, and it stays correct on its own as
               stock is added. */}
-          <ProductListingPage title={t("newInTitle")} description={t("newInDescription")} baseFilters={{}} defaultSort="newest" />
+          <ProductListingSection
+            title={t("newInTitle")}
+            description={t("newInDescription")}
+            baseFilters={{}}
+            defaultSort="newest"
+            searchParams={resolvedSearchParams}
+          />
         </Suspense>
       </main>
       <Footer navigation={navigation} settings={settings} />

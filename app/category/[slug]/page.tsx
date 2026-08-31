@@ -6,7 +6,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { ProductListingPage } from "@/components/plp/ProductListingPage";
+import { ProductListingSection } from "@/components/plp/ProductListingSection";
 import {
   getAllCategories,
   getCategoryBySlug,
@@ -23,6 +23,8 @@ import type { Locale } from "@/i18n/config";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
+  /** Awaited in the page body so the product grid can be rendered server-side — see ProductListingSection. */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateStaticParams() {
@@ -48,7 +50,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   });
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
   const rawCategory = await getCategoryBySlug(slug);
 
@@ -69,11 +71,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   // reach them directly at /admin/categories/[id] regardless of isVisible.
   if (!rawCategory || !rawCategory.isVisible) notFound();
 
-  const [navigation, settings, locale, rawChildren] = await Promise.all([
+  const [navigation, settings, locale, rawChildren, resolvedSearchParams] = await Promise.all([
     getNavigation(),
     getSiteSettings(),
     getLocale(),
     getChildCategories(rawCategory.id),
+    searchParams,
   ]);
   const category = localizeCategory(rawCategory, locale as Locale);
   const children = localizeCategories(
@@ -121,7 +124,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <Suspense fallback={null}>
           {/* Always false — one of the two branches above has already rendered the
               category's name (and description), same as app/collections/[slug]/page.tsx. */}
-          <ProductListingPage title={category.name} baseFilters={{ category: category.slug }} showHeader={false} />
+          <ProductListingSection
+            title={category.name}
+            baseFilters={{ category: category.slug }}
+            showHeader={false}
+            searchParams={resolvedSearchParams}
+          />
         </Suspense>
       </main>
       <Footer navigation={navigation} settings={settings} />

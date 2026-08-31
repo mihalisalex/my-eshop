@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { ProductListingPage } from "@/components/plp/ProductListingPage";
+import { ProductListingSection } from "@/components/plp/ProductListingSection";
 import { getAllCollections, getCollectionBySlug, getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
 import { localizeCollection } from "@/lib/localize";
 import { buildMetadata } from "@/lib/seo";
@@ -13,6 +13,8 @@ import type { Locale } from "@/i18n/config";
 
 interface CollectionPageProps {
   params: Promise<{ slug: string }>;
+  /** Awaited in the page body so the product grid can be rendered server-side — see ProductListingSection. */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateStaticParams() {
@@ -37,12 +39,17 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
   });
 }
 
-export default async function CollectionPage({ params }: CollectionPageProps) {
+export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
   const rawCollection = await getCollectionBySlug(slug);
   if (!rawCollection) notFound();
 
-  const [navigation, settings, locale] = await Promise.all([getNavigation(), getSiteSettings(), getLocale()]);
+  const [navigation, settings, locale, resolvedSearchParams] = await Promise.all([
+    getNavigation(),
+    getSiteSettings(),
+    getLocale(),
+    searchParams,
+  ]);
   const collection = localizeCollection(rawCollection, locale as Locale);
 
   return (
@@ -57,11 +64,12 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
           </div>
         </div>
         <Suspense fallback={null}>
-          <ProductListingPage
+          <ProductListingSection
             title={collection.title}
             description={collection.description}
             baseFilters={{ collectionId: collection.id }}
             showHeader={false}
+            searchParams={resolvedSearchParams}
           />
         </Suspense>
       </main>
