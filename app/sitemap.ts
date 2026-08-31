@@ -82,6 +82,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: product.updatedAt ?? buildTime,
         changeFrequency: "weekly" as const,
         priority: 0.6,
+        /**
+         * Image sitemap entries, which matter more here than on most shops: this is a
+         * footwear catalogue, so a meaningful share of the demand arrives through image
+         * search, and product photography is the one asset the shop has plenty of.
+         *
+         * They also solve a discovery problem specific to this deployment. Vercel's image
+         * optimizer is off (see next.config.ts), so images are served straight from Blob on
+         * a different host — and a crawler has no reason to associate a Blob URL with this
+         * product page unless the sitemap says so.
+         *
+         * Capped at the first four per product: Google indexes what it finds here, and a
+         * gallery's fifth angle of the same shoe adds crawl cost rather than coverage.
+         */
+        images: product.images.slice(0, 4).map((image) => image.src),
       })),
     ...posts.map((post) => ({
       url: toUrl(ROUTES.journalPost(post.slug)),
