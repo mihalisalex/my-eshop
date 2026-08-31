@@ -34,12 +34,48 @@ async function renamedCategoryRedirect(request: NextRequest): Promise<NextRespon
   return NextResponse.redirect(url, 308);
 }
 
+/**
+ * The same treatment for products, and for the same reasons — `/products/[slug]` streams
+ * too, so a `permanentRedirect` inside the page degrades to a client-side meta refresh
+ * rather than a 308, which is a soft redirect and passes no ranking on.
+ *
+ * A product URL is the most linked-to page a shop has, and the slug is an editable field
+ * on the admin form, so this is the redirect that matters most.
+ */
+async function renamedProductRedirect(request: NextRequest): Promise<NextResponse | null> {
+  const slug = request.nextUrl.pathname.split("/")[2];
+  if (!slug) return null;
+
+  // A live product always wins — a retired slug later reissued to a different product
+  // serves that product rather than redirecting away from it. Checked without filtering on
+  // status: a draft occupying the slug still owns it, and should 404 rather than redirect
+  // a customer to some other product that once had the name.
+  const live = await prisma.product.findUnique({ where: { slug }, select: { id: true } });
+  if (live) return null;
+
+  const history = await prisma.productSlugHistory.findUnique({
+    where: { slug },
+    select: { product: { select: { slug: true, status: true } } },
+  });
+  if (!history || history.product.status !== "active" || history.product.slug === slug) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = `/products/${history.product.slug}`;
+  return NextResponse.redirect(url, 308);
+}
+
 /** Next only supports one proxy/middleware export per project — the admin, customer-account and category-redirect branches all live in this single function. */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/category/")) {
     const redirectResponse = await renamedCategoryRedirect(request);
+    if (redirectResponse) return redirectResponse;
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/products/")) {
+    const redirectResponse = await renamedProductRedirect(request);
     if (redirectResponse) return redirectResponse;
     return NextResponse.next();
   }
@@ -111,5 +147,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/account/:path*", "/category/:path*"],
+  matcher: ["/admin/:path*", "/account/:path*", "/category/:path*", "/products/:path*"],
 };

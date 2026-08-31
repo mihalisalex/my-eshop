@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/config";
 import { localizeProduct, localizeProducts } from "@/lib/localize";
@@ -24,6 +24,7 @@ import {
   getSeoDefaults,
   getSiteSettings,
   getCategoryById,
+  resolveRenamedProductSlug,
 } from "@/services";
 import { ROUTES } from "@/constants/routes";
 
@@ -61,7 +62,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const t = await getTranslations("Pdp");
   const { slug } = await params;
   const rawProduct = await getProductBySlug(slug);
-  if (!rawProduct) notFound();
+
+  if (!rawProduct) {
+    // Backstop only. proxy.ts already 308s renamed slugs before the request reaches here,
+    // which is what search engines need; this catches anything that bypassed the proxy.
+    //
+    // It cannot replace the proxy: this route streams, and Next emits a client-side
+    // `<meta http-equiv="refresh">` rather than a 308 when `permanentRedirect` is called
+    // in a streaming context. That still moves a human to the right page, but it passes no
+    // ranking on — which is the entire point of preserving the old URL.
+    const currentSlug = await resolveRenamedProductSlug(slug);
+    if (currentSlug) permanentRedirect(ROUTES.product(currentSlug));
+    notFound();
+  }
 
   const [navigation, settings, seo, rawRelated, reviews, reviewSummary, locale, category] = await Promise.all([
     getNavigation(),

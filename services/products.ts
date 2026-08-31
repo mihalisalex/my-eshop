@@ -130,6 +130,28 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
   return row ? toProduct(row) : undefined;
 }
 
+/**
+ * The current slug for a product that used to live at `slug`, or null if there is nothing
+ * to redirect to. Mirrors `resolveRenamedCategorySlug` deliberately — same shape, same
+ * guards, same reasoning — because the two are the same problem and should stay
+ * recognisable as such.
+ *
+ * Returns null when the retired slug now belongs to the product's own current slug (a
+ * rename that was reverted), which would otherwise redirect a live URL to itself.
+ */
+export async function resolveRenamedProductSlug(slug: string): Promise<string | null> {
+  const history = await prisma.productSlugHistory.findUnique({
+    where: { slug },
+    select: { product: { select: { slug: true, status: true } } },
+  });
+  if (!history) return null;
+  if (history.product.slug === slug) return null;
+  // An unpublished product shouldn't be resurrected through an old URL — 404 like any
+  // other draft. `status` is the publication gate everywhere else in this file too.
+  if (history.product.status !== PUBLISHED.status) return null;
+  return history.product.slug;
+}
+
 /** ADMIN lookup — intentionally unfiltered, so drafts and archived products remain editable. */
 export async function getProductById(id: string): Promise<Product | undefined> {
   const row = await prisma.product.findUnique({ where: { id }, include: productInclude });
