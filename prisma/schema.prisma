@@ -685,6 +685,15 @@ model Discount {
 model GiftCard {
   id            String   @id @default(cuid())
   code          String   @unique
+  /// Guarded in the database by a CHECK (balanceAmount >= 0) constraint, added in the
+  /// 20260831180000 migration — the money counterpart of ProductSize.quantity's floor,
+  /// and invisible to Prisma for the same reason. Do not "restore" it by removing the
+  /// constraint when Prisma reports no drift for it.
+  ///
+  /// The real guarantee is the conditional decrement in services/checkout.ts, which
+  /// redeems only a card that still holds the amount being taken. A card is one code that
+  /// anyone holding it can spend, so two people redeeming it at once is an easier race to
+  /// hit than two people racing for the last unit of stock.
   balanceAmount Decimal  @db.Decimal(10, 2)
   currencyCode  String   @default("EUR")
   active        Boolean  @default(true)

@@ -294,14 +294,42 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
         }
       }
 
-      await Promise.all(
-        giftCards.map((applied) =>
-          tx.giftCard.updateMany({
-            where: { code: applied.code },
-            data: { balanceAmount: { decrement: applied.amountApplied.amount } },
-          })
-        )
-      );
+      /**
+       * The same conditional-update shape as the stock decrement above, for the same
+       * reason — and this one moves money.
+       *
+       * A bare `decrement` with no guard let two checkouts redeeming the same code both
+       * pass, taking the balance negative: the shop paying out more than the card was
+       * ever worth, with nothing anywhere reporting it. It is an easier race to hit than
+       * the stock one, because a gift card is a single code that anyone holding it can
+       * spend — it needs two people with the same card, not two people racing for the
+       * last unit. It does not even need to be concurrent: `applyGiftCard` snapshots the
+       * balance onto the cart, so a card spent on another order between adding it and
+       * checking out would have been redeemed twice on a stale number.
+       *
+       * `active` is re-checked here even though `applyGiftCard` checks it, because an
+       * admin can deactivate a card between the cart and the order — the same reason the
+       * payment method is re-validated rather than trusted from the checkout row.
+       *
+       * No aggregation pass, unlike stock: `CartGiftCard` is unique on `(cartId, code)`,
+       * so one code cannot appear twice in a single cart.
+       */
+      for (const applied of giftCards) {
+        const { count } = await tx.giftCard.updateMany({
+          where: {
+            code: applied.code,
+            active: true,
+            balanceAmount: { gte: applied.amountApplied.amount },
+          },
+          data: { balanceAmount: { decrement: applied.amountApplied.amount } },
+        });
+        if (count === 0) {
+          throw new CommerceError(
+            "INVALID_GIFT_CARD",
+            `Gift card ${applied.code} can no longer be used — it may have been spent or deactivated.`
+          );
+        }
+      }
 
       const created = await tx.order.create({
         data: {
