@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireCapability } from "@/lib/admin-session";
 import { commerceErrorResponse, invalidInputResponse } from "@/lib/commerce/http-errors";
-import { uploadImageToBlob } from "@/lib/blob";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { UploadRejectedError, uploadImageToBlob } from "@/lib/blob";
 import { createMediaAsset } from "@/services/media";
 
 /**
@@ -13,6 +14,12 @@ import { createMediaAsset } from "@/services/media";
 export async function POST(request: Request) {
   try {
     await requireCapability("content:media");
+
+    // Generous, because a bulk drop into the Media Library is one request per file and a
+    // CSV import resolves images row by row. It bounds a runaway client or a compromised
+    // editor account rather than getting in an admin's way.
+    const limited = await enforceRateLimit(request, { name: "media-upload", limit: 200, windowMs: 10 * 60 * 1000 });
+    if (limited) return limited;
 
     const form = await request.formData();
     const files = form.getAll("file").filter((value): value is File => value instanceof File);
@@ -55,6 +62,9 @@ export async function POST(request: Request) {
     // doesn't care about the asset records.
     return NextResponse.json({ assets, urls: assets.map((a) => a.url) });
   } catch (error) {
+    // A rejected file is the uploader's mistake, not a server fault — it deserves the
+    // reason and a 400, rather than the generic 500 an unrecognised throw would produce.
+    if (error instanceof UploadRejectedError) return invalidInputResponse(error.message);
     return commerceErrorResponse(error);
   }
 }
