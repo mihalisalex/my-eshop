@@ -91,6 +91,7 @@ model Product {
 
   colors      ProductColor[]
   sizes       ProductSize[]
+  slugHistory ProductSlugHistory[]
   collections ProductCollection[]
   cartLineItems  CartLineItem[]
   wishlistItems  WishlistItem[]
@@ -180,6 +181,30 @@ model CategorySlugHistory {
   @@map("category_slug_history")
 }
 
+/// Every slug a product has ever had — the exact counterpart of CategorySlugHistory, and
+/// added for the same reason one page later: a product page is the single most linked-to
+/// and most ranked URL a shop has, and the slug is freely editable in the admin form.
+/// Renaming one used to 404 it outright, losing whatever ranking it had accumulated along
+/// with every inbound link, every share and every printed reference to it.
+///
+/// Points at the product rather than storing a from/to pair, so a rename chain
+/// (a -> b -> c) resolves in one hop to the CURRENT slug with no chain-walking and no
+/// stale intermediate redirects.
+model ProductSlugHistory {
+  id String @id @default(cuid())
+
+  /// Unique across all history: two products can't both claim the same retired slug, and
+  /// it makes the redirect lookup a single indexed read.
+  slug      String  @unique
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@map("product_slug_history")
+}
+
 model ProductColor {
   id        String  @id @default(cuid())
   productId String
@@ -205,6 +230,15 @@ model ProductSize {
   position Int
   name     String
   inStock  Boolean @default(true)
+  /// Guarded in the database by a CHECK (quantity >= 0) constraint, added in the
+  /// 20260831090000 migration. Prisma has no schema syntax for CHECK constraints, so it
+  /// lives in the migration SQL only and will not appear here — do not "restore" it by
+  /// removing the constraint when Prisma reports no drift for it.
+  ///
+  /// It is a backstop, not the mechanism: the real guarantee is that every decrement is a
+  /// conditional UPDATE (services/checkout.ts) and every admin write is a delta
+  /// (lib/products-import/write.ts). The constraint is what turns the next bug in either
+  /// of those from silent negative stock into a loud failure.
   quantity Int     @default(0)
   sku      String?
   barcode  String?
