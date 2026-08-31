@@ -29,8 +29,10 @@ export type Capability =
   | "payments:refund"
   | "payments:configure"
   | "admin:users"
-  | "admin:settings"
-  | "admin:activity";
+  | "admin:settings";
+// `admin:activity` was removed with the seeded activity log it gated (services/admin.ts).
+// A capability advertised on the roles page for a screen that no longer exists is the same
+// class of untruth as the log itself. It comes back with the real AdminAuditLog.
 
 export interface CapabilityDefinition {
   key: Capability;
@@ -88,7 +90,6 @@ export const CAPABILITIES: CapabilityDefinition[] = [
   },
   { key: "admin:users", group: "Administration", label: "Manage users and roles" },
   { key: "admin:settings", group: "Administration", label: "Edit site settings and SEO" },
-  { key: "admin:activity", group: "Administration", label: "View the activity log" },
 ];
 
 /**
@@ -108,7 +109,6 @@ const EDITOR_CAPABILITIES: Capability[] = [
   // before dispatching it. Confirming, refunding and configuring are all withheld:
   // each of those either moves money or exposes live payment credentials.
   "payments:view",
-  "admin:activity",
 ];
 
 export const ROLE_CAPABILITIES: Record<AdminRole, Capability[]> = {

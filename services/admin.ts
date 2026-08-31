@@ -1,19 +1,27 @@
 import "server-only";
-import activityLogData from "@/data/activity-log.json";
 import { prisma } from "@/lib/prisma";
 import { cartTotalsSchema } from "@/lib/validation/commerce";
 import { getNewsletterSubscriberCount } from "@/services/newsletter";
-import type { ActivityLogEntry, AdminUser, DashboardStat } from "@/types";
+import type { AdminUser, DashboardStat } from "@/types";
 
 /**
  * Orders/Customers/Discounts/GiftCards/Returns moved to services/orders.ts,
  * services/customers.ts, services/discounts.ts, services/gift-cards.ts,
  * services/returns.ts, and Newsletter to services/newsletter.ts (all
- * Postgres-backed now). This file keeps the domains still genuinely
- * mock/JSON-backed — currently just the activity log.
+ * Postgres-backed now).
+ *
+ * The activity log used to live here and has been REMOVED, not migrated. It read
+ * data/activity-log.json — a file of seeded, invented entries — and presented them at
+ * /admin/activity under the heading "Recent actions taken across this dashboard". Nothing
+ * ever wrote to it, so it could only ever show a fixed set of things that never happened.
+ *
+ * That is worse than having no audit log, because it is the screen someone opens during an
+ * incident to find out who changed a price, and it would answer confidently and wrongly.
+ * An honest absence is recoverable; a convincing fabrication is not. The real thing is an
+ * AdminAuditLog table written from this service layer, with the same append-only
+ * discipline PaymentTransaction already uses for payments — deliberately left undone here
+ * rather than faked.
  */
-
-const activityLog = activityLogData as ActivityLogEntry[];
 
 /**
  * Reads the real `AdminUser` table (Postgres, Real Backend Phase 1) — this
@@ -30,10 +38,6 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
     email: row.email,
     role: row.role === "editor" ? "editor" : "admin",
   }));
-}
-
-export async function getActivityLog(): Promise<ActivityLogEntry[]> {
-  return [...activityLog].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getDashboardStats(): Promise<DashboardStat[]> {

@@ -27,10 +27,9 @@ export interface NewsletterSubscriber {
   subscribedAt: string;
 }
 
-export interface ActivityLogEntry {
-  id: string;
-  actor: string;
-  action: string;
-  target: string;
-  createdAt: string;
-}
+/**
+ * `ActivityLogEntry` was removed along with the seeded activity log it described — see the
+ * note in services/admin.ts. The replacement is a real AdminAuditLog table, which will need
+ * its own type when it is built; this one is not a head start on it, because it recorded
+ * only a display string ("Updated product X") rather than what actually changed.
+ */

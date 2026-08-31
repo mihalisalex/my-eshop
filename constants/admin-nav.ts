@@ -24,7 +24,6 @@ import {
   Gift,
   BarChart3,
   ShieldCheck,
-  History,
   Send,
   MessageSquare,
   Sparkles,
@@ -106,7 +105,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: "Appearance", href: "/admin/appearance", icon: Palette },
       { label: "Users", href: "/admin/users", icon: UserCog, capability: "admin:users" },
       { label: "Roles & Permissions", href: "/admin/roles", icon: ShieldCheck },
-      { label: "Activity Log", href: "/admin/activity", icon: History },
     ],
   },
 ];
