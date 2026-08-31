@@ -10,6 +10,9 @@ import type { PlpSort } from "@/components/plp/PlpSortSelect";
 import type { SearchFacet, SearchOptions } from "@/lib/commerce/types";
 import type { Product } from "@/types";
 import { searchProducts } from "@/services/search";
+import { getSeoDefaults } from "@/services/seo";
+import { productListSchema } from "@/lib/seo";
+import { JsonLd } from "@/components/shared/JsonLd";
 
 /**
  * The server half of a product listing, and the reason category pages now have products in
@@ -62,6 +65,7 @@ export async function ProductListingSection({
 }: ProductListingSectionProps) {
   const query = parseListingQuery(searchParamReader(searchParams), defaultSort);
   const pages = Math.min(query.page, MAX_SERVER_RENDERED_PAGES);
+  const seo = await getSeoDefaults();
 
   /**
    * Fetched page by page rather than as one big query, so the shape matches exactly what
@@ -101,13 +105,36 @@ export async function ProductListingSection({
   };
 
   return (
-    <ProductListingPage
-      title={title}
-      description={description}
-      baseFilters={baseFilters}
-      showHeader={showHeader}
-      defaultSort={defaultSort}
-      initialListing={initialListing}
-    />
+    <>
+      {/*
+        ItemList describing the products actually rendered below, emitted here because this
+        is the one component that has both the list and the page it belongs to — so every
+        listing route gets it from one place rather than six.
+
+        Only page one. The markup describes what this URL shows; a shopper who scrolled to
+        page 3 is looking at a URL that canonicalises to page one anyway, and re-describing
+        the accumulated set would claim a different list than the canonical page holds.
+
+        Skipped entirely when the page is empty — an ItemList of nothing is noise, and a
+        filtered view with no matches is not a list worth declaring.
+      */}
+      {collected.length > 0 ? (
+        <JsonLd
+          data={productListSchema(
+            collected.slice(0, PLP_PAGE_SIZE).map((product) => ({ slug: product.slug, name: product.name })),
+            seo.siteUrl,
+            title
+          )}
+        />
+      ) : null}
+      <ProductListingPage
+        title={title}
+        description={description}
+        baseFilters={baseFilters}
+        showHeader={showHeader}
+        defaultSort={defaultSort}
+        initialListing={initialListing}
+      />
+    </>
   );
 }

@@ -52,6 +52,39 @@ export async function resolveRenamedCategorySlug(slug: string): Promise<string |
   return history.category.slug;
 }
 
+/**
+ * The visible ancestors of a category, outermost first, excluding the category itself.
+ *
+ * Breadcrumbs on a nested category used to read `Home > Sneakers` regardless of depth,
+ * throwing away the hierarchy the taxonomy exists to express — both for a reader and in
+ * BreadcrumbList markup, where the trail is the whole point.
+ *
+ * Hidden ancestors are skipped rather than rendered: this shop's gender parents
+ * (`gynaikeia`, `andrika`) are deliberately `isVisible: false` because their pages would
+ * duplicate /women and /men, so linking to them would send both crawlers and shoppers to a
+ * 404. Walks up by parentId with a depth cap — a cycle is impossible through the admin
+ * (updateCategory rejects one) but a hand-edited row should not hang a page render.
+ */
+export async function getCategoryAncestors(categoryId: string): Promise<Category[]> {
+  const ancestors: Category[] = [];
+  let current = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { parentId: true },
+  });
+
+  for (let depth = 0; depth < 10 && current?.parentId; depth += 1) {
+    const parent = await prisma.category.findUnique({
+      where: { id: current.parentId },
+      include: categoryInclude,
+    });
+    if (!parent) break;
+    if (parent.isVisible) ancestors.unshift(toCategory(parent));
+    current = { parentId: parent.parentId };
+  }
+
+  return ancestors;
+}
+
 /** Direct children only, ordered — what the storefront category page shows as sub-category chips. */
 export async function getChildCategories(parentId: string): Promise<Category[]> {
   const rows = await prisma.category.findMany({

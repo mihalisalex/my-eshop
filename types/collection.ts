@@ -1,3 +1,4 @@
+import type { CategorySeoOverride } from "@/lib/validation/product";
 import type { CallToAction, Image, SlugEntity } from "./common";
 
 export interface Collection extends SlugEntity {
@@ -11,6 +12,8 @@ export interface Collection extends SlugEntity {
   image: Image;
   productIds?: string[];
   cta?: CallToAction;
+  /** Same overrides a Category carries — see lib/seo/resolve.ts. */
+  seo?: CategorySeoOverride;
   /** ISO timestamp of the last edit — see Product.updatedAt. */
   updatedAt?: string;
 }

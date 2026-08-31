@@ -9,6 +9,7 @@ import { ProductListingSection } from "@/components/plp/ProductListingSection";
 import { getAllCollections, getCollectionBySlug, getNavigation, getSiteSettings, getSeoDefaults } from "@/services";
 import { localizeCollection } from "@/lib/localize";
 import { buildMetadata } from "@/lib/seo";
+import { resolveCollectionSeo } from "@/lib/seo/resolve";
 import type { Locale } from "@/i18n/config";
 
 interface CollectionPageProps {
@@ -30,11 +31,18 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
   // English while the visible heading is Greek — the body was localized and the metadata was
   // forgotten, which is invisible on screen and is exactly what a search engine reads.
   const collection = localizeCollection(raw, locale as Locale);
+  // Collections had no SEO overrides at all until the `seo` column was added — the title
+  // and description were whatever the merchandiser typed for the storefront hero.
+  const resolved = resolveCollectionSeo(collection, { seo });
   return buildMetadata({
     seo,
-    title: collection.title,
-    description: collection.description ?? collection.subtitle,
-    path: `/collections/${collection.slug}`,
+    title: resolved.title,
+    description: resolved.description,
+    canonical: resolved.canonical,
+    noIndex: resolved.noIndex,
+    ogTitle: resolved.ogTitle,
+    ogDescription: resolved.ogDescription,
+    image: resolved.ogImage,
     locale: locale as Locale,
   });
 }

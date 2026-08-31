@@ -265,6 +265,12 @@ model Collection {
   ctaHref    String?
   ctaVariant String?
 
+  /// CategorySeoOverride | null — same shape and convention as Category.seo, because a
+  /// collection is the same kind of thing to a search engine: a curated landing page that
+  /// wants its own title, description and editorial intro. It was the one such entity with
+  /// no way to set any of them.
+  seo Json?
+
   products ProductCollection[]
 
   createdAt DateTime @default(now())

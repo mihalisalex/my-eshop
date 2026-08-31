@@ -37,11 +37,17 @@ export type ProductStatus = "draft" | "active" | "archived";
 
 export const PRODUCT_STATUSES: ProductStatus[] = ["draft", "active", "archived"];
 
-export interface ProductSeoOverride {
-  title?: string;
-  description?: string;
-  ogImage?: string;
-}
+/**
+ * Re-exported from the Zod schema rather than declared again here.
+ *
+ * This file used to carry its own hand-written `{ title?, description?, ogImage? }`
+ * interface alongside `productSeoOverrideSchema` in lib/validation, so the shape existed
+ * twice and stayed in sync only by someone remembering. Adding a field to one and not the
+ * other type-checks perfectly and silently drops the field at the boundary that parses it.
+ * The schema is the source of truth because it is the thing that actually validates the
+ * Json column on every read and write.
+ */
+export type { CategorySeoOverride, ProductSeoOverride } from "@/lib/validation/product";
 
 export type ProductBadgeTone = "new" | "sale" | "preorder" | "backorder" | "low-stock" | "bestseller";
 
@@ -115,5 +121,5 @@ export interface Product extends SlugEntity {
   archivedAt?: string;
   brand?: string;
   vendor?: string;
-  seo?: ProductSeoOverride;
+  seo?: import("@/lib/validation/product").ProductSeoOverride;
 }

@@ -1,5 +1,5 @@
 import type { Image, SlugEntity } from "./common";
-import type { ProductSeoOverride } from "./product";
+import type { CategorySeoOverride } from "./product";
 
 export interface Category extends SlugEntity {
   name: string;
@@ -15,7 +15,7 @@ export interface Category extends SlugEntity {
   bannerImage?: Image;
   isFeatured: boolean;
   isVisible: boolean;
-  seo?: ProductSeoOverride;
+  seo?: CategorySeoOverride;
   /** Populated by services/categories.ts's list/tree helpers; absent on a bare single-row read. */
   productCount?: number;
   /** ISO timestamp of the last edit — see Product.updatedAt. */

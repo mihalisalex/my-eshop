@@ -14,6 +14,7 @@ import { RelatedProducts } from "@/components/product/RelatedProducts";
 import { RecentlyViewedSection } from "@/components/product/RecentlyViewedSection";
 import { JsonLd } from "@/components/shared/JsonLd";
 import { buildMetadata, breadcrumbSchema, productSchema } from "@/lib/seo";
+import { resolveProductSeo } from "@/lib/seo/resolve";
 import {
   getAllProducts,
   getNavigation,
@@ -43,23 +44,24 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   if (!rawProduct) return {};
   const product = localizeProduct(rawProduct, locale as Locale);
 
-  // `||`, not `??`: an override saved through the admin form with its optional SEO
-  // block left blank is stored as "" rather than absent, and `??` would hand that
-  // empty string straight to the <title>. See normalizeSeoOverride in
-  // lib/validation/product.ts — that stops NEW rows being written this way, this
-  // makes rows already written that way render their real name.
+  // Every fallback rule lives in resolveProductSeo, not here — see lib/seo/resolve.ts for
+  // why five call sites each doing their own `||` chain is how the empty-string bug got in.
+  const resolved = resolveProductSeo(product, { seo });
   return buildMetadata({
     seo,
-    title: product.seo?.title || product.name,
-    description: product.seo?.description || product.description,
-    path: `/products/${product.slug}`,
-    image: product.seo?.ogImage || product.images[0]?.src,
+    title: resolved.title,
+    description: resolved.description,
+    canonical: resolved.canonical,
+    noIndex: resolved.noIndex,
+    ogTitle: resolved.ogTitle,
+    ogDescription: resolved.ogDescription,
+    image: resolved.ogImage,
     locale: locale as "en" | "el",
   });
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const t = await getTranslations("Pdp");
+  const [t, tNav] = await Promise.all([getTranslations("Pdp"), getTranslations("Nav")]);
   const { slug } = await params;
   const rawProduct = await getProductBySlug(slug);
 
@@ -89,14 +91,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const product = localizeProduct(rawProduct, locale as Locale);
   const related = localizeProducts(rawRelated, locale as Locale);
 
-  const breadcrumbItems = [
-    { name: "Home", href: "/" },
-    // Was `/${product.category}` — a dead link (no such top-level route ever existed).
-    // Now a real page: app/category/[slug]/page.tsx, with the category's real display
-    // name instead of a crudely capitalized slug.
-    ...(category ? [{ name: category.name, href: ROUTES.category(category.slug) }] : []),
-    { name: product.name, href: `/products/${product.slug}` },
-  ];
+  // Built by the resolver so the crumb the reader sees and the crumb Google reads come
+  // from one place, and so the category link cannot drift from the metadata's idea of it.
+  const { breadcrumbs: breadcrumbItems } = resolveProductSeo(product, {
+    seo,
+    category: category ? { name: category.name, slug: category.slug } : undefined,
+    homeLabel: tNav("home"),
+  });
 
   return (
     <>

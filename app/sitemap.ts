@@ -51,30 +51,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority,
     })),
-    ...collections.map((collection) => ({
-      url: toUrl(ROUTES.collection(collection.slug)),
-      lastModified: collection.updatedAt ?? buildTime,
-      changeFrequency: "weekly" as const,
-      priority: 0.7,
-    })),
+    /**
+     * A sitemap is a request to index, so anything marked noindex is excluded — listing a
+     * page in both places asks for two opposite things and is one of the contradictions
+     * Search Console reports as "Indexed, though blocked" or simply ignores.
+     *
+     * Drafts and archived products never reach here at all: getAllProducts() filters on
+     * publication status by default, so they are absent rather than filtered out.
+     */
+    ...collections
+      .filter((collection) => !collection.seo?.noIndex)
+      .map((collection) => ({
+        url: toUrl(ROUTES.collection(collection.slug)),
+        lastModified: collection.updatedAt ?? buildTime,
+        changeFrequency: "weekly" as const,
+        priority: 0.7,
+      })),
     ...categories
-      .filter((category) => category.isVisible)
+      .filter((category) => category.isVisible && !category.seo?.noIndex)
       .map((category) => ({
         url: toUrl(ROUTES.category(category.slug)),
         lastModified: category.updatedAt ?? buildTime,
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })),
-    // Only published products reach here — getAllProducts() filters on status by default,
-    // so drafts and archived products are already absent rather than needing excluding.
-    // There is still no per-product noindex switch; when one is added, it has to filter
-    // here too, since listing a noindex URL in a sitemap asks for two opposite things.
-    ...products.map((product) => ({
-      url: toUrl(ROUTES.product(product.slug)),
-      lastModified: product.updatedAt ?? buildTime,
-      changeFrequency: "weekly" as const,
-      priority: 0.6,
-    })),
+    ...products
+      .filter((product) => !product.seo?.noIndex)
+      .map((product) => ({
+        url: toUrl(ROUTES.product(product.slug)),
+        lastModified: product.updatedAt ?? buildTime,
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      })),
     ...posts.map((post) => ({
       url: toUrl(ROUTES.journalPost(post.slug)),
       lastModified: post.publishedAt,

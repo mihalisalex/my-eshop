@@ -10,6 +10,7 @@ import {
   productImagesSchema,
   productVideosSchema,
   productSeoOverrideSchema,
+  categorySeoOverrideSchema,
   imageSchema,
 } from "@/lib/validation/product";
 import { storedAddressSchema } from "@/lib/validation/checkout";
@@ -140,7 +141,9 @@ export function toCategory(row: CategoryRow): Category {
     bannerImage: row.bannerImage ? imageSchema.parse(row.bannerImage) : undefined,
     isFeatured: row.isFeatured,
     isVisible: row.isVisible,
-    seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
+    // The category schema, not the product one — categories additionally carry the
+    // editorial intro and FAQs that make them landing pages rather than grids.
+    seo: row.seo ? categorySeoOverrideSchema.parse(row.seo) : undefined,
     productCount: row._count.products,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -172,6 +175,7 @@ export function toCollection(row: CollectionRow): Collection {
             variant: (row.ctaVariant as "primary" | "secondary" | "ghost" | "link" | null) ?? undefined,
           }
         : undefined,
+    seo: row.seo ? categorySeoOverrideSchema.parse(row.seo) : undefined,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

@@ -22,13 +22,56 @@ export const productVideoSchema = z.object({
   alt: z.string().min(1),
 });
 
+/**
+ * Per-entity SEO overrides. Every field is optional and every one of them means "the admin
+ * disagreed with the generated default" — see lib/seo/resolve.ts, which owns the defaults.
+ *
+ * Stored in a Json column, so adding fields here needs no migration. Adding OPTIONAL fields
+ * is also safe for rows already written; tightening anything is not (see NOTES.md).
+ */
 export const productSeoOverrideSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   ogImage: z.string().optional(),
+  /**
+   * Absolute URL. An escape hatch, not a routine field: the resolver already emits a
+   * correct self-referencing canonical for every page, and the common reasons to override
+   * one (a renamed slug, a duplicate) are handled properly by slug history and by the
+   * facet strategy instead. Validated as a real URL so a typo cannot de-index a page.
+   */
+  canonicalUrl: z.string().url("Canonical must be a full URL including https://").optional(),
+  /**
+   * Holds the page out of search results. Also excludes it from the sitemap — listing a
+   * noindex URL in a sitemap asks for two opposite things at once.
+   */
+  noIndex: z.boolean().optional(),
+  /** Falls back to the SEO title, which falls back to the entity's name. */
+  ogTitle: z.string().optional(),
+  /** Falls back to the meta description. */
+  ogDescription: z.string().optional(),
 });
 
 export type ProductSeoOverride = z.infer<typeof productSeoOverrideSchema>;
+
+export const seoFaqSchema = z.object({
+  question: z.string().min(1),
+  answer: z.string().min(1),
+});
+
+/**
+ * Categories carry everything a product does, plus the editorial fields that turn a grid of
+ * products into a page worth ranking. Products do not get these: a product page's content
+ * is its description, and a second free-text block below the grid is a place for filler to
+ * accumulate.
+ */
+export const categorySeoOverrideSchema = productSeoOverrideSchema.extend({
+  /** Shown above the product grid. Real copy about the category, not keyword filler. */
+  introContent: z.string().optional(),
+  /** Rendered on the page AND as FAQPage structured data — never one without the other. */
+  faqs: z.array(seoFaqSchema).optional(),
+});
+
+export type CategorySeoOverride = z.infer<typeof categorySeoOverrideSchema>;
 
 /**
  * Collapses a SEO override to `undefined` when every field is blank, and drops
@@ -49,13 +92,24 @@ export type ProductSeoOverride = z.infer<typeof productSeoOverrideSchema>;
  * already written like this render correctly too.
  */
 export function normalizeSeoOverride(
-  seo: ProductSeoOverride | null | undefined
-): ProductSeoOverride | undefined {
+  seo: CategorySeoOverride | null | undefined
+): CategorySeoOverride | undefined {
   if (!seo) return undefined;
-  const cleaned: ProductSeoOverride = {};
+  const cleaned: CategorySeoOverride = {};
   if (seo.title?.trim()) cleaned.title = seo.title.trim();
   if (seo.description?.trim()) cleaned.description = seo.description.trim();
   if (seo.ogImage?.trim()) cleaned.ogImage = seo.ogImage.trim();
+  if (seo.canonicalUrl?.trim()) cleaned.canonicalUrl = seo.canonicalUrl.trim();
+  if (seo.ogTitle?.trim()) cleaned.ogTitle = seo.ogTitle.trim();
+  if (seo.ogDescription?.trim()) cleaned.ogDescription = seo.ogDescription.trim();
+  if (seo.introContent?.trim()) cleaned.introContent = seo.introContent.trim();
+  // Only `true` is worth storing. `false` is the default, and persisting it would make
+  // every product carry an explicit "please index me" that reads like a decision.
+  if (seo.noIndex === true) cleaned.noIndex = true;
+  // A FAQ needs both halves to be worth anything — half-filled rows are dropped rather
+  // than stored, because they would reach FAQPage structured data as empty strings.
+  const faqs = seo.faqs?.filter((faq) => faq.question.trim() && faq.answer.trim());
+  if (faqs?.length) cleaned.faqs = faqs.map((faq) => ({ question: faq.question.trim(), answer: faq.answer.trim() }));
   return Object.keys(cleaned).length > 0 ? cleaned : undefined;
 }
 

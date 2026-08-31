@@ -10,6 +10,11 @@ interface PageMetadataInput {
   path?: string;
   image?: string;
   noIndex?: boolean;
+  /** Absolute URL that wins over the one derived from `path` — see ResolvedSeo.canonical. */
+  canonical?: string;
+  /** Social-card overrides. Fall back to `title`/`description` when absent. */
+  ogTitle?: string;
+  ogDescription?: string;
   /**
    * Defaults to the site's own default locale (Greek), NOT "en". It defaulted to English
    * while every product name on the page was Greek, so pages that didn't thread the request
@@ -29,12 +34,17 @@ export function buildMetadata({
   path = "/",
   image,
   noIndex = false,
+  canonical,
+  ogTitle,
+  ogDescription,
   locale = DEFAULT_LOCALE,
 }: PageMetadataInput): Metadata {
-  const url = new URL(path, seo.siteUrl).toString();
+  const url = canonical ?? new URL(path, seo.siteUrl).toString();
   const resolvedTitle = title ?? seo.defaultTitle;
   const resolvedDescription = description ?? seo.defaultDescription;
   const resolvedImage = image ?? seo.defaultOgImage;
+  const resolvedOgTitle = ogTitle ?? resolvedTitle;
+  const resolvedOgDescription = ogDescription ?? resolvedDescription;
 
   /**
    * Omitted entirely when there is no image to name, so Next's file-based convention takes
@@ -59,8 +69,8 @@ export function buildMetadata({
     alternates: { canonical: url },
     robots: noIndex ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
-      title: resolvedTitle,
-      description: resolvedDescription,
+      title: resolvedOgTitle,
+      description: resolvedOgDescription,
       url,
       siteName: seo.organization.name,
       locale: OG_LOCALE[locale],
@@ -69,8 +79,8 @@ export function buildMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: resolvedTitle,
-      description: resolvedDescription,
+      title: resolvedOgTitle,
+      description: resolvedOgDescription,
       creator: seo.twitterHandle,
       ...imageMetadata.twitter,
     },
@@ -182,7 +192,45 @@ export function productSchema(product: Product, siteUrl: string) {
   };
 }
 
-/** Ready for an FAQ page once one exists — not yet rendered anywhere. */
+/**
+ * The products a listing page shows, in the order it shows them.
+ *
+ * Google uses `ItemList` on a category page to understand it as a collection of specific
+ * products rather than as a page of prose that happens to mention them, and it is a
+ * prerequisite for the carousel treatments that category pages can earn. It is only
+ * honest — and only valid — now that those products are actually in the page's HTML; while
+ * the grid was client-rendered this markup would have described items no crawler could see.
+ *
+ * Deliberately URL-only per item rather than a nested Product for each. A summary of 8
+ * products would repeat price and availability that the product pages state authoritatively,
+ * giving two places for them to disagree.
+ */
+export function productListSchema(
+  products: { slug: string; name: string }[],
+  siteUrl: string,
+  listName: string
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: listName,
+    numberOfItems: products.length,
+    itemListElement: products.map((product, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: product.name,
+      url: new URL(`/products/${product.slug}`, siteUrl).toString(),
+    })),
+  };
+}
+
+/**
+ * FAQ markup for a category or collection.
+ *
+ * Emitted ONLY when the same questions are rendered on the page — the admin field feeds
+ * both, from one source, so they cannot drift. Structured data describing answers a visitor
+ * cannot read is the violation `aggregateRating` was removed for.
+ */
 export function faqSchema(items: FaqItem[]) {
   return {
     "@context": "https://schema.org",
