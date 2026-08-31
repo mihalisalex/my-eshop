@@ -30,18 +30,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const toUrl = (path: string) => new URL(path, seo.siteUrl).toString();
-  const now = new Date().toISOString();
+
+  /**
+   * `lastModified` is the row's real `updatedAt`, not the build time.
+   *
+   * Every URL here used to carry `new Date()`, so each deploy told crawlers that all 207
+   * pages had changed simultaneously — including a deploy that only touched CSS. A
+   * `<lastmod>` that is always "now" is indistinguishable from no `<lastmod>` at all, and a
+   * crawler that learns to ignore it also ignores the one time a price genuinely changed.
+   *
+   * The static routes are the honest exception: they have no row and no edit history, so
+   * the build IS the last time their markup could have changed.
+   */
+  const buildTime = new Date().toISOString();
 
   return [
     ...STATIC_ROUTES.map(({ path, priority }) => ({
       url: toUrl(path),
-      lastModified: now,
+      lastModified: buildTime,
       changeFrequency: "weekly" as const,
       priority,
     })),
     ...collections.map((collection) => ({
       url: toUrl(ROUTES.collection(collection.slug)),
-      lastModified: now,
+      lastModified: collection.updatedAt ?? buildTime,
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
@@ -49,13 +61,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .filter((category) => category.isVisible)
       .map((category) => ({
         url: toUrl(ROUTES.category(category.slug)),
-        lastModified: now,
+        lastModified: category.updatedAt ?? buildTime,
         changeFrequency: "weekly" as const,
         priority: 0.7,
       })),
+    // Only published products reach here — getAllProducts() filters on status by default,
+    // so drafts and archived products are already absent rather than needing excluding.
+    // There is still no per-product noindex switch; when one is added, it has to filter
+    // here too, since listing a noindex URL in a sitemap asks for two opposite things.
     ...products.map((product) => ({
       url: toUrl(ROUTES.product(product.slug)),
-      lastModified: now,
+      lastModified: product.updatedAt ?? buildTime,
       changeFrequency: "weekly" as const,
       priority: 0.6,
     })),

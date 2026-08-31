@@ -116,6 +116,7 @@ export function toProduct(row: ProductRow): Product {
     vendor: row.vendor ?? undefined,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -141,6 +142,7 @@ export function toCategory(row: CategoryRow): Category {
     isVisible: row.isVisible,
     seo: row.seo ? productSeoOverrideSchema.parse(row.seo) : undefined,
     productCount: row._count.products,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
@@ -170,6 +172,7 @@ export function toCollection(row: CollectionRow): Collection {
             variant: (row.ctaVariant as "primary" | "secondary" | "ghost" | "link" | null) ?? undefined,
           }
         : undefined,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 

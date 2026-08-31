@@ -18,6 +18,8 @@ export interface Category extends SlugEntity {
   seo?: ProductSeoOverride;
   /** Populated by services/categories.ts's list/tree helpers; absent on a bare single-row read. */
   productCount?: number;
+  /** ISO timestamp of the last edit — see Product.updatedAt. */
+  updatedAt?: string;
 }
 
 /** A Category with its immediate children attached — what the admin tree view and storefront nav render from. */

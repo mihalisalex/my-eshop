@@ -141,33 +141,44 @@ export function breadcrumbSchema(items: BreadcrumbItem[], siteUrl: string) {
   };
 }
 
-/** Ready for product detail pages once they exist — not yet rendered anywhere. */
+/**
+ * Rendered on every product detail page (app/products/[slug]/page.tsx).
+ *
+ * NO `aggregateRating`. It used to be emitted whenever `Product.rating` was non-null, and
+ * that column is a denormalised leftover that no review system in this app writes: reviews
+ * are read from data/reviews.json, which is empty, so the page shows no stars at all. The
+ * markup could therefore assert a rating that appeared nowhere on the page — which is
+ * exactly the "structured data must match visible content" rule Google enforces with
+ * manual actions, and the same class of invention as the fabricated purchase counters and
+ * seeded social profiles this shop has already had removed.
+ *
+ * It comes back when there is a real review system whose ratings a visitor can see and
+ * count. Not before, and never from a seeded column.
+ */
 export function productSchema(product: Product, siteUrl: string) {
+  const price = product.salePrice ?? product.price;
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
     description: product.description,
     sku: product.sku,
+    ...(product.barcode ? { gtin: product.barcode } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
     image: product.images.map((image) => image.src),
     offers: {
       "@type": "Offer",
       url: new URL(`/products/${product.slug}`, siteUrl).toString(),
-      priceCurrency: product.price.currencyCode,
-      price: product.price.amount,
+      priceCurrency: price.currencyCode,
+      // The price a shopper actually pays, so the markup agrees with the page. Emitting
+      // the list price while the page shows a sale price is a mismatch Merchant Center
+      // rejects, and it is the number the struck-through one is struck through FOR.
+      price: price.amount,
+      itemCondition: "https://schema.org/NewCondition",
       availability: product.availableForSale
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
     },
-    ...(product.rating
-      ? {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: product.rating,
-            reviewCount: product.reviewCount ?? 0,
-          },
-        }
-      : {}),
   };
 }
 

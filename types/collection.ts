@@ -11,4 +11,6 @@ export interface Collection extends SlugEntity {
   image: Image;
   productIds?: string[];
   cta?: CallToAction;
+  /** ISO timestamp of the last edit — see Product.updatedAt. */
+  updatedAt?: string;
 }
