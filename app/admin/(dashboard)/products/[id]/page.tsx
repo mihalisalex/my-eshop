@@ -8,6 +8,7 @@ import { productToFormValues } from "@/lib/validation/product";
 import { getProductById } from "@/services/products";
 import { getAllCollections } from "@/services/collections";
 import { getCategoryOptions } from "@/services/categories";
+import { getSeoDefaults } from "@/services/seo";
 
 interface AdminProductDetailPageProps {
   params: Promise<{ id: string }>;
@@ -15,10 +16,11 @@ interface AdminProductDetailPageProps {
 
 export default async function AdminProductDetailPage({ params }: AdminProductDetailPageProps) {
   const { id } = await params;
-  const [product, collections, categories] = await Promise.all([
+  const [product, collections, categories, seo] = await Promise.all([
     getProductById(id),
     getAllCollections(),
     getCategoryOptions(),
+    getSeoDefaults(),
   ]);
   if (!product) notFound();
 
@@ -38,6 +40,7 @@ export default async function AdminProductDetailPage({ params }: AdminProductDet
         defaultValues={productToFormValues(product)}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
         categories={categories}
+        seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}
         onSubmit={boundUpdate}
         submitLabel="Save Changes"
       />

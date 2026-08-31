@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { productSeoOverrideSchema } from "@/lib/validation/product";
+import { categorySeoOverrideSchema } from "@/lib/validation/product";
 import type { Category } from "@/types/category";
 
 const slugSchema = z
@@ -43,7 +43,7 @@ export const categoryFormSchema = z.object({
   bannerImage: optionalImageFormSchema,
   isFeatured: z.boolean(),
   isVisible: z.boolean(),
-  seo: productSeoOverrideSchema.optional(),
+  seo: categorySeoOverrideSchema.optional(),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;

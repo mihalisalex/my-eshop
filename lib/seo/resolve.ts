@@ -64,9 +64,37 @@ export function clampDescription(text: string, max = 160): string {
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
-function overrideOr(override: string | undefined, generated: string): string {
+/**
+ * The fallback rule, exported so the admin's SERP preview shows exactly what will ship.
+ *
+ * A preview that reimplements this is a preview that eventually lies — which is worse than
+ * no preview, because the whole point is deciding whether the real output is good enough.
+ *
+ * `||` rather than `??`: an override saved through a form with the field left blank is
+ * stored as `""`, and an empty string is "no override", not "an empty title".
+ */
+export function seoValueOr(override: string | undefined, generated: string): string {
   return override?.trim() || generated;
 }
+
+const overrideOr = seoValueOr;
+
+/**
+ * The `<title>` as it will actually appear, with the site's template applied.
+ *
+ * Length limits are the reason this matters. The template is appended by the root layout,
+ * so a page title that looks comfortably short in isolation can be well past the point
+ * Google truncates once the shop name is on the end of it — and the admin editing the
+ * field has no way to know that from the field alone.
+ */
+export function applyTitleTemplate(title: string, titleTemplate: string): string {
+  return titleTemplate.includes("%s") ? titleTemplate.replace("%s", title) : title;
+}
+
+/** Where a SERP starts cutting a title. A guide, not a hard limit — Google measures pixels. */
+export const TITLE_LENGTH_LIMIT = 60;
+/** Same, for the description. */
+export const DESCRIPTION_LENGTH_LIMIT = 160;
 
 /**
  * A product's SEO.

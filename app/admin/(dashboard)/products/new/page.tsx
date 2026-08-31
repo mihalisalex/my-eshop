@@ -4,9 +4,14 @@ import { createProduct } from "@/app/admin/(dashboard)/products/actions";
 import { emptyProductFormValues } from "@/lib/validation/product";
 import { getAllCollections } from "@/services/collections";
 import { getCategoryOptions } from "@/services/categories";
+import { getSeoDefaults } from "@/services/seo";
 
 export default async function NewProductPage() {
-  const [collections, categories] = await Promise.all([getAllCollections(), getCategoryOptions()]);
+  const [collections, categories, seo] = await Promise.all([
+    getAllCollections(),
+    getCategoryOptions(),
+    getSeoDefaults(),
+  ]);
 
   return (
     <div>
@@ -15,6 +20,7 @@ export default async function NewProductPage() {
         defaultValues={emptyProductFormValues}
         collections={collections.map((c) => ({ id: c.id, title: c.title }))}
         categories={categories}
+        seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}
         onSubmit={createProduct}
         submitLabel="Create Product"
       />

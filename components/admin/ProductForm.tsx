@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { formatMoney } from "@/lib/format";
+import { SeoFieldset } from "@/components/admin/SeoFieldset";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import type { ProductActionState } from "@/app/admin/(dashboard)/products/actions";
 
@@ -22,6 +23,8 @@ interface ProductFormProps {
   /** Flattened, depth-annotated (services/categories.ts's getCategoryOptions) so the
    * `<select>` below can show the real hierarchy via indentation. */
   categories: { id: string; slug: string; name: string; depth: number }[];
+  /** Site-wide SEO settings, so the SEO preview can show the real templated title and URL. */
+  seoDefaults: { siteUrl: string; titleTemplate: string };
   onSubmit: (values: ProductFormValues) => Promise<ProductActionState>;
   submitLabel?: string;
 }
@@ -114,7 +117,7 @@ function NumberField({
   );
 }
 
-export function ProductForm({ defaultValues, collections, categories, onSubmit, submitLabel = "Save Product" }: ProductFormProps) {
+export function ProductForm({ defaultValues, collections, categories, seoDefaults, onSubmit, submitLabel = "Save Product" }: ProductFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -125,6 +128,10 @@ export function ProductForm({ defaultValues, collections, categories, onSubmit, 
     resolver: zodResolver(productFormSchema),
     defaultValues,
   });
+
+  // `useWatch` rather than `watch()` — the latter cannot be memoized safely and the React
+  // Compiler lint rule flags it. Same reason MarginReadout above uses it.
+  const [seoName, seoDescription, seoSlug] = useWatch({ control, name: ["name", "description", "slug"] });
 
   const images = useFieldArray({ control, name: "images" });
   const colors = useFieldArray({ control, name: "colors" });
@@ -527,15 +534,17 @@ export function ProductForm({ defaultValues, collections, categories, onSubmit, 
       </div>
 
       <div className={sectionClass}>
-        <h3 className={sectionTitleClass}>SEO (optional)</h3>
-        <div>
-          <label className={labelClass} htmlFor="pf-seo-title">Meta title</label>
-          <input id="pf-seo-title" className={inputClass} {...register("seo.title")} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="pf-seo-description">Meta description</label>
-          <textarea id="pf-seo-description" rows={2} className={inputClass.replace("h-10", "h-auto py-2")} {...register("seo.description")} />
-        </div>
+        <h3 className={sectionTitleClass}>Search &amp; social</h3>
+        {/* Every field is optional. The preview shows what ships when they are left alone,
+            which is the only way to judge whether an override is worth writing. */}
+        <SeoFieldset
+          register={register}
+          control={control}
+          fallbackTitle={seoName || "Product name"}
+          fallbackDescription={seoDescription || ""}
+          previewUrl={`${seoDefaults.siteUrl.replace(/\/$/, "")}/products/${seoSlug || "slug"}`}
+          titleTemplate={seoDefaults.titleTemplate}
+        />
       </div>
 
       <div className="flex justify-end gap-3">

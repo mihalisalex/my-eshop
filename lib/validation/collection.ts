@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { imageSchema } from "@/lib/validation/product";
+import { categorySeoOverrideSchema, imageSchema } from "@/lib/validation/product";
 import type { Collection } from "@/types/collection";
 
 const slugSchema = z
@@ -19,6 +19,8 @@ export const collectionFormSchema = z.object({
   ctaHref: z.string().optional(),
   ctaVariant: ctaVariantSchema.optional(),
   productIds: z.array(z.string()),
+  /** Same overrides a category carries — collections are landing pages too. */
+  seo: categorySeoOverrideSchema.optional(),
 });
 
 export type CollectionFormValues = z.infer<typeof collectionFormSchema>;
@@ -34,6 +36,7 @@ export function collectionToFormValues(collection: Collection): CollectionFormVa
     ctaHref: collection.cta?.href,
     ctaVariant: collection.cta?.variant,
     productIds: collection.productIds ?? [],
+    seo: collection.seo,
   };
 }
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { collectionFormSchema, type CollectionFormValues } from "@/lib/validation/collection";
 import type { CollectionActionState } from "@/app/admin/(dashboard)/collections/actions";
+import { SeoFieldset } from "@/components/admin/SeoFieldset";
 
 const inputClass =
   "h-10 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
@@ -16,11 +17,13 @@ const sectionTitleClass = "mb-1 text-sm font-medium tracking-[0.05em] uppercase"
 interface CollectionFormProps {
   defaultValues: CollectionFormValues;
   products: { id: string; name: string }[];
+  /** Site-wide SEO settings, so the SEO preview can show the real templated title and URL. */
+  seoDefaults: { siteUrl: string; titleTemplate: string };
   onSubmit: (values: CollectionFormValues) => Promise<CollectionActionState>;
   submitLabel?: string;
 }
 
-export function CollectionForm({ defaultValues, products, onSubmit, submitLabel = "Save Collection" }: CollectionFormProps) {
+export function CollectionForm({ defaultValues, products, seoDefaults, onSubmit, submitLabel = "Save Collection" }: CollectionFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -30,6 +33,12 @@ export function CollectionForm({ defaultValues, products, onSubmit, submitLabel 
   } = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionFormSchema),
     defaultValues,
+  });
+
+  // See ProductForm — `watch()` is not safely memoizable, `useWatch` is.
+  const [seoTitle, seoDescription, seoSubtitle, seoSlug] = useWatch({
+    control,
+    name: ["title", "description", "subtitle", "slug"],
   });
 
   const submit = handleSubmit(async (values) => {
@@ -117,6 +126,21 @@ export function CollectionForm({ defaultValues, products, onSubmit, submitLabel 
             />
           </div>
         </div>
+      </div>
+
+      <div className={sectionClass}>
+        <h3 className={sectionTitleClass}>Search &amp; social</h3>
+        {/* Collections had no SEO fields at all before this — their title and description
+            were whatever read well on the storefront hero, doing double duty as metadata. */}
+        <SeoFieldset
+          register={register}
+          control={control}
+          fallbackTitle={seoTitle || "Collection title"}
+          fallbackDescription={seoDescription || seoSubtitle || ""}
+          previewUrl={`${seoDefaults.siteUrl.replace(/\/$/, "")}/collections/${seoSlug || "slug"}`}
+          titleTemplate={seoDefaults.titleTemplate}
+          showEditorial
+        />
       </div>
 
       <div className={sectionClass}>

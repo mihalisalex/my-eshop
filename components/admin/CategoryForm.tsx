@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Switch } from "@/components/ui/switch";
 import { categoryFormSchema, type CategoryFormValues } from "@/lib/validation/category";
 import type { CategoryActionState } from "@/app/admin/(dashboard)/categories/actions";
 import type { CategoryOption } from "@/types/category";
+import { SeoFieldset } from "@/components/admin/SeoFieldset";
 
 const inputClass =
   "h-10 w-full border border-border bg-transparent px-3 text-sm outline-none focus:border-luxe-black aria-invalid:border-destructive";
@@ -20,11 +21,13 @@ interface CategoryFormProps {
   /** Every OTHER category, flattened with tree depth — already excludes this category and its
    * own subtree (services/categories.ts's getCategoryOptions) so the parent picker can't create a cycle. */
   parentOptions: CategoryOption[];
+  /** Site-wide SEO settings, so the SEO preview can show the real templated title and URL. */
+  seoDefaults: { siteUrl: string; titleTemplate: string };
   onSubmit: (values: CategoryFormValues) => Promise<CategoryActionState>;
   submitLabel?: string;
 }
 
-export function CategoryForm({ defaultValues, parentOptions, onSubmit, submitLabel = "Save Category" }: CategoryFormProps) {
+export function CategoryForm({ defaultValues, parentOptions, seoDefaults, onSubmit, submitLabel = "Save Category" }: CategoryFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -35,6 +38,9 @@ export function CategoryForm({ defaultValues, parentOptions, onSubmit, submitLab
     resolver: zodResolver(categoryFormSchema),
     defaultValues,
   });
+
+  // See ProductForm — `watch()` is not safely memoizable, `useWatch` is.
+  const [seoName, seoDescription, seoSlug] = useWatch({ control, name: ["name", "description", "slug"] });
 
   const submit = handleSubmit(async (values) => {
     setServerError(null);
@@ -116,21 +122,18 @@ export function CategoryForm({ defaultValues, parentOptions, onSubmit, submitLab
       </div>
 
       <div className={sectionClass}>
-        <h3 className={sectionTitleClass}>SEO (optional — falls back to name/description)</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass} htmlFor="cgf-seo-title">SEO title</label>
-            <input id="cgf-seo-title" className={inputClass} {...register("seo.title")} />
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="cgf-seo-ogImage">Social share image URL</label>
-            <input id="cgf-seo-ogImage" className={inputClass} {...register("seo.ogImage")} />
-          </div>
-        </div>
-        <div>
-          <label className={labelClass} htmlFor="cgf-seo-description">SEO description</label>
-          <textarea id="cgf-seo-description" rows={2} className={inputClass.replace("h-10", "h-auto py-2")} {...register("seo.description")} />
-        </div>
+        <h3 className={sectionTitleClass}>Search &amp; social</h3>
+        {/* Categories get the editorial fields too — an intro and FAQs are what turn a grid
+            of products into a page with a reason to rank. */}
+        <SeoFieldset
+          register={register}
+          control={control}
+          fallbackTitle={seoName || "Category name"}
+          fallbackDescription={seoDescription || ""}
+          previewUrl={`${seoDefaults.siteUrl.replace(/\/$/, "")}/category/${seoSlug || "slug"}`}
+          titleTemplate={seoDefaults.titleTemplate}
+          showEditorial
+        />
       </div>
 
       <div className={sectionClass}>

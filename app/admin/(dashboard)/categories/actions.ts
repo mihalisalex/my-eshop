@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { capabilityDenied } from "@/lib/admin-session";
 import { isSameOrDescendant } from "@/services/categories";
 import { categoryFormSchema, type CategoryFormValues } from "@/lib/validation/category";
+import { normalizeSeoOverride } from "@/lib/validation/product";
 
 export interface CategoryActionState {
   error?: string;
@@ -46,7 +47,10 @@ function toCategoryWriteData(data: CategoryFormValues, parentId: string | null) 
     bannerImage: bannerImage ?? Prisma.JsonNull,
     isFeatured: data.isFeatured,
     isVisible: data.isVisible,
-    seo: data.seo ?? undefined,
+    // Was `data.seo ?? undefined`, which had both halves of the documented SEO trap: blank
+    // fields were stored as "" rather than dropped, and `undefined` is Prisma's "leave this
+    // column alone", so clearing an override appeared to save and changed nothing.
+    seo: normalizeSeoOverride(data.seo) ?? Prisma.DbNull,
   };
 }
 

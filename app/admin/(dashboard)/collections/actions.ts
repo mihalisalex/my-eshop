@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { capabilityDenied, requireCapability } from "@/lib/admin-session";
 import { collectionFormSchema, type CollectionFormValues } from "@/lib/validation/collection";
+import { normalizeSeoOverride } from "@/lib/validation/product";
 
 export interface CollectionActionState {
   error?: string;
@@ -25,6 +27,10 @@ function toCollectionWriteData(data: CollectionFormValues) {
     ctaLabel: data.ctaLabel ?? null,
     ctaHref: data.ctaHref ?? null,
     ctaVariant: data.ctaVariant ?? null,
+    // Blank-but-present fields are collapsed away rather than stored as empty strings —
+    // see normalizeSeoOverride for why "" is not the same as absent, and why the empty
+    // case must be DbNull rather than undefined (which would leave the old value in place).
+    seo: normalizeSeoOverride(data.seo) ?? Prisma.DbNull,
   };
 }
 

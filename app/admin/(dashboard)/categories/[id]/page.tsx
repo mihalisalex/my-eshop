@@ -6,6 +6,7 @@ import { DeleteCategoryButton } from "@/components/admin/DeleteCategoryButton";
 import { updateCategory } from "@/app/admin/(dashboard)/categories/actions";
 import { categoryToFormValues } from "@/lib/validation/category";
 import { getCategoryById, getCategoryOptions, getChildCategories } from "@/services/categories";
+import { getSeoDefaults } from "@/services/seo";
 
 interface AdminCategoryDetailPageProps {
   params: Promise<{ id: string }>;
@@ -13,10 +14,11 @@ interface AdminCategoryDetailPageProps {
 
 export default async function AdminCategoryDetailPage({ params }: AdminCategoryDetailPageProps) {
   const { id } = await params;
-  const [category, parentOptions, children] = await Promise.all([
+  const [category, parentOptions, children, seo] = await Promise.all([
     getCategoryById(id),
     getCategoryOptions(id),
     getChildCategories(id),
+    getSeoDefaults(),
   ]);
   if (!category) notFound();
 
@@ -50,6 +52,7 @@ export default async function AdminCategoryDetailPage({ params }: AdminCategoryD
       <CategoryForm
         defaultValues={categoryToFormValues(category)}
         parentOptions={parentOptions}
+        seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}
         onSubmit={boundUpdate}
         submitLabel="Save Changes"
       />

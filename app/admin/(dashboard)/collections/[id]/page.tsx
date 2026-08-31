@@ -5,6 +5,7 @@ import { updateCollection, deleteCollection } from "@/app/admin/(dashboard)/coll
 import { collectionToFormValues } from "@/lib/validation/collection";
 import { getAllCollections } from "@/services/collections";
 import { getAllProducts } from "@/services/products";
+import { getSeoDefaults } from "@/services/seo";
 
 interface AdminCollectionDetailPageProps {
   params: Promise<{ id: string }>;
@@ -12,7 +13,11 @@ interface AdminCollectionDetailPageProps {
 
 export default async function AdminCollectionDetailPage({ params }: AdminCollectionDetailPageProps) {
   const { id } = await params;
-  const [collections, products] = await Promise.all([getAllCollections(), getAllProducts({ includeUnpublished: true })]);
+  const [collections, products, seo] = await Promise.all([
+    getAllCollections(),
+    getAllProducts({ includeUnpublished: true }),
+    getSeoDefaults(),
+  ]);
   const collection = collections.find((c) => c.id === id);
   if (!collection) notFound();
 
@@ -38,6 +43,7 @@ export default async function AdminCollectionDetailPage({ params }: AdminCollect
       <CollectionForm
         defaultValues={collectionToFormValues(collection)}
         products={products.map((p) => ({ id: p.id, name: p.name }))}
+        seoDefaults={{ siteUrl: seo.siteUrl, titleTemplate: seo.titleTemplate }}
         onSubmit={boundUpdate}
         submitLabel="Save Changes"
       />
