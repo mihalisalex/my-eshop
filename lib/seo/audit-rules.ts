@@ -46,6 +46,12 @@ export interface AuditablePage {
   productCount?: number;
   /** Product-only signals, used by the structured-data rules. */
   brand?: string;
+  /**
+   * A brand readable from the product's own name. Set only when one is actually there, so
+   * "no brand" and "brand not filled in" stay different findings — most of this catalogue
+   * is genuinely unbranded stock, and only the second is fixable.
+   */
+  derivableBrand?: string;
   barcode?: string;
   /** `isSale` badge set but no sale price — the badge and the price disagree. */
   saleFlagWithoutSalePrice?: boolean;
@@ -195,14 +201,24 @@ function auditPage(page: AuditablePage): SeoIssue[] {
         )
       );
     }
-    if (!page.brand) {
+    /**
+     * Reported only where the brand is RECOVERABLE — the product's own name says it and the
+     * field is empty.
+     *
+     * The blanket version flagged all 175, then still 47 after extraction, and the owner
+     * confirmed those 47 are genuinely unbranded or mixed-supplier stock. A rule that
+     * reports forty findings with no correct answer is not a rule, it is noise that trains
+     * someone to ignore the whole report — and it would never go away, however much work
+     * they did.
+     */
+    if (!page.brand && page.derivableBrand) {
       found.push(
         issue(
           page,
           "brand-missing",
           "medium",
-          "No brand set",
-          "Brand is part of the product data Google reads, and brand-plus-product is how most people search for shoes."
+          `Brand "${page.derivableBrand}" is in the name but not in the brand field`,
+          "Google reads the brand field, not the title, and brand-plus-product is how most people search for shoes. This one can be filled in from the product's own name."
         )
       );
     }

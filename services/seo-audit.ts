@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { productInclude, toProduct, categoryInclude, toCategory, collectionInclude, toCollection } from "@/lib/commerce/postgres/mappers";
 import { auditPages, type AuditablePage, type SeoAuditResult } from "@/lib/seo/audit-rules";
+import { detectBrand } from "@/lib/seo/brands";
 import { resolveCategorySeo, resolveCollectionSeo, resolveProductSeo } from "@/lib/seo/resolve";
 import { getSeoDefaults } from "@/services/seo";
 import { ROUTES } from "@/constants/routes";
@@ -65,6 +66,8 @@ export async function runSeoAudit(): Promise<SeoAuditResult> {
       imageCount: product.images.length,
       weakAltCount: product.images.filter((image) => isWeakAlt(image.alt, product.name)).length,
       brand: product.brand,
+      // Only set where the name genuinely names one — see AuditablePage.derivableBrand.
+      derivableBrand: detectBrand(product.name) ?? undefined,
       barcode: product.barcode,
       // The badge and the price disagreeing is visible to Google through the Offer.
       saleFlagWithoutSalePrice: Boolean(product.isSale) && !product.salePrice,

@@ -33,6 +33,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import { detectBrand } from "../lib/seo/brands";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -58,26 +59,17 @@ const prisma = new PrismaClient({
 // ---------------------------------------------------------------------------
 
 /**
- * Brands, longest-first so "Mont Martre Paris" wins over "Mont Martre" and
- * "Alexandris Leather" is not mistaken for a different label than "Alexandris Shoes".
- * 125 of 175 products name their brand in their own title; the rest are unbranded stock
- * and are left with no brand rather than being assigned one.
+ * Brand detection lives in lib/seo/brands.ts, shared with the audit.
+ *
+ * They must agree: if the audit knows about a brand this script cannot extract, it reports
+ * work that can never be done. That is how "U.S Grand polo equipment" was found — the audit
+ * called it missing on seven products and the script had no pattern for it.
+ *
+ * 135 of 175 products name their brand in their own title. The remaining 40 are genuinely
+ * unbranded or mixed-supplier stock, confirmed by the owner, and are deliberately left with
+ * no brand rather than being assigned one.
  */
-const BRANDS: { match: string[]; brand: string }[] = [
-  { match: ["u.s polo assn", "u.s. polo assn", "us polo assn", "us polo"], brand: "U.S. Polo Assn." },
-  { match: ["mont martre paris", "mont martre"], brand: "Mont Martre Paris" },
-  { match: ["alexandris shoes", "alexandris leather", "αλεξανδρής"], brand: "Alexandris Shoes" },
-  { match: ["verde"], brand: "Verde" },
-  { match: ["london"], brand: "London" },
-];
-
-function extractBrand(name: string): string | null {
-  const haystack = name.toLowerCase();
-  for (const entry of BRANDS) {
-    if (entry.match.some((needle) => haystack.includes(needle))) return entry.brand;
-  }
-  return null;
-}
+const extractBrand = detectBrand;
 
 /**
  * Materials, as the shop's own descriptions name them, mapped to one canonical Greek label
@@ -235,6 +227,46 @@ function composeDescription(input: {
   return `${cut.slice(0, cut.lastIndexOf(" ")).trimEnd()}…`;
 }
 
+/**
+ * Alt text for a product's photographs.
+ *
+ * The imported values are WooCommerce boilerplate: the full product name including its
+ * code, then the same again with ", view 2" and ", view 3" appended. That is the product's
+ * own heading read back to a screen-reader user who has just heard it, plus a stock number
+ * nobody needs, and it gives image search nothing to match on.
+ *
+ * What this writes instead is the product described — colour and style from the name,
+ * material where the description states it, brand where there is one — with the code
+ * removed.
+ *
+ * What it deliberately does NOT do is say what each photograph SHOWS. "Πλάγια όψη",
+ * "λεπτομέρεια σόλας" and the like would be invented: nobody has looked at these images,
+ * and alt text that describes the wrong thing is worse for a blind user than alt text that
+ * is merely unambitious. Later images are numbered plainly, which is honest about being a
+ * second photograph of the same shoe without pretending to know its angle.
+ *
+ * Genuinely good alt text needs someone who can see the pictures. This is the floor, not
+ * the ceiling, and the audit's own rule is tightened alongside it so the improvement does
+ * not read as a solved problem.
+ */
+function composeAlt(input: {
+  title: string;
+  brand: string | null;
+  materials: string[];
+  index: number;
+  total: number;
+}): string {
+  const descriptor = [input.brand && !input.title.toLowerCase().includes(input.brand.toLowerCase()) ? input.brand : null, input.title]
+    .filter(Boolean)
+    .join(" ");
+
+  const material = input.materials.length ? ` — ${input.materials.join(" / ")}` : "";
+  const base = `${descriptor}${material}`;
+
+  // A single photograph needs no number; several do, so a screen reader can tell them apart.
+  return input.total > 1 && input.index > 0 ? `${base} (φωτογραφία ${input.index + 1})` : base;
+}
+
 /** What a product of this category IS, for the closing clause of its description. */
 const CATEGORY_LABEL: Record<string, string> = {
   sandals: "Γυναικεία πέδιλα",
@@ -384,6 +416,7 @@ function keepExisting(existing: SeoOverride | null, generated: SeoOverride): Seo
 async function applyCategories() {
   const categories = await prisma.category.findMany({ where: { isVisible: true } });
   let changed = 0;
+  let imagesSet = 0;
 
   for (const category of categories) {
     const content = CATEGORY_CONTENT[category.slug];
@@ -400,22 +433,61 @@ async function applyCategories() {
       ...(content.faqs ? { faqs: content.faqs } : {}),
     });
 
-    if (JSON.stringify(existing) === JSON.stringify(next)) {
+    /**
+     * Every visible category has no image at all — not a card image, not a banner — which
+     * leaves the nav menus, the category grids and every social share of a category URL
+     * with nothing to show.
+     *
+     * The image is taken from one of the category's own products. That invents nothing: a
+     * category card showing something actually in that category is what every shop does,
+     * and it is a far better answer than an empty box. Chosen deterministically (oldest
+     * product with a photograph) so re-running does not shuffle the storefront around.
+     *
+     * The owner can replace any of these with real category photography whenever they like;
+     * `keepExisting` means a re-run will not undo them.
+     */
+    let imageData: { src: string; alt: string } | null = null;
+    if (!category.image) {
+      const source = await prisma.product.findFirst({
+        where: { categoryId: category.id, status: "active" },
+        orderBy: { createdAt: "asc" },
+        select: { images: true, name: true },
+      });
+      const first = ((source?.images as { src: string; alt: string }[] | null) ?? [])[0];
+      if (first?.src) {
+        imageData = { src: first.src, alt: `${content.title} — ${cleanTitle(source!.name)}` };
+      }
+    }
+
+    const seoChanged = JSON.stringify(existing) !== JSON.stringify(next);
+    if (!seoChanged && !imageData) {
       console.log(`  same   ${category.slug}`);
       continue;
     }
 
     console.log(`  WRITE  ${category.slug}`);
-    console.log(`         title:  ${existing?.title ?? "(none)"}  ->  ${next.title}`);
-    console.log(`         intro:  ${(existing?.introContent as string | undefined)?.length ?? 0} chars -> ${(next.introContent as string).length} chars`);
+    if (seoChanged) {
+      console.log(`         title:  ${existing?.title ?? "(none)"}  ->  ${next.title}`);
+      console.log(`         intro:  ${(existing?.introContent as string | undefined)?.length ?? 0} chars -> ${(next.introContent as string).length} chars`);
+    }
+    if (imageData) {
+      console.log(`         image:  (none) -> ${imageData.src.slice(0, 60)}…`);
+      imagesSet += 1;
+    }
     changed += 1;
 
     if (!DRY_RUN) {
-      await prisma.category.update({ where: { id: category.id }, data: { seo: next as never } });
+      await prisma.category.update({
+        where: { id: category.id },
+        data: {
+          ...(seoChanged ? { seo: next as never } : {}),
+          ...(imageData ? { image: imageData as never } : {}),
+        },
+      });
     }
   }
 
-  return changed;
+  return { changed, imagesSet };
 }
 
 async function applyProducts() {
@@ -425,7 +497,7 @@ async function applyProducts() {
   });
 
   let changed = 0;
-  const stats = { brand: 0, materials: 0, tags: 0, seo: 0 };
+  const stats = { brand: 0, materials: 0, tags: 0, seo: 0, alt: 0 };
   /**
    * Composed descriptions must still come out unique, or this script would be manufacturing
    * exactly the duplicate-description problem the audit exists to report. Collected here so
@@ -475,7 +547,27 @@ async function applyProducts() {
     // `large-sizes` are merchandising decisions this script knows nothing about.
     const nextTags = [...new Set([...product.tags, ...tags])].sort();
 
+    /**
+     * Images are rewritten only where the alt is still the imported boilerplate — the
+     * product name, with or without a ", view N" suffix. Anything else is someone's own
+     * writing and is left alone, the same rule the SEO overrides follow.
+     */
+    const images = (product.images as { src: string; alt: string }[] | null) ?? [];
+    const boilerplate = (alt: string) =>
+      alt.trim().toLowerCase().replace(/,\s*view\s*\d+$/i, "").trim() === product.name.trim().toLowerCase();
+
+    const nextImages = images.map((image, index) =>
+      boilerplate(image.alt ?? "")
+        ? { ...image, alt: composeAlt({ title, brand, materials, index, total: images.length }) }
+        : image
+    );
+    const altChanged = JSON.stringify(images) !== JSON.stringify(nextImages);
+
     const data: Record<string, unknown> = {};
+    if (altChanged) {
+      data.images = nextImages;
+      stats.alt += 1;
+    }
     if (!product.brand && brand) {
       data.brand = brand;
       stats.brand += 1;
@@ -531,18 +623,20 @@ async function main() {
   console.log(DRY_RUN ? "DRY RUN — nothing will be written\n" : "APPLYING changes\n");
 
   console.log("CATEGORIES");
-  const categoriesChanged = await applyCategories();
+  const categories = await applyCategories();
 
   console.log("\nPRODUCTS");
   const products = await applyProducts();
 
   console.log("\nSUMMARY");
-  console.log(`  categories updated:      ${categoriesChanged}`);
+  console.log(`  categories updated:      ${categories.changed}`);
+  console.log(`    category images set:   ${categories.imagesSet}`);
   console.log(`  products updated:        ${products.changed} of ${products.total}`);
   console.log(`    brand filled in:       ${products.stats.brand}`);
   console.log(`    materials filled in:   ${products.stats.materials}`);
   console.log(`    tags added:            ${products.stats.tags}`);
   console.log(`    seo title/description: ${products.stats.seo}`);
+  console.log(`    image alt text:        ${products.stats.alt}`);
   console.log(`  duplicate descriptions:  ${products.collisions}`);
   if (DRY_RUN) console.log("\nRe-run without --dry-run to apply.");
 

@@ -91,11 +91,21 @@ describe("per-page rules", () => {
     expect(rules([page({ weakAltCount: 2 })])).toContain("alt-text-weak");
   });
 
-  it("flags a thin product description, a missing brand and a missing barcode", () => {
-    const found = rules([page({ contentLength: 20, brand: undefined, barcode: undefined })]);
+  it("flags a thin product description and a missing barcode", () => {
+    const found = rules([page({ contentLength: 20, barcode: undefined })]);
     expect(found).toContain("content-thin");
-    expect(found).toContain("brand-missing");
     expect(found).toContain("gtin-missing");
+  });
+
+  it("reports a missing brand only when the product's own name supplies one", () => {
+    /**
+     * Most of this catalogue is genuinely unbranded stock, confirmed by the owner. A rule
+     * that flagged all of it would report forty findings with no correct answer, which
+     * never clears however much work someone does — and trains them to ignore the report.
+     */
+    expect(rules([page({ brand: undefined, derivableBrand: undefined })])).not.toContain("brand-missing");
+    expect(rules([page({ brand: undefined, derivableBrand: "Verde" })])).toContain("brand-missing");
+    expect(rules([page({ brand: "Verde", derivableBrand: "Verde" })])).not.toContain("brand-missing");
   });
 
   it("flags a sale badge with no sale price, because the markup carries the contradiction", () => {
