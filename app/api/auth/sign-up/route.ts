@@ -3,14 +3,18 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { signUpInputSchema } from "@/lib/validation/auth";
 import { createCustomer, getCustomerByEmail } from "@/services/customers";
-import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
+import {
+  CUSTOMER_SESSION_COOKIE,
+  CUSTOMER_SESSION_COOKIE_OPTIONS,
+  CUSTOMER_SESSION_MAX_AGE_SECONDS,
+  signCustomerSession,
+} from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { getEmailProvider, welcomeEmail, accountAlreadyExistsEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
 import { recordReferralSignup } from "@/services/referrals";
 
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const BCRYPT_COST = 12;
 
 export async function POST(request: Request) {
@@ -68,12 +72,7 @@ export async function POST(request: Request) {
       lastName: customer.lastName,
     });
     const cookieStore = await cookies();
-    cookieStore.set(CUSTOMER_SESSION_COOKIE, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE_SECONDS,
-    });
+    cookieStore.set(CUSTOMER_SESSION_COOKIE, token, CUSTOMER_SESSION_COOKIE_OPTIONS);
 
     // Best-effort — a failed welcome email must never fail account creation.
     try {
@@ -100,7 +99,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       customer,
       token: "httponly",
-      expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + CUSTOMER_SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
     });
   } catch (error) {
     return commerceErrorResponse(error);

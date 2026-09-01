@@ -15,6 +15,34 @@ import { SignJWT, jwtVerify } from "jose";
 
 export const CUSTOMER_SESSION_COOKIE = "alexandris_customer_session";
 
+export const CUSTOMER_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
+/**
+ * One definition of how the session cookie is set, because there are four places that set
+ * it — sign-in, sign-up, password reset and the OAuth callback — and four copies of a
+ * security policy is four chances for one to drift.
+ *
+ * It already had. Every copy was missing `secure`, while lib/order-access-cookie.ts (a
+ * strictly less sensitive cookie, granting a view of one order) set it correctly. Without
+ * it the browser will send the session over plain http:// — which on a site behind HSTS is
+ * a narrow window, but the cookie that authenticates a customer should not be the one
+ * relying on a header to protect it.
+ *
+ * `secure` is conditional on production only so http://localhost still works in dev, the
+ * same condition order-access-cookie already uses.
+ *
+ * SameSite stays "lax" rather than "strict": a redirect-based payment provider returns the
+ * shopper by cross-site top-level navigation, and Strict withholds the cookie on exactly
+ * that request.
+ */
+export const CUSTOMER_SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: CUSTOMER_SESSION_MAX_AGE_SECONDS,
+};
+
 export interface CustomerSessionPayload {
   sub: string;
   email: string;

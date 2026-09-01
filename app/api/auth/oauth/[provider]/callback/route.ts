@@ -1,11 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getOAuthProvider, OAUTH_PROVIDER_NAMES, type OAuthProviderName } from "@/lib/oauth";
 import { isSafeRedirectPath, OAUTH_STATE_COOKIE, OAUTH_STATE_COOKIE_OPTIONS, parseOAuthState } from "@/lib/oauth/state";
-import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
+import { CUSTOMER_SESSION_COOKIE, CUSTOMER_SESSION_COOKIE_OPTIONS, signCustomerSession } from "@/lib/customer-auth";
 import { findOrCreateCustomerForOAuth } from "@/services/customers";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
-
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 function isKnownProvider(value: string): value is OAuthProviderName {
   return (OAUTH_PROVIDER_NAMES as string[]).includes(value);
@@ -57,12 +55,7 @@ async function handleCallback(request: NextRequest, provider: string, rawParams:
     });
 
     const response = clearStateCookie(NextResponse.redirect(new URL(from, request.url)));
-    response.cookies.set(CUSTOMER_SESSION_COOKIE, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE_SECONDS,
-    });
+    response.cookies.set(CUSTOMER_SESSION_COOKIE, token, CUSTOMER_SESSION_COOKIE_OPTIONS);
     return response;
   } catch (error) {
     console.error(`[oauth] ${provider} callback failed`, error);

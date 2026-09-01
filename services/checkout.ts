@@ -16,6 +16,36 @@ import { initiatePayment, resolveSelectedMethod } from "@/services/payments";
 import { getSiteUrl } from "@/lib/site-url";
 import { getDefaultShippingRate } from "@/services/shipping";
 
+/**
+ * The discounts on a cart that are still valid right now — pure filter, no side effects.
+ *
+ * Exported for the unit test: the interesting cases (a code that expired since it was
+ * applied, one an admin switched off) are about time and state rather than about SQL.
+ */
+export function filterValidDiscounts<T extends { code: string }>(
+  applied: T[],
+  live: { code: string; active: boolean; expiresAt?: string | Date | null }[],
+  now: Date = new Date()
+): T[] {
+  const validCodes = new Set(
+    live
+      .filter((d) => d.active && (!d.expiresAt || new Date(d.expiresAt).getTime() >= now.getTime()))
+      .map((d) => d.code)
+  );
+  return applied.filter((d) => validCodes.has(d.code));
+}
+
+async function resolveValidCartDiscounts(
+  discounts: { code: string; type: "percentage" | "fixed"; value: number }[]
+): Promise<{ code: string; type: "percentage" | "fixed"; value: number }[]> {
+  if (discounts.length === 0) return [];
+  const live = await prisma.discount.findMany({
+    where: { code: { in: discounts.map((d) => d.code) } },
+    select: { code: true, active: true, expiresAt: true },
+  });
+  return filterValidDiscounts(discounts, live);
+}
+
 async function requireCheckoutRow(checkoutId: string) {
   const row = await prisma.checkout.findUnique({ where: { id: checkoutId } });
   if (!row) throw new CommerceError("CART_NOT_FOUND", "Checkout session not found.");
@@ -120,7 +150,12 @@ export async function resolveCheckoutAmounts(checkoutId: string, paymentFeeOverr
 
   const resolved = resolveCartAmounts({
     lineItems: cart.lineItems.map((item) => ({ unitPriceAmount: item.unitPrice.amount, quantity: item.quantity, savedForLater: false })),
-    discounts: cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value })),
+    // Same live re-validation as completeCheckout. This function is what QUOTES the total
+    // at the payment step, and the two must not disagree: quoting a lapsed discount and
+    // then charging without it is how a shopper is shown one price and billed another.
+    discounts: await resolveValidCartDiscounts(
+      cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value }))
+    ),
     giftCards: cart.giftCards.map((g) => ({ code: g.code, balanceAmount: g.balance.amount })),
     currencyCode: cart.currencyCode,
     selectedShippingRate: shippingRate,
@@ -185,7 +220,21 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
     quantity: item.quantity,
     savedForLater: false,
   }));
-  const discountRules = cart.discounts.map((d) => ({ code: d.code, type: d.type, value: d.value }));
+  /**
+   * Discounts are re-validated against the live rows here, not trusted from the cart.
+   *
+   * `applyDiscountCode` checks `active` and `expiresAt` at the moment the shopper types the
+   * code — and then the cart row keeps the rule indefinitely. A cart is long-lived: the code
+   * can expire, or an admin can deactivate it, between the shopper applying it and placing
+   * the order, and the discount would still come off the total. Exactly the reasoning that
+   * already re-validates the payment method a few lines down, applied to the other thing on
+   * a cart whose validity is time-bounded.
+   *
+   * An invalid one is dropped rather than failing the order: the shopper still wants the
+   * shoes, and refusing a purchase outright over a lapsed promo code is worse for both
+   * sides than charging the correct price.
+   */
+  const discountRules = await resolveValidCartDiscounts(cart.discounts);
   const giftCardRules = cart.giftCards.map((g) => ({ code: g.code, balanceAmount: g.balance.amount }));
 
   // Two passes, and the order matters. A percentage payment fee is a percentage OF

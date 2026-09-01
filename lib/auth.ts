@@ -26,6 +26,23 @@ import type { AdminRole } from "@/types/admin";
 export const ADMIN_SESSION_COOKIE = "alexandris_admin_session";
 
 /**
+ * The admin session cookie's attributes. `secure` was missing, which mattered more here
+ * than anywhere else in the app: this cookie authenticates the account that edits prices,
+ * reads customer addresses and issues refunds, and without the flag a browser will send it
+ * over plain http://.
+ *
+ * Conditional on production so http://localhost still works in development — the same
+ * condition lib/order-access-cookie.ts already used.
+ */
+export const ADMIN_SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 60 * 24,
+};
+
+/**
  * Removed deliberately — do not reintroduce.
  *
  * This module used to export DEMO_ADMIN_EMAIL / DEMO_ADMIN_PASSWORD

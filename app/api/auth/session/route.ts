@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "@/lib/customer-session";
 import { getCustomerById } from "@/services/customers";
-
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+// The one definition of how long a session lasts — a local copy here would report an
+// expiry that silently disagreed with the cookie the moment either changed.
+import { CUSTOMER_SESSION_MAX_AGE_SECONDS } from "@/lib/customer-auth";
 
 /**
  * Always re-fetches the customer row fresh rather than trusting the JWT
@@ -21,6 +22,6 @@ export async function GET() {
   return NextResponse.json({
     customer,
     token: "httponly",
-    expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
+    expiresAt: new Date(Date.now() + CUSTOMER_SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
   });
 }

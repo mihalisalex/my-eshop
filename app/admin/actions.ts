@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_SESSION_COOKIE, signAdminSession } from "@/lib/auth";
+import { ADMIN_SESSION_COOKIE, ADMIN_SESSION_COOKIE_OPTIONS, signAdminSession } from "@/lib/auth";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 
 export interface LoginState {
@@ -32,12 +32,7 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
 
   const token = await signAdminSession({ sub: user.id, email: user.email, name: user.name });
   const cookieStore = await cookies();
-  cookieStore.set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  cookieStore.set(ADMIN_SESSION_COOKIE, token, ADMIN_SESSION_COOKIE_OPTIONS);
 
   redirect("/admin");
 }

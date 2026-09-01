@@ -4,12 +4,16 @@ import { cookies } from "next/headers";
 import { resetPasswordInputSchema } from "@/lib/validation/auth";
 import { consumePasswordResetToken } from "@/lib/password-reset";
 import { getCustomerById } from "@/services/customers";
-import { CUSTOMER_SESSION_COOKIE, signCustomerSession } from "@/lib/customer-auth";
+import {
+  CUSTOMER_SESSION_COOKIE,
+  CUSTOMER_SESSION_COOKIE_OPTIONS,
+  CUSTOMER_SESSION_MAX_AGE_SECONDS,
+  signCustomerSession,
+} from "@/lib/customer-auth";
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { getTranslations } from "next-intl/server";
 
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export async function POST(request: Request) {
   try {
@@ -42,17 +46,12 @@ export async function POST(request: Request) {
 
     const token = await signCustomerSession({ sub: customer.id, email: customer.email, firstName: customer.firstName, lastName: customer.lastName });
     const cookieStore = await cookies();
-    cookieStore.set(CUSTOMER_SESSION_COOKIE, token, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      maxAge: SESSION_MAX_AGE_SECONDS,
-    });
+    cookieStore.set(CUSTOMER_SESSION_COOKIE, token, CUSTOMER_SESSION_COOKIE_OPTIONS);
 
     return NextResponse.json({
       customer,
       token: "httponly",
-      expiresAt: new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + CUSTOMER_SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
     });
   } catch (error) {
     return commerceErrorResponse(error);
