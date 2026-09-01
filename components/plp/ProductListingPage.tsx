@@ -85,6 +85,7 @@ export function ProductListingPage({
   const [facets, setFacets] = useState<SearchFacet[]>(seeded?.facets ?? []);
   const [total, setTotal] = useState(seeded?.total ?? 0);
   const [isLoading, setIsLoading] = useState(!seeded);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   // Offered only where the listing is not already one gender. On /women the page IS the
   // gender, so the control would be a no-op that contradicts its own heading.
@@ -167,6 +168,7 @@ export function ProductListingPage({
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- must flip to loading before kicking off the async fetch pipeline below
     setIsLoading(true);
+    setLoadFailed(false);
 
     (async () => {
       for (let page = 1; page <= urlPage; page += 1) {
@@ -182,7 +184,25 @@ export function ProductListingPage({
 
       if (cancelled) return;
       applyFromCache();
-    })();
+    })().catch((error) => {
+      if (cancelled) return;
+      /**
+       * Without this the grid stuck on "Loading…" forever.
+       *
+       * The fetch sat in an async IIFE with nothing catching it, so a rejection meant
+       * `setIsLoading(false)` was never reached and the effect could not run again until
+       * the URL changed. It is not a hypothetical path either: /api/search is rate limited,
+       * so a shopper clicking through filters quickly can be answered with a 429 — on the
+       * shop's main browsing surface.
+       *
+       * The error is surfaced rather than swallowed into the empty state. "No products
+       * match these filters" for a request that failed tells the shopper the category is
+       * empty, which is worse than telling them something went wrong.
+       */
+      console.error("Failed to load products", error);
+      setIsLoading(false);
+      setLoadFailed(true);
+    });
 
     return () => {
       cancelled = true;
@@ -305,6 +325,18 @@ export function ProductListingPage({
 
             {isLoading && products.length === 0 ? (
               <p className="py-16 text-center text-sm text-luxe-gray-dark">Loading...</p>
+            ) : loadFailed && products.length === 0 ? (
+              /* Distinct from the empty state on purpose — see the catch above. */
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <p className="text-sm text-luxe-gray-dark">{t("loadFailed")}</p>
+                <button
+                  type="button"
+                  onClick={() => router.refresh()}
+                  className="text-sm underline underline-offset-4"
+                >
+                  {t("tryAgain")}
+                </button>
+              </div>
             ) : total === 0 ? (
               <div className="flex flex-col items-center gap-3 py-16 text-center">
                 <PackageSearch className="size-10 text-luxe-gray-dark" strokeWidth={1} />

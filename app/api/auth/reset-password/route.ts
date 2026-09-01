@@ -42,7 +42,10 @@ export async function POST(request: Request) {
     // Auto sign-in after a successful reset — same UX as sign-up, and there's no
     // reason to make someone type the password they just chose a second time.
     const customer = await getCustomerById(customerId);
-    if (!customer) throw new Error("Customer not found after password reset");
+    // Deliberately not phrased with "not found": that wording routes to a 404 in
+    // commerceErrorResponse, and this is an internal invariant failure — the row was just
+    // updated, so its absence is a 500, not something the caller did wrong.
+    if (!customer) throw new Error("Customer row missing immediately after password reset");
 
     const token = await signCustomerSession({ sub: customer.id, email: customer.email, firstName: customer.firstName, lastName: customer.lastName });
     const cookieStore = await cookies();

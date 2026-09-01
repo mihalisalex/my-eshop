@@ -99,7 +99,7 @@ export interface Product extends SlugEntity {
   relatedProductIds?: string[];
   isNew?: boolean;
   isSale?: boolean;
-  /** ISO timestamp. Needed for a real "Newest" sort — see lib/commerce/providers/mock/search.service.ts. */
+  /** ISO timestamp. Backs the "Newest" sort — see the `newest` branch of services/search.ts. */
   createdAt?: string;
   /** ISO timestamp of the last edit. Drives the sitemap's `<lastmod>`, which has to be a
    * real date to carry any signal at all — see app/sitemap.ts. */

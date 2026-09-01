@@ -84,15 +84,27 @@ export function SearchOverlay({ open, onOpenChange }: SearchOverlayProps) {
 
     const requestId = ++requestIdRef.current;
     setIsSearching(true);
-    commerce.search.search(normalized, { limit: 6 }).then((result) => {
-      if (requestId !== requestIdRef.current) return;
-      const matchingCollections = allCollections
-        .filter((c) => c.title.toLowerCase().includes(normalized.toLowerCase()))
-        .slice(0, 4);
-      setProducts(result.products);
-      setCollections(matchingCollections);
-      setIsSearching(false);
-    });
+    commerce.search.search(normalized, { limit: 6 })
+      .then((result) => {
+        if (requestId !== requestIdRef.current) return;
+        const matchingCollections = allCollections
+          .filter((c) => c.title.toLowerCase().includes(normalized.toLowerCase()))
+          .slice(0, 4);
+        setProducts(result.products);
+        setCollections(matchingCollections);
+        setIsSearching(false);
+      })
+      .catch((error) => {
+        // Without this the spinner never stopped. /api/search is rate limited, so typing
+        // quickly can be answered with a 429 — and the overlay would sit "searching"
+        // until the query changed. Results are cleared rather than left stale, so what is
+        // on screen always corresponds to what was typed.
+        if (requestId !== requestIdRef.current) return;
+        console.error("Search failed", error);
+        setProducts([]);
+        setCollections([]);
+        setIsSearching(false);
+      });
   }, [debouncedQuery, commerce, allCollections]);
 
   const entries: SearchEntry[] = useMemo(() => {
