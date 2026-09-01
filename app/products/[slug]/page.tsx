@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import type { Locale } from "@/i18n/config";
-import { localizeProduct, localizeProducts } from "@/lib/localize";
+import { localizeCategory, localizeProduct, localizeProducts } from "@/lib/localize";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Breadcrumbs } from "@/components/product/Breadcrumbs";
@@ -95,7 +95,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // from one place, and so the category link cannot drift from the metadata's idea of it.
   const { breadcrumbs: breadcrumbItems } = resolveProductSeo(product, {
     seo,
-    category: category ? { name: category.name, slug: category.slug } : undefined,
+    // Localised, like every other category name on the storefront. Unlocalised, the
+    // breadcrumb read "Home > Sandals > <Greek product name>" on a Greek shop — on screen
+    // AND inside BreadcrumbList, which is the copy Google reads.
+    category: category
+      ? { name: localizeCategory(category, locale as Locale).name, slug: category.slug }
+      : undefined,
     homeLabel: tNav("home"),
   });
 
