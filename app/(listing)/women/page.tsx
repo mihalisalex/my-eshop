@@ -32,7 +32,7 @@ export default async function WomenPage({ searchParams }: ListingPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <Suspense fallback={null}>
           <ProductListingSection
             title={t("womenTitle")}

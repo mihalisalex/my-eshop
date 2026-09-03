@@ -23,7 +23,7 @@ export default async function JournalPage() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe py-10 md:py-14">
           <h1 className="font-heading text-4xl">{t("journalTitle")}</h1>
           <p className="mt-2 text-luxe-gray-dark">{t("journalSubtitle")}</p>

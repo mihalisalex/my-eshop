@@ -18,7 +18,7 @@ export default async function AboutPage() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="relative h-72 w-full overflow-hidden bg-luxe-gray-light md:h-96">
           <Image src={about.heroImage.src} alt={about.heroImage.alt} fill sizes="100vw" className="object-cover" priority />
         </div>

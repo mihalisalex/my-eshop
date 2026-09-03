@@ -20,7 +20,7 @@ export default async function ResetPasswordPage() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe py-16 md:py-24">
           <Suspense fallback={null}>
             <ResetPasswordForm />

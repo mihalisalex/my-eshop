@@ -26,7 +26,7 @@ export default async function LoginPage({
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe py-16 md:py-24">
           <LoginForm configuredOAuthProviders={getConfiguredOAuthProviders()} from={from} oauthError={params.error === "oauth"} />
         </div>

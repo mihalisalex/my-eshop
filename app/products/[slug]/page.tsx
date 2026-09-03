@@ -122,7 +122,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         announcementMessages={settings.announcementMessages}
       />
 
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <Breadcrumbs items={breadcrumbItems} />
 
         <div className="container-luxe grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">

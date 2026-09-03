@@ -31,7 +31,7 @@ export default async function LegalPage({ params }: LegalPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <SimplePageContent page={page} />
       </main>
       <Footer navigation={navigation} settings={settings} />

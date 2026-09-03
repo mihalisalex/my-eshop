@@ -19,7 +19,7 @@ export default async function ContactPage() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe max-w-3xl py-14 md:py-20">
           <h1 className="font-heading text-4xl md:text-5xl">{t("contactTitle")}</h1>
           <p className="mt-4 text-lg text-luxe-gray-dark">

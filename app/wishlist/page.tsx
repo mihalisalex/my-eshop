@@ -19,7 +19,7 @@ export default async function WishlistPage() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <WishlistPageContent />
       </main>
       <Footer navigation={navigation} settings={settings} />

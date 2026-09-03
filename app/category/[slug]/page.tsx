@@ -112,7 +112,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       {resolved.faqs.length > 0 ? <JsonLd data={faqSchema(resolved.faqs)} /> : null}
 
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         {/* Above the hero so the trail is the first thing in the document after the header,
             which is where both a reader and a crawler expect to find their position. */}
         <Breadcrumbs items={resolved.breadcrumbs} />

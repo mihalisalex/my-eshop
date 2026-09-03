@@ -36,7 +36,7 @@ export default async function JournalPostPage({ params }: JournalPostPageProps) 
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe max-w-3xl py-10 md:py-14">
           <Link href="/journal" className="flex items-center gap-1.5 text-xs text-luxe-gray-dark hover:text-luxe-black">
             <ArrowLeft className="size-3.5" strokeWidth={1.5} />

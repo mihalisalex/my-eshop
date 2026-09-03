@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOptimizableImageUrl } from "@/lib/image-hosts";
+import { isOptimizableImageUrl, REMOTE_IMAGE_HOSTS } from "@/lib/image-hosts";
 
 /**
  * This gates a fatal error path: passing an unconfigured host to next/image throws and
@@ -53,5 +53,35 @@ describe("isOptimizableImageUrl", () => {
     expect(isOptimizableImageUrl("http://images.unsplash.com/a.jpg")).toBe(false);
     expect(isOptimizableImageUrl("not a url")).toBe(false);
     expect(isOptimizableImageUrl("")).toBe(false);
+  });
+});
+
+describe("CSP source derivation (SEC-005)", () => {
+  /**
+   * `remotePatterns` and CSP do not share a wildcard syntax. Next uses `*.` for exactly one
+   * label and `**.` for one or more; CSP has only `*.`, which already matches any depth.
+   * Emitting `**.` produces an INVALID source that the browser discards silently — the
+   * console says "contains an invalid source: … It will be ignored" and the host ends up
+   * blocked despite appearing in the policy.
+   *
+   * This mirrors the transform in next.config.ts. Kept here so adding a `**.` host to the
+   * list can never again quietly produce a policy line that does nothing.
+   */
+  const toCspSource = (hostname: string) => hostname.replace(/^\*\*\./, "*.");
+
+  it("collapses Next's one-or-more wildcard to CSP's single form", () => {
+    expect(toCspSource("**.cdninstagram.com")).toBe("*.cdninstagram.com");
+    expect(toCspSource("**.fbcdn.net")).toBe("*.fbcdn.net");
+  });
+
+  it("leaves a single-label wildcard and a plain host untouched", () => {
+    expect(toCspSource("*.public.blob.vercel-storage.com")).toBe("*.public.blob.vercel-storage.com");
+    expect(toCspSource("images.unsplash.com")).toBe("images.unsplash.com");
+  });
+
+  it("emits no `**` for any configured host, which is what the browser rejects", () => {
+    for (const host of REMOTE_IMAGE_HOSTS) {
+      expect(toCspSource(host.hostname)).not.toContain("**");
+    }
   });
 });

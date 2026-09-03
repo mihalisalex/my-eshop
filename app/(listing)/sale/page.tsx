@@ -31,7 +31,7 @@ export default async function SalePage({ searchParams }: ListingPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <Suspense fallback={null}>
           {/* Deepest discount first — on a page whose entire purpose is the discount, "relevance"
               (which falls back to oldest-first) buried the best offers wherever they happened to sit. */}

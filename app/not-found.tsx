@@ -11,7 +11,7 @@ export default async function NotFound() {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe flex flex-col items-center gap-4 py-32 text-center">
           <Compass className="size-12 text-luxe-gray-dark" strokeWidth={1} />
           <p className="text-eyebrow">404</p>

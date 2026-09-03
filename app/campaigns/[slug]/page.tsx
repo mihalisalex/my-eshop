@@ -37,7 +37,7 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="relative h-80 w-full overflow-hidden bg-luxe-gray-light md:h-[28rem]">
           <Image src={campaign.heroImage.src} alt={campaign.heroImage.alt} fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 px-6 text-center text-luxe-white">

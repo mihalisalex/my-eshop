@@ -31,7 +31,7 @@ export default async function NewInPage({ searchParams }: ListingPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <Suspense fallback={null}>
           {/* No isNew filter: that flag is a merchandising badge nobody had set, so this page
               showed "0 items" while the catalog held 175 products. Sorting by when a product

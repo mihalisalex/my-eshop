@@ -44,7 +44,25 @@ const GA_CONNECT_HOSTS = " https://www.google-analytics.com https://*.analytics.
  * Deriving it means turning optimization on or off can never again disagree with what the
  * policy permits.
  */
-const REMOTE_IMAGE_SRC = REMOTE_IMAGE_HOSTS.map((host) => ` ${host.protocol}://${host.hostname}`).join("");
+/**
+ * The two syntaxes are NOT the same, which is the bug this collapses (SEC-005).
+ *
+ * `remotePatterns` uses Next's own wildcards: `*.` matches exactly one label and `**.`
+ * matches one or more. CSP has only one form — `*.example.com` — and it already matches a
+ * subdomain at any depth. Emitting `**.cdninstagram.com` into a policy is not a stricter
+ * rule, it is an INVALID source: the browser discards that entry entirely and logs
+ * "contains an invalid source: … It will be ignored".
+ *
+ * The effect was silent and one-directional. Instagram's CDN serves each photo from a
+ * region-suffixed host (scontent-ath3-1.xx.fbcdn.net), so the homepage feed's images were
+ * covered by `remotePatterns` — Next would render them — while the CSP line meant to permit
+ * them was being thrown away, leaving them blocked with only a console violation to say so.
+ * Latent today because the feed falls back to curated images until a Meta token is
+ * connected; it would have surfaced as "the Instagram section is blank in production".
+ */
+const REMOTE_IMAGE_SRC = REMOTE_IMAGE_HOSTS.map(
+  (host) => ` ${host.protocol}://${host.hostname.replace(/^\*\*\./, "*.")}`
+).join("");
 
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",

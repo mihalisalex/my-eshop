@@ -30,7 +30,7 @@ export default async function HomePage() {
         announcementMessages={settings.announcementMessages}
         transparent
       />
-      <main className="flex-1">
+      <main id="main" className="flex-1">
         {sections.map((section) => (
           <SectionRenderer key={section.id} section={section} />
         ))}

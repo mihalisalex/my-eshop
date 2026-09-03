@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveCartAmounts, type ComputeTotalsLineItem } from "./cart-totals";
+import { resolveCartAmounts, round2, type ComputeTotalsLineItem } from "./cart-totals";
 import { buildShippingRates, VAT_RATE, vatIncludedIn } from "@/lib/shipping";
 import shippingFallback from "@/data/shipping.json";
 import type { ShippingRate } from "@/lib/commerce/types";
@@ -204,5 +204,38 @@ describe("resolveCartAmounts", () => {
       selectedShippingRate: EXPRESS_SHIPPING_RATE,
     });
     expect(result.totals.shippingTotal.amount).toBe(EXPRESS_SHIPPING_RATE.price.amount);
+  });
+});
+
+describe("round2", () => {
+  /**
+   * MONEY-001. The obvious `Math.round(v * 100) / 100` loses a cent at exactly the boundary
+   * it exists to handle: 1.005 is stored as 1.00499999999999989…, so multiplying by 100
+   * gives 100.49999999999999 and rounds DOWN.
+   */
+  it("rounds a half-cent up rather than losing it to binary representation", () => {
+    expect(round2(1.005)).toBe(1.01);
+    expect(round2(2.675)).toBe(2.68);
+    expect(round2(8.045)).toBe(8.05);
+  });
+
+  it("leaves amounts that were never on a boundary alone", () => {
+    expect(round2(39.9)).toBe(39.9);
+    expect(round2(0)).toBe(0);
+    expect(round2(19.994)).toBe(19.99);
+    expect(round2(19.996)).toBe(20);
+  });
+
+  it("handles the negative side symmetrically", () => {
+    // Refund and discount arithmetic can go negative before being clamped.
+    expect(round2(-1.005)).toBe(-1.01);
+    expect(round2(-39.9)).toBe(-39.9);
+  });
+
+  it("survives the float noise that percentage discounts actually produce", () => {
+    // 0.1 + 0.2 === 0.30000000000000004 is the canonical case; a 15% discount on 39.90
+    // is the one this shop hits.
+    expect(round2(0.1 + 0.2)).toBe(0.3);
+    expect(round2(39.9 * 0.15)).toBe(5.99);
   });
 });

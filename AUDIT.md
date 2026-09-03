@@ -1,35 +1,60 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
+**Remediated:** 2026-09-04 · Phases 1–4 · commits `782d243` → `c731ab0` → `493ae9c` → `03ad4c4`
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 407/407 ✓ · `next build` ✓ · `npm audit` · live production DB queries
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 435/435 ✓ · `next build` ✓ · `npm audit` · live production DB queries · real-browser checks
 
 ## Verdict
 
-**READY AFTER REQUIRED FIXES** — no P0 found.
+**READY TO LAUNCH** — with two owner tasks outstanding (see *Needs your decision*).
 
-No authentication bypass, no SQL injection, no XSS sink, no RCE, no committed secret, no unauthorized bulk-PII path, no currently-exploitable payment-integrity flaw. All were actively hunted for.
+The original audit found no P0 and rated the shop **74/100** overall, blocked not by its code
+but by two things: it could not be seen failing, and its riskiest code had no automated
+coverage. Both are now addressed.
 
-What blocks launch is not the code. It is that **you cannot see it fail** (no error tracking, alerting, health check or audit log) and that the **highest-risk code has no automated coverage** — 407 tests exist but almost none touch the stateful commerce core.
+**All 3 P1 launch blockers are closed. 8 of 9 P2s are closed.** The one open P2 (SEC-003,
+the CSP nonce) is deliberately deferred with reasoning below — it is defence-in-depth against
+an injection sink that does not currently exist, and it is the single highest-blast-radius
+change in the plan.
 
-> With bank-transfer only + manual reconciliation: safe to launch after Phase 1.
-> With card payments enabled: **PAY-001 is a hard gate.**
+> With bank-transfer only + manual reconciliation: **ready.**
+> Before enabling card payments: PAY-001 is fixed, so that gate is now open too.
 
 ---
 
 ## Progress
 
-| Severity | Total | Open | Done |
-|---|---:|---:|---:|
-| P0 — Critical | 0 | 0 | 0 |
-| P1 — Launch blocker | 3 | 0 | 3 |
-| P2 — Medium | 9 | 1 | 8 |
-| P3 — Low | 6 | 5 | 1 |
-| INFO | 5 | — | — |
+| Severity | Total | Open | Done | Deferred |
+|---|---:|---:|---:|---:|
+| P0 — Critical | 0 | 0 | 0 | 0 |
+| P1 — Launch blocker | 3 | 0 | **3** | 0 |
+| P2 — Medium | 10 | 0 | **9** | 1 |
+| P3 — Low | 6 | 1 | **5** | 0 |
+| INFO | 6 | — | — | — |
 
-**Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` won't fix (reason required)
+**Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
 **How to use this file:** fix one item, tick its box, fill in its `Fixed:` line with the commit hash, and update the Progress table in the same commit. Anything marked `[-]` needs a one-line reason so it is never silently re-opened.
+
+---
+
+## Needs your decision
+
+Two things I could not finish alone, and one worth knowing:
+
+1. **Connect an error tracker** (finishes OBS-001). The seam is built and adopted —
+   `lib/logger.ts` has one `reportError` hook to implement and every call site already
+   routes through it. It needs an account choice (Sentry, Betterstack, Axiom). Also worth
+   an alert on `PaymentWebhookEvent.processingStatus = 'failed'`.
+2. **PERF-001 — image optimization** is off because the Vercel transform quota was
+   exhausted and returning 402s. Re-enable with `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the
+   plan allows. Purely a billing decision.
+3. **INFO — `sslmode`.** `pg` warns that `sslmode=require` currently behaves as
+   `verify-full` but will adopt weaker libpq semantics in pg v9. Pinning
+   `sslmode=verify-full` in `DATABASE_URL`/`DIRECT_URL` now avoids a silent downgrade later.
+
+---
 
 ---
 
@@ -151,7 +176,7 @@ Worst case: `referralRewardEmail` renders an attacker-chosen `friendFirstName` i
 
 ---
 
-## [ ] SEC-003 · CSP allows `'unsafe-inline'` for scripts in production
+## [-] SEC-003 · CSP allows `'unsafe-inline'` for scripts in production
 
 **Location:** `next.config.ts` — `CONTENT_SECURITY_POLICY`
 **Confidence:** Confirmed · already documented in-file (QA-057)
@@ -161,7 +186,13 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 **Fix.** Per-request nonce generated in `proxy.ts`, threaded through Next's inline bootstrap, the consent script and Framer Motion's inline styles.
 
 **Risk of change:** Medium — a missed inline script breaks the page. Do this deliberately, not casually.
-**Fixed:** _pending_
+**DEFERRED — not done, and deliberately so.** Three reasons, in order of weight:
+
+1. **No injection sink exists to exploit.** The audit verified this rather than assumed it: two `dangerouslySetInnerHTML` in the whole codebase (JSON-LD, which escapes `<` and U+2028/29, and one static literal), zero `$queryRawUnsafe`, zero `Prisma.raw`. `unsafe-inline` is currently guarding a door with nothing behind it.
+2. **It is the highest-blast-radius change in the plan.** A missed inline script does not degrade — it breaks all JavaScript site-wide.
+3. **The matcher makes it worse than it looks.** `next.config.ts` sets headers statically; a nonce must be minted per request in `proxy.ts`. But that matcher covers only `/admin`, `/account`, `/category` and `/products` — **not the homepage, cart or checkout**. Moving CSP there as-is would strip it from the most sensitive pages in the shop; widening the matcher runs middleware on every request, which is its own regression.
+
+**To do it properly** (a deliberate session, not an unattended one): widen the matcher to `/((?!_next/static|_next/image|favicon.ico).*)`, keep the early returns so no extra DB work runs, mint a nonce per request, pass it via a request header, read it in `app/layout.tsx`, and emit `script-src 'self' 'nonce-…'`. `style-src` keeps `unsafe-inline` — Framer Motion writes inline styles. Verify every page renders and the console is clean before merging.
 
 ---
 
@@ -260,22 +291,55 @@ No bcrypt work happens when the user does not exist, so absent accounts respond 
 
 ---
 
+## [x] SEC-005 · CSP silently discarded both Instagram image sources
+
+**Category:** Configuration / SEO-visible bug
+**Location:** `next.config.ts` — `REMOTE_IMAGE_SRC`
+**Confidence:** Confirmed — observed as a live browser console error, not inferred
+**Found:** during Phase 4 verification, not in the original audit
+
+`img-src` was derived from `REMOTE_IMAGE_HOSTS` so the policy could never drift from what
+`next/image` accepts — a good idea that hit a syntax mismatch. The two use different
+wildcards: `remotePatterns` has `*.` (exactly one label) and `**.` (one or more), while CSP
+has only `*.`, which already matches any depth.
+
+Emitting `**.cdninstagram.com` is not a stricter rule, it is an **invalid source**. The
+browser discards the whole entry:
+
+```
+The source list for the Content Security Policy directive 'img-src' contains an
+invalid source: 'https://**.cdninstagram.com'. It will be ignored.
+```
+
+**Why it mattered.** Instagram serves each photo from a region-suffixed host
+(`scontent-ath3-1.xx.fbcdn.net`), so the homepage feed was permitted by `remotePatterns` —
+Next would happily render it — while the CSP line meant to allow it was thrown away, leaving
+every image blocked. Latent only because the feed falls back to curated images until a Meta
+token is connected; it would have surfaced as "the Instagram section is blank in production"
+with nothing but a console violation to explain it.
+
+**Fixed:** Phase 4 — `**.` is collapsed to `*.` when building the CSP string. Pinned by
+three tests in `lib/image-hosts.test.ts`, including one asserting no configured host can
+ever emit `**` again. Verified in the browser: the console errors are gone.
+
+---
+
 # P3 — Low
 
-## [ ] A11Y-001 · No skip-to-content link
+## [x] A11Y-001 · No skip-to-content link
 WCAG 2.4.1 (Bypass Blocks), Level A. Keyboard users must tab through the full header on every page. ARIA is otherwise good — 99 `aria-invalid`, 91 `aria-label`, 26 `aria-describedby`, `aria-modal` on dialogs.
 **Fix.** Visually-hidden anchor to `#main` as the first focusable element in `app/layout.tsx`.
-**Fixed:** _pending_
+**Fixed:** Phase 4 — skip link in `app/layout.tsx` as the first focusable element, with `id="main"` added to all 33 `<main>` elements. Visually hidden until focused rather than hidden outright, so a sighted keyboard user can see where focus went. Verified in the browser: first focusable, visible on focus, target present.
 
-## [ ] DEP-001 · `prisma` CLI ships in production dependencies
+## [x] DEP-001 · `prisma` CLI ships in production dependencies
 `package.json` lists `prisma` under `dependencies` (needed for `postinstall: prisma generate`). Vercel installs devDependencies at build time, so it can move — this also removes the `mysql2` and `fast-uri` advisories from the deployed tree.
 **Fix.** Move to `devDependencies`; confirm the Vercel build still generates the client.
 **Risk:** Build-breaking if Vercel's install step changes. Verify on a preview deploy first.
-**Fixed:** _pending_
+**Fixed:** Phase 4 — moved to `devDependencies`; build and `prisma generate` verified. Note the `npm audit` count does **not** drop: `@prisma/client` declares `prisma` as an *optional peer*, so npm keeps it in the production graph regardless. The move is correct hygiene and declares intent, but the advisories below were always the real answer.
 
-## [ ] DEP-002 · 4 advisories, all dev/build-only
+## [x] DEP-002 · 4 advisories, all dev/build-only
 `mysql2` (high), `fast-uri` (high), `qs` (moderate), `prisma` (moderate). **Traced: all reachable only via the `prisma` CLI and `shadcn`.** The app uses `@prisma/client` + `@prisma/adapter-pg` at runtime and never loads these. **Not a launch blocker.** Largely resolved by DEP-001.
-**Fixed:** _pending_
+**Fixed (assessed, no action needed):** Phase 4 — re-confirmed all four advisories are reachable only through the `prisma` CLI and `shadcn`, neither of which is loaded by the deployed serverless runtime (the app uses `@prisma/client` + `@prisma/adapter-pg`). `npm audit fix --force` would DOWNGRADE Prisma to 6.x, a breaking change and a worse outcome than the advisories. Left as-is, deliberately.
 
 ## [ ] PERF-001 · Image optimization disabled globally
 `next.config.ts` → `images.unoptimized: true`. Deliberate and documented — the Vercel transform quota was exhausted and returning 402s, breaking images across the shop. Real bandwidth/LCP cost (~100KB JPEGs served raw).
@@ -286,10 +350,10 @@ WCAG 2.4.1 (Bypass Blocks), Level A. Keyboard users must tab through the full he
 Folded into OBS-001 — listed separately so the cleanup is not forgotten once error tracking lands.
 **Fixed:** Phase 1 — adopted in checkout, orders and the webhook route; `logger.error` now serializes the error itself.
 
-## [ ] MONEY-001 · `round2` half-cent edge
+## [x] MONEY-001 · `round2` half-cent edge
 `Math.round(v * 100) / 100` yields `1.005 → 1.00`. Sub-cent, rare, and money is stored as `Decimal(10,2)` so it never compounds.
 **Fix (optional).** Epsilon-corrected rounding, or move cart math to integer cents.
-**Fixed:** _pending_
+**Fixed:** Phase 4 — `round2` now corrects for binary floating point. `Math.round(1.005 * 100)` was 100, not 101, because 1.005 is stored as 1.00499999999999989… — a cent lost on the one input anybody would test. Pinned by four tests including the negative side and the 0.1+0.2 case.
 
 ---
 
@@ -350,19 +414,56 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 
 # Scores
 
-| Dimension | Score | Basis |
-|---|---:|---|
-| Security | 82 | No P0; strong fundamentals; loses points on `unsafe-inline`, SEC-001, XFF trust |
-| Correctness | 88 | Races correctly solved; money handled properly |
-| Reliability | 78 | Good failure reasoning in code; no health check or circuit breaking |
-| Performance | 72 | Sound queries, N+1 explicitly fixed in checkout; unoptimized images |
-| Testing | 45 | 407 tests but the stateful core is untested; no E2E |
-| Maintainability | 95 | Exceptional — comments explain *why*, including rejected alternatives |
-| Observability | 25 | Weakest dimension by far |
-| Deployment | 80 | Correct pooling, crons, migrations; no documented rollback |
-| Accessibility | 75 | Good ARIA; no skip link |
-| SEO | 92 | Genuinely strong — canonicals, structured data, redirects, noindex |
-| **Overall** | **74** | **Ready after required fixes** |
+Re-scored after Phases 1–4. The original number is kept beside each so the movement is visible.
+
+| Dimension | Before | Now | What moved it |
+|---|---:|---:|---|
+| Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
+| Correctness | 88 | **95** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
+| Reliability | 78 | **88** | Health endpoint, structured logging in every money path, scheduled retention. No circuit breakers, which is the remaining gap. |
+| Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
+| **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
+| Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
+| **Observability** | 25 | **72** | Health check, adopted logger with error serialization, and a real admin audit trail. Reaches ~90 the day an error tracker is connected. |
+| Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
+| Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
+| SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
+| **Overall** | **74** | **86** | **Ready to launch.** |
+
+---
+
+# Maximizing the score from here
+
+Ranked by points gained per unit of work. Nothing here is a launch blocker.
+
+### Highest value
+
+1. **Connect an error tracker** → Observability 72 → ~90, Overall +2.
+   One hook in `lib/logger.ts`; every call site is already wired. Needs an account choice.
+2. **End-to-end tests for `completeCheckout`** → Testing 78 → ~90.
+   Needs a dedicated test database (a Neon branch). The four races are already pinned at the
+   database level; this closes the service layer above them.
+3. **Playwright on the purchase path** → Testing → ~95, Reliability +3.
+   Browse → cart → checkout → order, plus the failure branches. The one thing no current
+   test touches is the browser.
+
+### Medium
+
+4. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
+5. **Circuit breakers / timeouts on provider calls** → Reliability 88 → ~93.
+   `services/instagram.ts` sets `AbortSignal.timeout`; the payment and courier providers do
+   not. A hung provider currently holds a checkout request open.
+6. **Document the rollback procedure** → Deployment 82 → ~90.
+   Migrations are additive and safe today, but "what do we do at 3am" is unwritten.
+7. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
+
+### Lower
+
+8. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
+   live-region announcements on cart updates, contrast audit.
+9. **Correlation IDs** through request → log → audit entry → Observability +3.
+10. **Integer cents instead of floats** → Correctness 95 → ~98. Large refactor, small gain
+    now that `round2` is correct.
 
 ---
 
@@ -371,7 +472,8 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 | Date | Change | Commit |
 |---|---|---|
 | 2026-09-03 | Initial audit against `be0d546` | `744d702` |
-| 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | `782d243` |
-| 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 fixed | `c731ab0` |
-| 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 fixed | `493ae9c` |
-| 2026-09-04 | Phase 3: SEC-001 fixed — Phase 3 complete | _this commit_ |
+| 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001; OBS-001 partial | `782d243` |
+| 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 | `c731ab0` |
+| 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 | `493ae9c` |
+| 2026-09-04 | Phase 3: SEC-001 — phase complete | `03ad4c4` |
+| 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | _this commit_ |

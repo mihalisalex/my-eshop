@@ -27,7 +27,7 @@ export default async function LandingPage({ params }: LandingPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} transparent />
-      <main className="flex-1">
+      <main id="main" className="flex-1">
         {sections.map((section) => (
           <SectionRenderer key={section.id} section={section} />
         ))}

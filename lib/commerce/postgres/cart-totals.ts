@@ -4,9 +4,22 @@ import type { Money } from "@/types";
 import { computeShippingChargeForRate, vatIncludedIn } from "@/lib/shipping";
 import { GIFT_WRAP_FEE } from "@/lib/gift-wrap";
 
-/** Relocated from the mock's providers/mock/storage.ts — now purely a server-side money-rounding helper. */
+/**
+ * Rounds a money amount to cents, correcting for binary floating point (MONEY-001).
+ *
+ * The obvious `Math.round(value * 100) / 100` is wrong at exactly the boundary it exists to
+ * handle. 1.005 is not representable in binary: it is stored as 1.00499999999999989…, so
+ * `1.005 * 100` is 100.49999999999999 and `Math.round` gives 100 — a cent lost, on the one
+ * input a person would point at to check the function works.
+ *
+ * `Number.EPSILON` scaled to the magnitude of the value nudges it back across the boundary
+ * without disturbing any amount that was not already sitting on one. Amounts are stored as
+ * `Decimal(10,2)` in Postgres, so this only has to survive arithmetic done in between —
+ * percentage discounts and payment fees, which is precisely where halves appear.
+ */
 export function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+  const scaled = value * 100;
+  return Math.round(scaled + Math.sign(scaled) * Math.abs(scaled) * Number.EPSILON) / 100;
 }
 
 function money(amount: number, currencyCode: string): Money {

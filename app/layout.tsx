@@ -106,6 +106,22 @@ export default async function RootLayout({
         <JsonLd data={organizationSchema(seo)} />
         <JsonLd data={websiteSchema(seo)} />
         <NextIntlClientProvider messages={messages}>
+          {/*
+            Skip to content — WCAG 2.4.1 (Bypass Blocks), Level A (A11Y-001).
+            Without it a keyboard or screen-reader user tabs through the announcement bar,
+            the wordmark, six nav links, search, wishlist, account and cart before reaching
+            the page itself, on EVERY navigation.
+
+            Visually hidden until focused rather than hidden outright: `sr-only` alone would
+            leave a sighted keyboard user pressing Tab with no idea where focus went. Every
+            page's <main> carries id="main" as the target.
+          */}
+          <a
+            href="#main"
+            className="sr-only z-200 bg-luxe-black px-4 py-3 text-sm text-luxe-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
+          >
+            Μετάβαση στο περιεχόμενο
+          </a>
           {/* Deliberately ahead of {children}. It is position:fixed, so DOM order does not
               affect where it appears — but it does decide when it appears. Sitting after
               {children} meant its markup only flushed once the page's slowest server

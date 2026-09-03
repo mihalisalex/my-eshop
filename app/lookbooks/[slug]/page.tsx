@@ -38,7 +38,7 @@ export default async function LookbookPage({ params }: LookbookPageProps) {
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="container-luxe py-10 md:py-14">
           <p className="text-eyebrow">{lookbook.season} Lookbook</p>
           <h1 className="mt-1 font-heading text-4xl">{lookbook.title}</h1>

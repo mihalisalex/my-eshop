@@ -8,7 +8,7 @@ export default async function CheckoutLayout({ children }: { children: React.Rea
   return (
     <CheckoutProvider>
       <CheckoutHeader siteName={settings.siteName} />
-      <main className="flex-1 bg-luxe-white">{children}</main>
+      <main id="main" className="flex-1 bg-luxe-white">{children}</main>
     </CheckoutProvider>
   );
 }

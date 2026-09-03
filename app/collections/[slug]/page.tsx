@@ -63,7 +63,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   return (
     <>
       <Header navigation={navigation} siteName={settings.siteName} announcementMessages={settings.announcementMessages} />
-      <main className="flex-1 pt-header">
+      <main id="main" className="flex-1 pt-header">
         <div className="relative h-64 w-full overflow-hidden bg-luxe-gray-light md:h-80">
           <Image src={collection.image.src} alt={collection.image.alt} fill sizes="100vw" className="object-cover" priority />
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 text-center text-luxe-white">
