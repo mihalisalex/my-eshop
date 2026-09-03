@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { useFieldArray, useWatch, type Control, type UseFormRegister } from "react-hook-form";
+import { useFieldArray, useWatch, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
 import { ImageUp, Link2, Star, X } from "lucide-react";
 import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
 import type { ProductFormValues } from "@/lib/validation/product";
@@ -27,11 +27,13 @@ import type { ProductFormValues } from "@/lib/validation/product";
 interface ProductImageManagerProps {
   control: Control<ProductFormValues>;
   register: UseFormRegister<ProductFormValues>;
-  error?: string;
+  /** The whole `images` branch, so a rejected alt text can be shown ON the photo it
+   *  belongs to rather than only as an array-level message with no home. */
+  errors?: FieldErrors<ProductFormValues>["images"];
 }
 
-export function ProductImageManager({ control, register, error }: ProductImageManagerProps) {
-  const { fields, append, remove, move } = useFieldArray({ control, name: "images" });
+export function ProductImageManager({ control, register, errors }: ProductImageManagerProps) {
+  const { fields, append, remove, move, replace } = useFieldArray({ control, name: "images" });
   // The rendered thumbnails follow the live values, not `fields` — `fields` is a snapshot
   // taken when the array changes, so a URL typed into the fallback input below would never
   // show a preview.
@@ -57,15 +59,25 @@ export function ProductImageManager({ control, register, error }: ProductImageMa
       return;
     }
 
-    for (const media of result.media) {
-      /**
-       * Alt text is left EMPTY rather than pre-filled with the filename. A filename is not
-       * a description, and a pre-filled one reads as already done — which is how 175
-       * products ended up with alt text that merely repeated their own name. The field
-       * below asks for it explicitly instead.
-       */
-      append({ src: media.url, alt: "" });
-    }
+    /**
+     * Alt text is left EMPTY rather than pre-filled with the filename. A filename is not a
+     * description, and a pre-filled one reads as already done — which is how 175 products
+     * ended up with alt text that merely repeated their own name. The field below asks for
+     * it explicitly instead, and the form will not save until it is answered.
+     */
+    const uploaded = result.media.map((media) => ({ src: media.url, alt: "" }));
+
+    /**
+     * `replace`, not `append`: a new product starts with one blank row from
+     * `emptyProductFormValues`, and that row is a placeholder rather than an image.
+     *
+     * Appending past it left `images[0]` empty forever. The grid hides it (there is no
+     * preview to draw), so the merchandiser saw their photo attached and nothing wrong —
+     * while the resolver rejected `images.0.src` on every submit and "Create product" sat
+     * there doing nothing. Dropping empty rows as soon as a real image arrives is what
+     * makes the visible state and the validated state the same state.
+     */
+    replace([...images.filter((image) => image.src?.trim()), ...uploaded]);
 
     if (inputRef.current) inputRef.current.value = "";
   }
@@ -120,7 +132,7 @@ export function ProductImageManager({ control, register, error }: ProductImageMa
       </div>
 
       {uploadError ? <p className="text-xs text-destructive">{uploadError}</p> : null}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {errors?.message ? <p className="text-xs text-destructive">{errors.message}</p> : null}
 
       {visible.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -160,8 +172,12 @@ export function ProductImageManager({ control, register, error }: ProductImageMa
                 <input
                   className="h-9 w-full border border-border bg-transparent px-2 text-xs outline-none focus:border-luxe-black"
                   placeholder="Describe this photo"
+                  aria-invalid={Boolean(errors?.[img.index]?.alt)}
                   {...register(`images.${img.index}.alt`)}
                 />
+                {errors?.[img.index]?.alt?.message ? (
+                  <p className="text-xs text-destructive">{errors[img.index]?.alt?.message}</p>
+                ) : null}
                 {/* Hidden, but registered — the URL still has to reach the form payload. */}
                 <input type="hidden" {...register(`images.${img.index}.src`)} />
               </div>

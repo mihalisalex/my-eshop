@@ -9,8 +9,8 @@ import type { Product } from "@/types/product";
  */
 
 export const imageSchema = z.object({
-  src: z.string().min(1),
-  alt: z.string().min(1),
+  src: z.string().min(1, "Image URL is required"),
+  alt: z.string().min(1, "Alt text is required"),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
   blurDataURL: z.string().optional(),
@@ -123,7 +123,7 @@ export const colorVariantSchema = z.object({
 });
 
 export const sizeVariantSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1, "Size is required"),
   inStock: z.boolean(),
   quantity: z.number().int().min(0),
   /**
@@ -156,7 +156,7 @@ export const productStatusSchema = z.enum(["draft", "active", "archived"]);
 
 const slugSchema = z
   .string()
-  .min(1)
+  .min(1, "URL slug is required")
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers, and hyphens only");
 
 export const productFormSchema = z.object({

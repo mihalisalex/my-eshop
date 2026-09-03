@@ -14,6 +14,7 @@ import { SIZE_RUNS, expandSizeRun } from "@/constants/size-runs";
 import { PRODUCT_COLOR_PRESETS } from "@/constants/product-colors";
 import { SeoFieldset } from "@/components/admin/SeoFieldset";
 import { ProductImageManager } from "@/components/admin/ProductImageManager";
+import { describeFormErrors } from "@/lib/form-errors";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import type { ProductActionState } from "@/app/admin/(dashboard)/products/actions";
 
@@ -196,11 +197,18 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
   const colors = useFieldArray({ control, name: "colors" });
   const sizes = useFieldArray({ control, name: "sizes" });
 
-  const submit = handleSubmit(async (values) => {
-    setServerError(null);
-    const result = await onSubmit(values);
-    if (result?.error) setServerError(result.error);
-  });
+  const [blockedBy, setBlockedBy] = useState<string[]>([]);
+
+  const submit = handleSubmit(
+    async (values) => {
+      setServerError(null);
+      setBlockedBy([]);
+      const result = await onSubmit(values);
+      if (result?.error) setServerError(result.error);
+    },
+    // Validation failed, so the save never runs. Say what is missing.
+    (formErrors) => setBlockedBy(describeFormErrors(formErrors))
+  );
 
   return (
     <form onSubmit={submit} noValidate className="space-y-6">
@@ -471,7 +479,7 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
         <p className="text-xs text-luxe-gray-dark">
           The first image is the one shown on every listing. Hover another to make it the main one.
         </p>
-        <ProductImageManager control={control} register={register} error={errors.images?.message} />
+        <ProductImageManager control={control} register={register} errors={errors.images} />
       </div>
 
       <div className={sectionClass}>
@@ -565,7 +573,12 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
               {field.quantityBaseline !== undefined ? (
                 <input type="hidden" {...register(`sizes.${index}.quantityBaseline`, { valueAsNumber: true })} />
               ) : null}
-              <input className={`${inputClass} max-w-24`} placeholder="Size" {...register(`sizes.${index}.name`)} />
+              <input
+                className={`${inputClass} max-w-24`}
+                placeholder="Size"
+                aria-invalid={Boolean(errors.sizes?.[index]?.name)}
+                {...register(`sizes.${index}.name`)}
+              />
               <Controller
                 name={`sizes.${index}.quantity`}
                 control={control}
@@ -699,6 +712,20 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
           titleTemplate={seoDefaults.titleTemplate}
         />
       </div>
+
+      {/* Beside the button, because that is where someone is looking when nothing happens. */}
+      {blockedBy.length > 0 ? (
+        <div role="alert" className="border border-destructive/40 bg-destructive/5 p-4">
+          <p className="text-sm font-medium text-destructive">
+            Not saved — {blockedBy.length === 1 ? "one field needs" : `${blockedBy.length} fields need`} attention:
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-destructive">
+            {blockedBy.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="flex justify-end gap-3">
         <button
