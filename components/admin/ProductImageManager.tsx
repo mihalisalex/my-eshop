@@ -111,6 +111,32 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
   const [isDragging, setIsDragging] = useState(false);
   const [showUrlField, setShowUrlField] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  /**
+   * Renames the stored file to match the alt text it was just given, so the URL itself
+   * carries the product's slug, SKU and colour rather than whatever the upload happened to
+   * be called — a search engine reads that file name, not only the `alt` attribute next to
+   * it. Best-effort by design: `/api/admin/media/rename` always answers with SOME url, and
+   * falls back to the one it was given whenever renaming isn't safe (nothing to rename to
+   * yet, a photo shared with another product, an external host this shop doesn't store) or
+   * simply fails — attaching the photo must never wait on an SEO nicety succeeding.
+   */
+  async function renameToMatchAlt(url: string, alt: string): Promise<string> {
+    if (!alt) return url;
+    try {
+      const res = await fetch("/api/admin/media/rename", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ url, filename: alt }),
+      });
+      if (!res.ok) return url;
+      const data = (await res.json()) as { url?: string };
+      return data.url ?? url;
+    } catch {
+      return url;
+    }
+  }
 
   /**
    * Attaches images already sitting in the Media Library — a re-shoot, a colourway shared
@@ -119,17 +145,24 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
    *
    * Same replace-and-compute-alt shape as handleFiles below, because assigning a library
    * photo is the same event as uploading one: either way a real image is now attached and
-   * needs alt text before the placeholder row disappears.
+   * needs alt text before the placeholder row disappears — and the same rename, for the
+   * same reason, though a photo already used elsewhere in the catalogue is left alone (see
+   * the rename route: renaming a shared file would break every other place using it).
    */
-  function handlePicked(assets: MediaAssetWithUsage[]) {
+  async function handlePicked(assets: MediaAssetWithUsage[]) {
     if (assets.length === 0) return;
+    setIsAssigning(true);
     const kept = images.filter((image) => image.src?.trim());
-    const picked = assets.map((asset, offset) => {
-      const index = kept.length + offset;
-      const alt = altFor(index);
-      lastDerivedAlt.current[index] = alt;
-      return { src: asset.url, alt };
-    });
+    const picked = await Promise.all(
+      assets.map(async (asset, offset) => {
+        const index = kept.length + offset;
+        const alt = altFor(index);
+        lastDerivedAlt.current[index] = alt;
+        const src = await renameToMatchAlt(asset.url, alt);
+        return { src, alt };
+      })
+    );
+    setIsAssigning(false);
     replace([...kept, ...picked]);
   }
 
@@ -140,22 +173,29 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
     setIsUploading(true);
     setUploadError(null);
     const result = await uploadMediaFiles(files);
-    setIsUploading(false);
 
     if (!result.ok) {
+      setIsUploading(false);
       setUploadError(result.error);
       return;
     }
 
     // Alt text is composed here rather than after the fact, so a new thumbnail never
-    // appears with an empty box under it. See altFor above.
+    // appears with an empty box under it. See altFor above. The rename happens in the same
+    // pass, before the images ever reach the form — so what lands in `src` is already the
+    // final URL rather than something that quietly changes under the merchandiser a moment
+    // later.
     const kept = images.filter((image) => image.src?.trim());
-    const uploaded = result.media.map((media, offset) => {
-      const index = kept.length + offset;
-      const alt = altFor(index);
-      lastDerivedAlt.current[index] = alt;
-      return { src: media.url, alt };
-    });
+    const uploaded = await Promise.all(
+      result.media.map(async (media, offset) => {
+        const index = kept.length + offset;
+        const alt = altFor(index);
+        lastDerivedAlt.current[index] = alt;
+        const src = await renameToMatchAlt(media.url, alt);
+        return { src, alt };
+      })
+    );
+    setIsUploading(false);
 
     /**
      * `replace`, not `append`: a new product starts with one blank row from
@@ -210,14 +250,15 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
           , or{" "}
           <button
             type="button"
+            disabled={isAssigning}
             onClick={() => setPickerOpen(true)}
-            className="underline underline-offset-4 hover:opacity-70"
+            className="underline underline-offset-4 hover:opacity-70 disabled:pointer-events-none disabled:opacity-50"
           >
             choose from Media Library
           </button>
         </p>
         <p className="text-xs text-luxe-gray-dark">
-          {isUploading ? "Uploading…" : "JPEG, PNG, WebP or AVIF · up to 12 MB each"}
+          {isUploading ? "Uploading…" : isAssigning ? "Attaching…" : "JPEG, PNG, WebP or AVIF · up to 12 MB each"}
         </p>
         <input
           ref={inputRef}

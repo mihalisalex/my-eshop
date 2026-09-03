@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeUploadFilename } from "@/lib/blob";
+import { isOwnBlobUrl, safeUploadFilename } from "@/lib/blob";
 
 /**
  * The uploaded filename ends up in a public object key, so it stops being the uploader's
@@ -47,5 +47,34 @@ describe("safeUploadFilename", () => {
 
   it("bounds the length so the key stays reasonable", () => {
     expect(safeUploadFilename(`${"a".repeat(500)}.jpg`).length).toBeLessThanOrEqual(80);
+  });
+});
+
+describe("isOwnBlobUrl", () => {
+  it("accepts this shop's own Blob store, whatever its store id", () => {
+    // The real host, seen in the catalogue today.
+    expect(isOwnBlobUrl("https://266dzyztwtian1su.public.blob.vercel-storage.com/products/x.jpg")).toBe(true);
+    // A different store id must still match — the rename route must not need updating if
+    // the project is ever moved to a new Blob store.
+    expect(isOwnBlobUrl("https://anotherstoreid123.public.blob.vercel-storage.com/x.jpg")).toBe(true);
+  });
+
+  it("rejects the hosts this shop merely displays images from", () => {
+    // The WooCommerce import's original host and a random image URL — this shop stores
+    // neither, and renaming a file it does not own would either fail loudly against a host
+    // that isn't ours, or worse, silently do nothing useful.
+    expect(isOwnBlobUrl("https://alexandrisstores.gr/wp-content/uploads/x.jpg")).toBe(false);
+    expect(isOwnBlobUrl("https://images.unsplash.com/photo-1.jpg")).toBe(false);
+  });
+
+  it("rejects a host that merely contains the right suffix as a lookalike", () => {
+    // "evilpublic.blob.vercel-storage.com.evil.com" must not pass a naive endsWith check
+    // on the wrong string — this asserts the real hostname, not a substring of the URL.
+    expect(isOwnBlobUrl("https://evil.com/public.blob.vercel-storage.com/x.jpg")).toBe(false);
+  });
+
+  it("does not throw on a malformed URL", () => {
+    expect(isOwnBlobUrl("not a url")).toBe(false);
+    expect(isOwnBlobUrl("")).toBe(false);
   });
 });

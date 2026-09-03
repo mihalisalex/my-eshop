@@ -1,4 +1,4 @@
-import { del, put } from "@vercel/blob";
+import { del, put, rename } from "@vercel/blob";
 
 export function isBlobConfigured(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
@@ -90,6 +90,43 @@ export function safeUploadFilename(filename: string): string {
   const stem = clean(rawStem).slice(0, 60) || "upload";
   const extension = clean(rawExtension).slice(0, 10);
   return extension ? `${stem}.${extension}` : stem;
+}
+
+/**
+ * Whether this URL is a file this shop's own Blob store owns, as opposed to one of the
+ * hosts REMOTE_IMAGE_HOSTS merely allow-lists for DISPLAY — the WooCommerce import's
+ * original WordPress host, Instagram's CDN. Renaming is a write against our own store;
+ * it must never even attempt to touch a URL we don't own the storage for.
+ */
+export function isOwnBlobUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith(".public.blob.vercel-storage.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gives an already-uploaded photo a new, meaningful filename in place — used when a photo
+ * is assigned to a product so the stored file's own name matches its alt text (the
+ * product's slug, SKU and colour), the way real image SEO guidance asks for: a search
+ * engine reads the URL itself, not only the `alt` attribute sitting beside it.
+ *
+ * A true rename via the Blob API, not a copy-and-delete written by hand: the object moves
+ * to its new pathname within the same store in one call, so there is never a moment with
+ * two copies of it, and no orphaned blob left under the old name to clean up afterward.
+ */
+export async function renameImageInBlob(
+  currentUrl: string,
+  newPathname: string
+): Promise<{ url: string } | { error: string }> {
+  if (!isBlobConfigured()) return { error: NOT_CONFIGURED };
+  try {
+    const result = await rename(currentUrl, newPathname, { access: "public" });
+    return { url: result.url };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Rename failed." };
+  }
 }
 
 export class UploadRejectedError extends Error {}

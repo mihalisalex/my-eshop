@@ -307,3 +307,20 @@ export async function updateMediaAsset(
 export async function deleteMediaAssetRow(id: string): Promise<void> {
   await prisma.mediaAsset.delete({ where: { id } });
 }
+
+/**
+ * Keeps the library's own record in step after the underlying blob has been renamed
+ * in place (see lib/blob.ts's renameImageInBlob) — otherwise the Media Library would go
+ * on showing the old URL for a file that no longer exists under it.
+ *
+ * `updateMany` on the old URL rather than `update` by id: the upload route always creates
+ * a row, but nothing guarantees every caller of a rename has that row's id handy, and a
+ * blob the library never got to record should still rename cleanly rather than throw
+ * because there was nothing here to update.
+ */
+export async function renameMediaAsset(
+  oldUrl: string,
+  next: { url: string; pathname: string; filename: string }
+): Promise<void> {
+  await prisma.mediaAsset.updateMany({ where: { url: oldUrl }, data: next });
+}
