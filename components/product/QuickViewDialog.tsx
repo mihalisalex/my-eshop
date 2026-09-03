@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { getEffectivePrice, getListPrice, isOnSale, isSizePurchasable } from "@/lib/product";
 import { useCart } from "@/components/providers/CartProvider";
+import { useCategoryName } from "@/components/providers/CategoryNamesProvider";
 import type { Product } from "@/types";
 
 interface QuickViewDialogProps {
@@ -25,6 +26,7 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
   const { addItem, isMutating } = useCart();
   const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name ?? "");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const categoryName = useCategoryName(product.category);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -41,7 +43,7 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
             />
           </div>
           <div className="flex flex-col p-8">
-            <p className="text-eyebrow">{product.category}</p>
+            <p className="text-eyebrow">{categoryName}</p>
             <h2 className="font-heading mt-2 text-2xl">{product.name}</h2>
             <p className="mt-2 text-lg">
               {formatMoney(getEffectivePrice(product))}

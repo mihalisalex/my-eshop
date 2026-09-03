@@ -10,6 +10,10 @@ import { ToastProvider } from "@/components/providers/ToastProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { CartProvider } from "@/components/providers/CartProvider";
 import { WishlistProvider } from "@/components/providers/WishlistProvider";
+import { CategoryNamesProvider } from "@/components/providers/CategoryNamesProvider";
+import { localizeCategory } from "@/lib/localize";
+import { getAllCategories } from "@/services";
+import type { Locale } from "@/i18n/config";
 import { ToastViewport } from "@/components/shared/ToastViewport";
 import { CookieConsentBanner } from "@/components/shared/CookieConsentBanner";
 import { Analytics } from "@/components/shared/Analytics";
@@ -68,6 +72,16 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
 
+  /**
+   * slug -> localised name, for every client component that only ever has a product's bare
+   * category slug (see CategoryNamesProvider). One query per page render, the same cost
+   * `getSeoDefaults` above already pays every time — the categories table is small.
+   */
+  const categories = await getAllCategories();
+  const categoryNames = Object.fromEntries(
+    categories.map((category) => [category.slug, localizeCategory(category, locale as Locale).name])
+  );
+
   return (
     <html
       lang={locale}
@@ -109,7 +123,9 @@ export default async function RootLayout({
           <ToastProvider>
             <CartProvider>
               <WishlistProvider>
-                <AuthProvider>{children}</AuthProvider>
+                <AuthProvider>
+                  <CategoryNamesProvider names={categoryNames}>{children}</CategoryNamesProvider>
+                </AuthProvider>
               </WishlistProvider>
               <CartDrawer />
             </CartProvider>
