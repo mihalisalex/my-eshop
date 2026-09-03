@@ -113,7 +113,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <>
-      <JsonLd data={productSchema(product, seo.siteUrl)} />
+      <JsonLd data={productSchema(product, seo.siteUrl, reviewSummary)} />
       <JsonLd data={breadcrumbSchema(breadcrumbItems, seo.siteUrl)} />
 
       <Header
@@ -141,7 +141,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <ProductAccordion product={product} rates={shippingRates} />
           </div>
 
-          <ReviewsSection summary={reviewSummary} reviews={reviews} />
+          <ReviewsSection summary={reviewSummary} reviews={reviews} productId={product.id} />
           <RelatedProducts title={t("youMayAlsoLike")} products={related} />
           <RecentlyViewedSection currentProductId={product.id} />
         </div>

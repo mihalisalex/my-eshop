@@ -44,6 +44,22 @@ describe("productSchema", () => {
     expect(JSON.stringify(withRating)).not.toContain("4.8");
   });
 
+  it("emits aggregateRating from a real review summary", () => {
+    // The condition for its return: ratings a visitor can see and count. The summary passed
+    // here is the same one the visible stars are rendered from, so the two cannot disagree.
+    const schema = productSchema(product({ rating: 4.8, reviewCount: 120 }), SITE, { average: 4.5, count: 2 });
+    expect(schema.aggregateRating).toEqual({ "@type": "AggregateRating", ratingValue: 4.5, reviewCount: 2 });
+    // Still never the seeded column, even when it is populated and a summary exists.
+    expect(JSON.stringify(schema)).not.toContain("4.8");
+    expect(JSON.stringify(schema)).not.toContain("120");
+  });
+
+  it("emits no rating for a product nobody has reviewed", () => {
+    // Zero reviews with a seeded 4.8 on the row is exactly the old bug.
+    const schema = productSchema(product({ rating: 4.8 }), SITE, { average: 0, count: 0 });
+    expect(JSON.stringify(schema)).not.toContain("aggregateRating");
+  });
+
   it("quotes the price a shopper actually pays, not the list price", () => {
     const onSale = productSchema(
       product({ price: { amount: 100, currencyCode: "EUR" }, salePrice: { amount: 60, currencyCode: "EUR" } }),

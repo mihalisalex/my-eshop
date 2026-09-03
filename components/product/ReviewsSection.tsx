@@ -4,10 +4,13 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import type { Review } from "@/types";
 import type { ReviewSummary } from "@/services/reviews";
+import { ReviewForm } from "@/components/product/ReviewForm";
 
 interface ReviewsSectionProps {
   summary: ReviewSummary;
   reviews: Review[];
+  /** Needed to submit against — the form posts this, not the slug. */
+  productId: string;
 }
 
 function Stars({ rating, size = "size-4" }: { rating: number; size?: string }) {
@@ -24,14 +27,15 @@ function Stars({ rating, size = "size-4" }: { rating: number; size?: string }) {
   );
 }
 
-export async function ReviewsSection({ summary, reviews }: ReviewsSectionProps) {
+export async function ReviewsSection({ summary, reviews, productId }: ReviewsSectionProps) {
   // Server Component, so getTranslations rather than the useTranslations hook.
   const t = await getTranslations("Reviews");
   if (summary.count === 0) {
     return (
       <section id="reviews" className="border-t border-border py-10">
         <h2 className="font-heading text-2xl">{t("title")}</h2>
-        <p className="mt-2 text-sm text-luxe-gray-dark">No reviews yet — be the first to share your fit and feel.</p>
+        <p className="mt-2 text-sm text-luxe-gray-dark">{t("empty")}</p>
+        <ReviewForm productId={productId} />
       </section>
     );
   }
@@ -42,7 +46,7 @@ export async function ReviewsSection({ summary, reviews }: ReviewsSectionProps) 
         <h2 className="font-heading text-2xl">{t("title")}</h2>
         <Stars rating={summary.average} />
         <p className="text-sm text-luxe-gray-dark">
-          {summary.average} out of 5 ({summary.count} review{summary.count === 1 ? "" : "s"})
+          {t("average", { average: summary.average, count: summary.count })}
         </p>
       </div>
 
@@ -58,11 +62,13 @@ export async function ReviewsSection({ summary, reviews }: ReviewsSectionProps) 
             <div className="mt-3 flex items-center gap-1.5 text-xs text-luxe-gray-dark">
               {review.verifiedPurchase ? <BadgeCheck className="size-3.5" strokeWidth={1.5} /> : null}
               <span>{review.author}</span>
-              {review.verifiedPurchase ? <span>· Verified Purchase</span> : null}
+              {review.verifiedPurchase ? <span>· {t("verifiedPurchase")}</span> : null}
             </div>
           </div>
         ))}
       </div>
+
+      <ReviewForm productId={productId} />
     </section>
   );
 }

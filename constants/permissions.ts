@@ -21,6 +21,7 @@ export type Capability =
   | "content:media-delete"
   | "content:publish"
   | "content:navigation"
+  | "content:reviews"
   | "orders:view"
   | "orders:manage"
   | "orders:returns"
@@ -66,6 +67,12 @@ export const CAPABILITIES: CapabilityDefinition[] = [
   },
   { key: "content:publish", group: "Content", label: "Publish homepage sections and hero" },
   { key: "content:navigation", group: "Content", label: "Manage the navigation menu" },
+  {
+    key: "content:reviews",
+    group: "Content",
+    label: "Approve and reject customer reviews",
+    note: "A review from a verified purchaser publishes itself; this governs the queue everything else waits in.",
+  },
   { key: "orders:view", group: "Customers & Orders", label: "View orders and customers" },
   { key: "orders:manage", group: "Customers & Orders", label: "Update order status and answer concierge requests" },
   { key: "orders:returns", group: "Customers & Orders", label: "Approve and process returns" },
@@ -100,6 +107,10 @@ const EDITOR_CAPABILITIES: Capability[] = [
   "catalog:view",
   "catalog:edit",
   "content:blog",
+  // Moderating reviews is day-to-day content work — it neither moves money nor exposes
+  // credentials, and leaving the queue to admins alone is how a spam review sits on a
+  // product page for a week.
+  "content:reviews",
   // Editors upload images as a normal part of editing products and posts, but deleting
   // from blob storage is irreversible — same archive-vs-hard-delete split as products.
   "content:media",

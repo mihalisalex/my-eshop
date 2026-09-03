@@ -386,7 +386,25 @@
     "somethingWrong": "Something went wrong. Please try again."
   },
   "Reviews": {
-    "title": "Reviews"
+    "title": "Reviews",
+    "empty": "No reviews yet — be the first to write one.",
+    "average": "{average} out of 5 ({count, plural, one {# review} other {# reviews}})",
+    "writeReview": "Write a review",
+    "yourRating": "Your rating",
+    "starsOutOfFive": "{count} out of 5 stars",
+    "reviewTitle": "Title",
+    "reviewBody": "Your review",
+    "yourName": "Your name",
+    "yourEmail": "Email",
+    "emailPrivate": "Not published. Used to confirm your purchase.",
+    "submitReview": "Submit review",
+    "submitting": "Submitting…",
+    "cancel": "Cancel",
+    "thanksPublished": "Thank you — your review is live.",
+    "thanksPending": "Thank you — your review will appear once it has been reviewed.",
+    "networkError": "Could not connect. Please try again.",
+    "genericError": "Something went wrong. Please try again.",
+    "verifiedPurchase": "Verified purchase"
   },
   "A11y": {
     "account": "Account",

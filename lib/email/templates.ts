@@ -499,10 +499,11 @@ export function abandonedCartEmail(input: {
 }
 
 /**
- * Links back to the product page itself, not a "submit a review" form — this app has
- * no real review-submission mechanism (reviews are still static data/reviews.json,
- * explicitly future-ready-but-not-built), so the email is honest about what exists
- * today rather than pointing at a form that doesn't work.
+ * Links to each product's reviews section, where the form now is.
+ *
+ * It used to link to the plain product page, deliberately: there was no review-submission
+ * mechanism at all, and pointing someone at a form that did not exist would have been
+ * worse than asking vaguely. The form exists now, so the link goes to it.
  */
 export function reviewRequestEmail(input: {
   siteName: string;
@@ -521,7 +522,7 @@ export function reviewRequestEmail(input: {
           <img src="${item.image.src}" alt="${escapeHtml(item.image.alt)}" width="100" height="125" style="display:block;width:100px;height:125px;object-fit:cover;border:0;background-color:#F5F5F5;" />
         </td>
         <td style="padding:24px 0 24px 22px;border-bottom:1px solid ${HAIRLINE};color:${INK};font-size:14px;line-height:1.5;vertical-align:top;">
-          <a href="${siteUrl}/products/${item.slug}" style="color:${INK};text-decoration:none;border-bottom:1px solid ${HAIRLINE};">${escapeHtml(item.name)}</a>
+          <a href="${siteUrl}/products/${item.slug}#reviews" style="color:${INK};text-decoration:none;border-bottom:1px solid ${HAIRLINE};">${escapeHtml(item.name)}</a>
           <span style="display:block;color:${MUTED};font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-top:8px;">${escapeHtml(item.color)} · ${escapeHtml(item.size)}</span>
         </td>
       </tr>`
@@ -533,12 +534,12 @@ export function reviewRequestEmail(input: {
     `
     ${eyebrow("Η γνώμη σας μετράει")}
     ${heading("Πώς σας φάνηκαν;")}
-    ${bodyText(`Η παραγγελία ${orderNumber} παραδόθηκε πριν από λίγες ημέρες — δείτε ξανά τι παραγγείλατε ή ανακαλύψτε το επόμενο κομμάτι σας.`)}
+    ${bodyText(`Η παραγγελία ${orderNumber} παραδόθηκε πριν από λίγες ημέρες. Πείτε μας πώς σας φάνηκαν — δύο γραμμές αρκούν και βοηθούν πολύ τον επόμενο αγοραστή.`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${itemLinksHtml}</table>
     <div style="margin-top:32px;">${ctaButton("Συνεχίστε τις αγορές", siteUrl)}</div>`
   );
   const text = `Πώς σας φάνηκαν;\n\nΗ παραγγελία ${orderNumber} παραδόθηκε πριν από λίγες ημέρες.\n\n${lineItems
-    .map((i) => `${i.name} — ${siteUrl}/products/${i.slug}`)
+    .map((i) => `${i.name} — ${siteUrl}/products/${i.slug}#reviews`)
     .join("\n")}\n\n${siteUrl}`;
   return { subject, html, text };
 }

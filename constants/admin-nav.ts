@@ -28,6 +28,7 @@ import {
   Send,
   MessageSquare,
   Sparkles,
+  Star,
   Users2,
   Upload,
   CreditCard,
@@ -73,6 +74,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: "Media Library", href: "/admin/media", icon: GalleryHorizontal },
       { label: "Navigation Menu", href: "/admin/navigation", icon: MenuIcon, capability: "content:navigation" },
       { label: "Blog Posts", href: "/admin/blog", icon: Newspaper },
+      { label: "Reviews", href: "/admin/reviews", icon: Star, capability: "content:reviews" },
     ],
   },
   {

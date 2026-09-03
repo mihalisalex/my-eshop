@@ -14,22 +14,22 @@ datasource db {
 // lib/commerce/providers/mock/cart.service.ts) — Product.currencyCode is the
 // one source of truth price/compareAtPrice/salePrice share.
 model Product {
-  id          String @id @default(cuid())
-  slug        String @unique
-  name        String
-  description String
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  name          String
+  description   String
   /// Greek translation — optional, falls back to `name`/`description` (English) when absent. See lib/localize.ts.
   nameEl        String?
   descriptionEl String?
 
-  priceAmount          Decimal @db.Decimal(10, 2)
+  priceAmount          Decimal  @db.Decimal(10, 2)
   compareAtPriceAmount Decimal? @db.Decimal(10, 2)
   salePriceAmount      Decimal? @db.Decimal(10, 2)
   /// What the item costs the business — the basis for margin. Optional because it's
   /// commercially sensitive and often unknown at import time; margin is computed on read
   /// (lib/product.ts), never stored, so it can't drift from price/cost.
   costPriceAmount      Decimal? @db.Decimal(10, 2)
-  currencyCode         String  @default("EUR")
+  currencyCode         String   @default("EUR")
 
   /// Image[] — order matters (images[0] = card image, images[1] = hover-swap). Zod-validated on read/write.
   images Json
@@ -43,7 +43,7 @@ model Product {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   tags       String[]
   gender     String
-  season      String?
+  season     String?
 
   materials        String[]
   careInstructions String[]
@@ -51,10 +51,10 @@ model Product {
   /// Explicit cross-sell override; falls back to same-category products when empty.
   relatedProductIds String[] @default([])
 
-  isNew           Boolean  @default(false)
-  isSale          Boolean  @default(false)
-  isPreorder      Boolean  @default(false)
-  isBackorder     Boolean  @default(false)
+  isNew           Boolean @default(false)
+  isSale          Boolean @default(false)
+  isPreorder      Boolean @default(false)
+  isBackorder     Boolean @default(false)
   fulfillmentNote String?
 
   rating      Float?
@@ -89,12 +89,13 @@ model Product {
   /// ProductSeoOverride | null. Zod-validated on read/write.
   seo Json?
 
-  colors      ProductColor[]
-  sizes       ProductSize[]
-  slugHistory ProductSlugHistory[]
-  collections ProductCollection[]
-  cartLineItems  CartLineItem[]
-  wishlistItems  WishlistItem[]
+  colors              ProductColor[]
+  sizes               ProductSize[]
+  reviews             ProductReview[]
+  slugHistory         ProductSlugHistory[]
+  collections         ProductCollection[]
+  cartLineItems       CartLineItem[]
+  wishlistItems       WishlistItem[]
   backInStockRequests BackInStockRequest[]
 
   createdAt DateTime @default(now())
@@ -116,9 +117,9 @@ model Product {
 /// supports unlimited nesting (self-relation), admin-managed images/SEO, and stable
 /// display order. See services/categories.ts and app/admin/(dashboard)/categories/.
 model Category {
-  id   String @id @default(cuid())
-  slug String @unique
-  name String
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  name          String
   /// Greek translation — optional, falls back to `name` when absent. See lib/localize.ts.
   nameEl        String?
   description   String?
@@ -139,7 +140,7 @@ model Category {
   position Int @default(0)
 
   /// Image | null — card image for nav menus / category grids. Zod-validated on read/write.
-  image Json?
+  image       Json?
   /// Image | null — wide banner shown on the category's own storefront page.
   bannerImage Json?
 
@@ -248,11 +249,11 @@ model ProductSize {
 }
 
 model Collection {
-  id          String  @id @default(cuid())
-  slug        String  @unique
-  title       String
-  subtitle    String?
-  description String?
+  id            String  @id @default(cuid())
+  slug          String  @unique
+  title         String
+  subtitle      String?
+  description   String?
   /// Greek translations — optional, fall back to English when absent. See lib/localize.ts.
   titleEl       String?
   subtitleEl    String?
@@ -311,15 +312,15 @@ model AdminUser {
 // ---------------------------------------------------------------------------
 
 model Customer {
-  id               String   @id @default(cuid())
-  email            String   @unique
+  id               String  @id @default(cuid())
+  email            String  @unique
   /// Null for an OAuth-only account (Google/Apple/Facebook, no password ever set).
   /// See lib/oauth/ and CustomerOAuthAccount below.
   passwordHash     String?
   firstName        String
   lastName         String
   phone            String?
-  acceptsMarketing Boolean  @default(false)
+  acceptsMarketing Boolean @default(false)
 
   /// Points at a CustomerAddress.id. Plain column, not a formal FK, to avoid a
   /// circular two-way relation with CustomerAddress.customerId. App-level
@@ -334,17 +335,17 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  addresses            CustomerAddress[]
-  carts                Cart[]
-  wishlist             Wishlist?
-  orders               Order[]
-  returns              Return[]
-  passwordResetTokens  PasswordResetToken[]
-  conciergeRequests    ConciergeRequest[]
-  referralsMade        Referral[]            @relation("ReferralsMade")
-  referralReceived     Referral?             @relation("ReferralReceived")
-  oauthAccounts        CustomerOAuthAccount[]
-  backInStockRequests  BackInStockRequest[]
+  addresses           CustomerAddress[]
+  carts               Cart[]
+  wishlist            Wishlist?
+  orders              Order[]
+  returns             Return[]
+  passwordResetTokens PasswordResetToken[]
+  conciergeRequests   ConciergeRequest[]
+  referralsMade       Referral[]             @relation("ReferralsMade")
+  referralReceived    Referral?              @relation("ReferralReceived")
+  oauthAccounts       CustomerOAuthAccount[]
+  backInStockRequests BackInStockRequest[]
 
   @@map("customers")
 }
@@ -358,7 +359,7 @@ model CustomerOAuthAccount {
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   /// "google" | "apple" | "facebook"
-  provider String
+  provider       String
   /// The provider's stable subject identifier (Google/Apple `sub`, Facebook `id`) — never the email, which can change.
   providerUserId String
 
@@ -525,9 +526,9 @@ model Order {
   customerEmail String
 
   /// CartLineItem[] snapshot at purchase time — Zod-validated on read/write.
-  lineItems Json
+  lineItems       Json
   /// CartTotals snapshot at purchase time — Zod-validated.
-  totals    Json
+  totals          Json
   /// Address — Zod-validated.
   shippingAddress Json
   /// Address — Zod-validated.
@@ -753,8 +754,8 @@ model SiteContent {
 }
 
 model BlogPost {
-  id      String @id @default(cuid())
-  slug    String @unique
+  id      String  @id @default(cuid())
+  slug    String  @unique
   title   String
   excerpt String
   content String?
@@ -807,7 +808,7 @@ model Referral {
   /// "pending" | "rewarded"
   status             String    @default("pending")
   createdAt          DateTime  @default(now())
-  rewardedAt          DateTime?
+  rewardedAt         DateTime?
 
   @@index([referrerCustomerId])
   @@map("referrals")
@@ -841,7 +842,7 @@ model MediaAsset {
 
   /// The public Blob URL. Unique because it's also how usage is detected — every consumer
   /// stores the URL, not a foreign key, so this is the join between an asset and its uses.
-  url String @unique
+  url      String @unique
   /// The Blob object key. Kept alongside `url` because deletion targets the store, and a
   /// URL that has been rewritten (CDN, custom domain) can't always be mapped back to a key.
   pathname String
@@ -995,7 +996,7 @@ model PaymentTransaction {
   message String?
   /// Structured detail for the timeline. Provider payloads are redacted before
   /// they land here â€” the raw copy lives on PaymentWebhookEvent instead.
-  data    Json     @default("{}")
+  data    Json    @default("{}")
 
   createdAt DateTime @default(now())
 
@@ -1106,4 +1107,49 @@ model PaymentMethodSetting {
 
   @@index([provider])
   @@map("payment_method_settings")
+}
+
+/// A review written by a shopper, from the form on the product page.
+///
+/// Publication is decided at write time, not read time (see services/reviews.ts): a review
+/// whose email matches a delivered order for this product is published immediately, and
+/// everything else waits for an admin. Only APPROVED rows are ever read by the storefront.
+model ProductReview {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// 1-5. Guarded in the database by a CHECK constraint added in the migration, the same way
+  /// ProductSize.quantity is — Prisma has no schema syntax for CHECK, so it lives in the
+  /// migration SQL only and will not appear here. Do not "restore" it by dropping it.
+  rating Int
+  title  String
+  body   String
+
+  /// What the shopper is shown as. Never the email.
+  authorName  String
+  /// Kept private. Used once to decide verified status, then to recognise repeat abuse.
+  authorEmail String
+
+  /// True only where a delivered order for this exact product carries this email. Written
+  /// once at submission and never recomputed, so a later refund cannot retroactively
+  /// rewrite what a visitor already read.
+  verifiedPurchase Boolean @default(false)
+
+  status     ReviewStatus @default(pending)
+  createdAt  DateTime     @default(now())
+  /// When it became visible. Null while pending or rejected.
+  approvedAt DateTime?
+
+  /// The storefront reads (productId, status) and orders by date; the admin queue reads
+  /// (status, createdAt) across all products.
+  @@index([productId, status, createdAt])
+  @@index([status, createdAt])
+  @@map("product_reviews")
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
 }

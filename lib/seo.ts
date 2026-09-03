@@ -154,18 +154,20 @@ export function breadcrumbSchema(items: BreadcrumbItem[], siteUrl: string) {
 /**
  * Rendered on every product detail page (app/products/[slug]/page.tsx).
  *
- * NO `aggregateRating`. It used to be emitted whenever `Product.rating` was non-null, and
- * that column is a denormalised leftover that no review system in this app writes: reviews
- * are read from data/reviews.json, which is empty, so the page shows no stars at all. The
- * markup could therefore assert a rating that appeared nowhere on the page — which is
- * exactly the "structured data must match visible content" rule Google enforces with
- * manual actions, and the same class of invention as the fabricated purchase counters and
- * seeded social profiles this shop has already had removed.
+ * `aggregateRating` is emitted ONLY from a passed-in review summary, and only when that
+ * summary has reviews in it.
  *
- * It comes back when there is a real review system whose ratings a visitor can see and
- * count. Not before, and never from a seeded column.
+ * It used to come from `Product.rating` — a denormalised column no review system wrote,
+ * while reviews were read from an empty JSON file. The markup could therefore assert a
+ * rating that appeared nowhere on the page, which is exactly the "structured data must
+ * match visible content" rule Google enforces with manual actions.
+ *
+ * The condition for its return was a real review system whose ratings a visitor can see
+ * and count. That now exists, so the rating comes from the same getReviewSummary the
+ * visible stars are rendered from — one query, one number, agreeing by construction. Never
+ * from that seeded column, which is still there and still means nothing.
  */
-export function productSchema(product: Product, siteUrl: string) {
+export function productSchema(product: Product, siteUrl: string, reviews?: { average: number; count: number }) {
   const price = product.salePrice ?? product.price;
   return {
     "@context": "https://schema.org",
@@ -189,6 +191,15 @@ export function productSchema(product: Product, siteUrl: string) {
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
     },
+    ...(reviews && reviews.count > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: reviews.average,
+            reviewCount: reviews.count,
+          },
+        }
+      : {}),
   };
 }
 
