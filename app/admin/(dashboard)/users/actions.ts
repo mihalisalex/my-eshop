@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { recordAdminAction } from "@/services/audit-log";
 import { requireCapability, requireAdminSession } from "@/lib/admin-session";
 import { ADMIN_SESSION_COOKIE } from "@/lib/auth";
 import { changeOwnPasswordSchema, createAdminUserSchema } from "@/lib/validation/admin-user";
@@ -30,7 +31,7 @@ export async function updateAdminRole(userId: string, role: string): Promise<Use
   }
   const nextRole = role as AdminRole;
 
-  const target = await prisma.adminUser.findUnique({ where: { id: userId }, select: { role: true } });
+  const target = await prisma.adminUser.findUnique({ where: { id: userId }, select: { role: true, email: true } });
   if (!target) return { error: "That user no longer exists." };
   if (target.role === nextRole) return {};
 
@@ -45,6 +46,15 @@ export async function updateAdminRole(userId: string, role: string): Promise<Use
   }
 
   await prisma.adminUser.update({ where: { id: userId }, data: { role: nextRole } });
+
+  // Who can do what, and who changed it — the question an audit log exists to answer.
+  await recordAdminAction({
+    action: "adminUser.role_changed",
+    targetType: "adminUser",
+    targetId: userId,
+    summary: `${target.email}: ${target.role} → ${nextRole}`,
+    metadata: { previousRole: target.role, nextRole, self: userId === session.sub },
+  });
 
   // Self-demotion is allowed once another admin exists, but the current request's own
   // capabilities are now stale — revalidate so the UI reflects what they can still do.
@@ -124,6 +134,13 @@ export async function deleteAdminUser(userId: string): Promise<UserActionState> 
   }
 
   await prisma.adminUser.delete({ where: { id: userId } });
+  await recordAdminAction({
+    action: "adminUser.deleted",
+    targetType: "adminUser",
+    targetId: userId,
+    summary: `Removed ${target.name} (${target.role})`,
+    metadata: { role: target.role, name: target.name },
+  });
   revalidatePath("/admin/users");
   return { success: `${target.name} no longer has access.` };
 }
@@ -162,7 +179,8 @@ export async function changeOwnPassword(formData: FormData): Promise<UserActionS
 
   await prisma.adminUser.update({
     where: { id: session.sub },
-    data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, BCRYPT_ROUNDS) },
+    // Retires every session issued before now (AUTH-001).
+    data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, BCRYPT_ROUNDS), sessionsValidFrom: new Date() },
   });
 
   const cookieStore = await cookies();

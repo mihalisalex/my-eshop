@@ -45,6 +45,12 @@ export const CUSTOMER_SESSION_COOKIE_OPTIONS = {
 
 export interface CustomerSessionPayload {
   sub: string;
+  /**
+   * When this token was issued, from the JWT own `iat` claim. Compared against the
+   * account `sessionsValidFrom` so a password change can retire every session that
+   * predates it (AUTH-001) — a stateless JWT has no other way to be revoked.
+   */
+  issuedAt?: number;
   email: string;
   firstName: string;
   lastName: string;
@@ -76,7 +82,13 @@ export async function verifyCustomerSession(token: string): Promise<CustomerSess
     ) {
       return null;
     }
-    return { sub: payload.sub, email: payload.email, firstName: payload.firstName, lastName: payload.lastName };
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
+    };
   } catch {
     return null;
   }

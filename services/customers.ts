@@ -117,7 +117,12 @@ export async function removeCustomerAddress(customerId: string, addressId: strin
 }
 
 export async function updateCustomerPasswordHash(customerId: string, passwordHash: string): Promise<void> {
-  await prisma.customer.update({ where: { id: customerId }, data: { passwordHash } });
+  await prisma.customer.update({
+    where: { id: customerId },
+    // Retires every session issued before now (AUTH-001). Changing a password is the one
+    // action people take specifically to lock somebody else out, so it has to.
+    data: { passwordHash, sessionsValidFrom: new Date() },
+  });
 }
 
 export async function getAllCustomersForAdmin(): Promise<(Customer & { ordersCount: number; totalSpent: number })[]> {

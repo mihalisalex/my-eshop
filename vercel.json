@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/instagram-token",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/data-retention",
+      "schedule": "30 3 * * *"
     }
   ]
 }

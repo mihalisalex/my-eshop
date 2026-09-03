@@ -28,6 +28,7 @@ import {
   Send,
   MessageSquare,
   Sparkles,
+  ScrollText,
   Star,
   Users2,
   Upload,
@@ -94,6 +95,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: "Insights",
     items: [
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Activity", href: "/admin/activity", icon: ScrollText, capability: "admin:activity" },
       { label: "Emails", href: "/admin/emails", icon: Send },
     ],
   },

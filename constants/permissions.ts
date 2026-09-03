@@ -29,11 +29,12 @@ export type Capability =
   | "payments:manage"
   | "payments:refund"
   | "payments:configure"
+  | "admin:activity"
   | "admin:users"
   | "admin:settings";
-// `admin:activity` was removed with the seeded activity log it gated (services/admin.ts).
-// A capability advertised on the roles page for a screen that no longer exists is the same
-// class of untruth as the log itself. It comes back with the real AdminAuditLog.
+// `admin:activity` is back, and gates a REAL log now (services/audit-log.ts) rather than
+// the seeded fake it originally guarded — which is exactly the condition this comment set
+// for its return.
 
 export interface CapabilityDefinition {
   key: Capability;
@@ -94,6 +95,12 @@ export const CAPABILITIES: CapabilityDefinition[] = [
     group: "Payments",
     label: "Configure providers, credentials and fees",
     note: "Grants access to payment API credentials and controls what customers can pay with. Kept to owners for the same reason as user management.",
+  },
+  {
+    key: "admin:activity",
+    group: "Administration",
+    label: "Read the admin activity log",
+    note: "Who refunded what, who changed whose role. Read-only, and deliberately not something an editor can see — it names colleagues' actions.",
   },
   { key: "admin:users", group: "Administration", label: "Manage users and roles" },
   { key: "admin:settings", group: "Administration", label: "Edit site settings and SEO" },

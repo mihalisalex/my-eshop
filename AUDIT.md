@@ -23,7 +23,7 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 |---|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | 3 |
-| P2 — Medium | 9 | 5 | 4 |
+| P2 — Medium | 9 | 2 | 7 |
 | P3 — Low | 6 | 5 | 1 |
 | INFO | 5 | — | — |
 
@@ -198,7 +198,7 @@ Narrow (admin-only, requires a double-submit) and the provider may reject the du
 
 ---
 
-## [ ] PRIV-001 · Webhook payloads retained indefinitely (GDPR)
+## [x] PRIV-001 · Webhook payloads retained indefinitely (GDPR)
 
 **Location:** `prisma/schema.prisma` — `PaymentWebhookEvent.rawPayload`
 **Confidence:** Confirmed
@@ -208,11 +208,11 @@ Verbatim webhook bodies (100KB cap) are stored forever. For card providers these
 **Fix.** Retention job purging `rawPayload` (or the row) older than 90 days. A Vercel cron already exists as a pattern in `vercel.json`.
 
 **Verify.** Seed a row dated 100 days ago; confirm the job clears it and leaves a 10-day-old row intact.
-**Fixed:** _pending_
+**Fixed:** Phase 3 — `services/data-retention.ts` + a nightly cron. Webhook payloads are BLANKED at 90 days rather than deleted: the row is the audit trail, and dropping it would free the `(provider, eventId)` unique constraint that makes replay suppression work. Rate-limit rows (IP addresses) now purge on a schedule at 2 days instead of opportunistically on 1% of calls.
 
 ---
 
-## [ ] OBS-002 · No admin audit log
+## [x] OBS-002 · No admin audit log
 
 **Location:** repo-wide · `constants/permissions.ts` documents the removal of `admin:activity`
 **Confidence:** Confirmed
@@ -224,11 +224,11 @@ For a system where staff issue refunds and read customer addresses, this is both
 **Fix.** `AdminAuditLog` table: actor, action, target type/id, before/after summary, timestamp, IP. Write from `requireCapability`-guarded mutations, starting with refunds, role changes and order edits.
 
 **Verify.** Issue a refund; confirm a row with the correct actor id.
-**Fixed:** _pending_
+**Fixed:** Phase 3 — `AdminAuditLog` (migration `20260904091000`) + `services/audit-log.ts` + a read-only `/admin/activity` page behind a restored `admin:activity` capability. Records refunds, manual payment confirmations, role changes and account deletions. No FK to AdminUser and the actor email is denormalised on purpose: a trail that cascades away with the account erases exactly the record that matters most.
 
 ---
 
-## [ ] AUTH-001 · Password reset does not invalidate existing sessions
+## [x] AUTH-001 · Password reset does not invalidate existing sessions
 
 **Location:** `lib/password-reset.ts` · `lib/customer-auth.ts` (7-day JWT) · `lib/auth.ts` (1-day JWT)
 **Confidence:** Confirmed
@@ -238,7 +238,7 @@ Sessions are stateless JWTs. After a compromise-driven password reset, the attac
 **Fix.** Add `sessionsValidFrom: DateTime` to `Customer`/`AdminUser`; set it on password change/reset; reject tokens issued before it in the session DAL (`lib/customer-session.ts`, `lib/admin-session.ts` — both already do a DB read per request, so this is nearly free).
 
 **Verify.** Sign in on two browsers, reset the password in one, confirm the other is signed out on next request.
-**Fixed:** _pending_
+**Fixed:** Phase 3 — `sessionsValidFrom` on both account models (migration `20260904090000`), compared against the token own `iat` in each session DAL, set on every password change and reset. Free at read time: both DALs already read the row. Pinned by `lib/session-validity.test.ts`, including the seconds-vs-milliseconds mismatch that would make the guard silently never fire.
 
 ---
 
@@ -372,4 +372,5 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 |---|---|---|
 | 2026-09-03 | Initial audit against `be0d546` | `744d702` |
 | 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | `782d243` |
-| 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 fixed | _this commit_ |
+| 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 fixed | `c731ab0` |
+| 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 fixed | _this commit_ |

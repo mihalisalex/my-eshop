@@ -297,12 +297,19 @@ model ProductCollection {
 }
 
 model AdminUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("admin")
-  createdAt    DateTime @default(now())
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  /// Sessions issued before this moment are rejected (AUTH-001). Set on every password
+  /// change or reset: a stateless JWT cannot be revoked, so without this an attacker
+  /// who had signed in kept a working session for the rest of its lifetime even after
+  /// the victim changed the password to lock them out. Compared against the token own
+  /// `iat` claim in the session DAL. Null means "never invalidated".
+  sessionsValidFrom DateTime?
+
+  name      String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
 
   @@map("admin_users")
 }
@@ -312,11 +319,18 @@ model AdminUser {
 // ---------------------------------------------------------------------------
 
 model Customer {
-  id               String  @id @default(cuid())
-  email            String  @unique
+  id                String    @id @default(cuid())
+  email             String    @unique
   /// Null for an OAuth-only account (Google/Apple/Facebook, no password ever set).
   /// See lib/oauth/ and CustomerOAuthAccount below.
-  passwordHash     String?
+  passwordHash      String?
+  /// Sessions issued before this moment are rejected (AUTH-001). Set on every password
+  /// change or reset: a stateless JWT cannot be revoked, so without this an attacker
+  /// who had signed in kept a working session for the rest of its lifetime even after
+  /// the victim changed the password to lock them out. Compared against the token own
+  /// `iat` claim in the session DAL. Null means "never invalidated".
+  sessionsValidFrom DateTime?
+
   firstName        String
   lastName         String
   phone            String?
@@ -1152,4 +1166,43 @@ enum ReviewStatus {
   pending
   approved
   rejected
+}
+
+/// Who did what, in the admin (OBS-002).
+///
+/// Refunds, role changes, order edits and customer-PII access left no trace at all — for a
+/// system where staff move money, "which of the four of us issued this refund" had no
+/// answer. constants/permissions.ts already documented the intent: `admin:activity` was
+/// removed with the seeded fake log it gated, "until the real AdminAuditLog".
+///
+/// Deliberately NOT a foreign key to AdminUser, and the actor's email is denormalised.
+/// An audit trail that cascades away when the account is deleted is worse than none — the
+/// single most interesting case is an admin who no longer works here, and a FK would erase
+/// exactly that record at exactly the moment it starts to matter.
+model AdminAuditLog {
+  id String @id @default(cuid())
+
+  /// The AdminUser id at the time. No relation on purpose — see above.
+  actorId    String
+  /// Copied at write time so the log stays readable after the account is gone.
+  actorEmail String
+
+  /// Dotted verb: "payment.refunded", "adminUser.role_changed", "order.status_changed".
+  action     String
+  targetType String
+  targetId   String
+
+  /// One line an operator can scan without decoding `metadata`.
+  summary  String
+  /// Before/after values where they matter. Never credentials, never card data.
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  /// The log is read newest-first overall, per-actor, and per-target ("everything that
+  /// ever happened to this order") — one index each.
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("admin_audit_logs")
 }

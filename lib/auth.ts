@@ -69,6 +69,8 @@ export interface AdminSessionPayload {
   sub: string;
   email: string;
   name: string;
+  /** Issued-at, for the session-invalidation check in lib/admin-session.ts (AUTH-001). */
+  issuedAt?: number;
 }
 
 function getSecretKey() {
@@ -92,7 +94,12 @@ export async function verifyAdminSession(token: string): Promise<AdminSessionPay
     if (typeof payload.sub !== "string" || typeof payload.email !== "string" || typeof payload.name !== "string") {
       return null;
     }
-    return { sub: payload.sub, email: payload.email, name: payload.name };
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
+    };
   } catch {
     return null;
   }

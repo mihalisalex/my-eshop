@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_SESSION_COOKIE, verifyAdminSession, type AdminSessionPayload } from "@/lib/auth";
 import { roleHasCapability, type Capability } from "@/constants/permissions";
+import { isSessionStillValid } from "@/lib/session-validity";
 import type { AdminRole } from "@/types/admin";
 
 export interface AdminSessionWithRole extends AdminSessionPayload {
@@ -35,9 +36,13 @@ export const getAdminSession = cache(async (): Promise<AdminSessionWithRole | nu
 
   const user = await prisma.adminUser.findUnique({
     where: { id: payload.sub },
-    select: { role: true },
+    select: { role: true, sessionsValidFrom: true },
   });
   if (!user) return null;
+
+  // A password change retires every session that predates it — see lib/session-validity.ts
+  // (AUTH-001). Free here: this row was already being read for the role.
+  if (!isSessionStillValid(payload.issuedAt, user.sessionsValidFrom)) return null;
 
   // Anything unrecognised in the column degrades to the least-privileged role rather than
   // being trusted — a bad value must not become an accidental promotion.

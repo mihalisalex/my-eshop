@@ -30,7 +30,12 @@ export async function consumePasswordResetToken(rawToken: string, newPasswordHas
 
   await prisma.$transaction([
     prisma.passwordResetToken.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
-    prisma.customer.update({ where: { id: row.customerId }, data: { passwordHash: newPasswordHash } }),
+    // Same session invalidation as a deliberate change (AUTH-001) — a reset is even more
+    // likely to be a recovery from compromise, where the attacker holds a live session.
+    prisma.customer.update({
+      where: { id: row.customerId },
+      data: { passwordHash: newPasswordHash, sessionsValidFrom: new Date() },
+    }),
   ]);
   return row.customerId;
 }

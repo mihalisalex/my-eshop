@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { capabilityDenied, getAdminSession } from "@/lib/admin-session";
 import { cancelPayment, confirmManualPayment, refundPayment, verifyPaymentWithProvider } from "@/services/payments";
+import { recordAdminAction } from "@/services/audit-log";
 import { PaymentError } from "@/lib/payments/types";
 
 /**
@@ -42,6 +43,18 @@ export async function confirmManualPaymentAction(paymentId: string, note?: strin
   } catch (error) {
     return { error: toActionError(error, "Could not confirm this payment.") };
   }
+  /**
+   * Audited as carefully as a refund. Bank transfer is the only method live today, so this
+   * IS how orders get paid here — one person asserting money arrived, with nothing else in
+   * the system able to contradict them. That makes it the highest-trust action in the admin.
+   */
+  await recordAdminAction({
+    action: "payment.confirmed_manually",
+    targetType: "payment",
+    targetId: paymentId,
+    summary: "Marked as received",
+    metadata: { note: note ?? null },
+  });
   revalidatePayment(paymentId);
   return { success: "Payment marked as received." };
 }
@@ -76,6 +89,15 @@ export async function refundPaymentAction(
   } catch (error) {
     return { error: toActionError(error, "Could not process this refund.") };
   }
+  // Recorded only AFTER the provider confirmed. An audit line for a refund that never
+  // happened is worse than no line at all, because it is believed.
+  await recordAdminAction({
+    action: "payment.refunded",
+    targetType: "payment",
+    targetId: paymentId,
+    summary: `Refunded ${amount}`,
+    metadata: { amount, reason: reason ?? null },
+  });
   revalidatePayment(paymentId);
   return { success: "Refund recorded." };
 }
