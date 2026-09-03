@@ -12,9 +12,10 @@ import {
 } from "react-hook-form";
 import { ImageUp, Link2, Star, X } from "lucide-react";
 import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
-import { cleanProductTitle, composeImageAlt, extractMaterials } from "@/lib/seo/product-content";
-import { detectBrand } from "@/lib/seo/brands";
+import { MediaLibraryPicker } from "@/components/admin/MediaLibraryPicker";
+import { composeIdentifierAlt } from "@/lib/seo/product-content";
 import type { ProductFormValues } from "@/lib/validation/product";
+import type { MediaAssetWithUsage } from "@/types/media";
 
 /**
  * Product images, managed where the product is.
@@ -50,29 +51,19 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
   const images = useWatch({ control, name: "images" }) ?? [];
 
   /**
-   * Alt text is written from the product, not left to be typed.
+   * Alt text is written from the product's own identifiers, not left to be typed.
    *
-   * It was empty on purpose at first — a description ought to be considered, and 175
-   * imported products carried alt text that merely repeated their own name. But required
-   * and empty is a trap: the form refuses to save and the reason sits under a thumbnail
-   * nobody has scrolled to. Composed alt text at least describes the shoe (its colour,
-   * style, material and brand, with the stock code stripped), which is more than the
-   * WooCommerce boilerplate it replaces, and it stays editable.
-   *
-   * `composeImageAlt` is the same function the bulk script used, so a photo added today is
-   * described the way the existing catalogue is.
+   * It was empty on purpose at first — required and empty is a trap: the form refuses to
+   * save and the reason sits under a thumbnail nobody has scrolled to. It was descriptive
+   * prose for a while after that; it is the product's slug, SKU and primary colour now, so
+   * an image's alt text carries the same vocabulary as the URL it appears on. Still stays
+   * editable — a merchandiser who wants a caption instead can type over it.
    */
-  const [productName, productDescription] = useWatch({ control, name: ["name", "description"] });
+  const [productSlug, productSku, productColors] = useWatch({ control, name: ["slug", "sku", "colors"] });
+  const primaryColor = productColors?.[0]?.name;
 
   function altFor(index: number): string {
-    const name = productName?.trim();
-    if (!name) return "";
-    return composeImageAlt({
-      title: cleanProductTitle(name),
-      brand: detectBrand(name),
-      materials: extractMaterials(`${name} ${productDescription ?? ""}`),
-      index,
-    });
+    return composeIdentifierAlt({ slug: productSlug ?? "", sku: productSku, colorName: primaryColor, index });
   }
 
   /**
@@ -89,12 +80,13 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
   const lastDerivedAlt = useRef<Record<number, string>>({});
 
   /**
-   * Keeps alt text in step with the product name: fills it in when it is blank, and
-   * rewrites it when the name changes under a value this component itself put there.
+   * Keeps alt text in step with the product's identifiers: fills it in once a slug exists,
+   * and rewrites it when the slug, SKU or primary colour change under a value this
+   * component itself put there.
    *
    * An effect rather than something that only happens at upload, because photographs are
-   * usually dropped in before the name is typed. Writing only when the value actually
-   * differs is what keeps it from looping through `images`.
+   * usually dropped in before the SKU is typed or a colour is added. Writing only when the
+   * value actually differs is what keeps it from looping through `images`.
    */
   useEffect(() => {
     images.forEach((image, index) => {
@@ -111,13 +103,35 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
       setValue(`images.${index}.alt`, derived, { shouldValidate: false });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- altFor is derived from these.
-  }, [images, productName, productDescription, setValue]);
+  }, [images, productSlug, productSku, primaryColor, setValue]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showUrlField, setShowUrlField] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  /**
+   * Attaches images already sitting in the Media Library — a re-shoot, a colourway shared
+   * with another product, anything uploaded before this product existed. Before this the
+   * only way in was pasting a URL copied from another browser tab.
+   *
+   * Same replace-and-compute-alt shape as handleFiles below, because assigning a library
+   * photo is the same event as uploading one: either way a real image is now attached and
+   * needs alt text before the placeholder row disappears.
+   */
+  function handlePicked(assets: MediaAssetWithUsage[]) {
+    if (assets.length === 0) return;
+    const kept = images.filter((image) => image.src?.trim());
+    const picked = assets.map((asset, offset) => {
+      const index = kept.length + offset;
+      const alt = altFor(index);
+      lastDerivedAlt.current[index] = alt;
+      return { src: asset.url, alt };
+    });
+    replace([...kept, ...picked]);
+  }
 
   async function handleFiles(fileList: FileList | File[] | null) {
     const files = fileList ? Array.from(fileList) : [];
@@ -185,13 +199,21 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
       >
         <ImageUp className="size-6 text-luxe-gray-dark" strokeWidth={1.5} />
         <p className="text-sm">
-          Drag photos here, or{" "}
+          Drag photos here,{" "}
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             className="underline underline-offset-4 hover:opacity-70"
           >
             choose files
+          </button>
+          , or{" "}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="underline underline-offset-4 hover:opacity-70"
+          >
+            choose from Media Library
           </button>
         </p>
         <p className="text-xs text-luxe-gray-dark">
@@ -303,6 +325,8 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
           </div>
         ) : null}
       </div>
+
+      <MediaLibraryPicker open={pickerOpen} onOpenChange={setPickerOpen} onSelect={handlePicked} />
     </div>
   );
 }

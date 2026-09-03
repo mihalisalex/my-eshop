@@ -1,3 +1,5 @@
+import { slugify } from "@/lib/slug";
+
 /**
  * Composing a product's SEO title and meta description from what the product already
  * states about itself.
@@ -420,6 +422,41 @@ export function composeImageAlt(input: {
   // The first photograph needs no number; the rest do, so a screen reader can tell them
   // apart. An index above zero is itself the proof that there is more than one.
   return input.index > 0 ? `${base} (φωτογραφία ${input.index + 1})` : base;
+}
+
+/**
+ * Alt text built from the product's own catalogue identifiers — its slug, its SKU, and its
+ * primary colour — rather than composed prose.
+ *
+ * Distinct from `composeImageAlt` above on purpose. That one writes a sentence describing
+ * the shoe, and stays what the 175 imported products and the bulk SEO script use. This one
+ * is for a photo ASSIGNED to a product from the admin form (uploaded or picked from the
+ * Media Library): a keyworded string in the same vocabulary as the product's own URL,
+ * because that consistency between the alt text and the slug is the point of asking for it.
+ *
+ * Joined with hyphens, matching how `slugify` (lib/slug.ts) builds the URL itself — the
+ * colour is passed through the same function so "Μαύρο" becomes "mayro", not left in Greek
+ * while everything around it is Latin.
+ */
+export function composeIdentifierAlt(input: {
+  slug: string;
+  sku?: string;
+  colorName?: string | null;
+  /** 0 for the first photo. Later photos get a numbered suffix so several images on one
+   *  product page do not carry byte-identical alt text — the same reason composeImageAlt
+   *  numbers its own later photos. */
+  index?: number;
+}): string {
+  const slug = input.slug.trim();
+  // Nothing to identify the product by yet — the effect that calls this re-runs once a
+  // slug exists, so this is a "not yet", not a permanent gap.
+  if (!slug) return "";
+
+  const segments = [slug, input.sku?.trim() || null, input.colorName ? slugify(input.colorName) : null].filter(
+    (segment): segment is string => Boolean(segment)
+  );
+  const base = segments.join("-");
+  return input.index && input.index > 0 ? `${base}-${input.index + 1}` : base;
 }
 
 /**

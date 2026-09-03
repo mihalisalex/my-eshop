@@ -254,7 +254,7 @@ export function MediaLibrary({ assets, total, page, pageCount, filter, folders, 
  * fill 200px tiles. So: optimise the hosts the optimizer actually accepts, and let
  * anything else degrade to one broken thumbnail instead of a broken page.
  */
-function AssetThumb({
+export function AssetThumb({
   asset,
   contain,
   sizes = "200px",

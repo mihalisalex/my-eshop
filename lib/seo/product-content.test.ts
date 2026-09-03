@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanProductTitle,
+  composeIdentifierAlt,
   composeImageAlt,
   detectColour,
   detectStyle,
@@ -207,6 +208,36 @@ describe("composeImageAlt", () => {
       "Πέδιλα χρυσά με στρας — Οικολογικό δέρμα (φωτογραφία 2)",
       "Πέδιλα χρυσά με στρας — Οικολογικό δέρμα (φωτογραφία 3)",
     ]);
+  });
+});
+
+describe("composeIdentifierAlt", () => {
+  it("joins the slug, sku and colour with hyphens", () => {
+    expect(
+      composeIdentifierAlt({ slug: "mauro-loafer-me-aspres-leptomereies", sku: "585-1", colorName: "Μαύρο" })
+    ).toBe("mauro-loafer-me-aspres-leptomereies-585-1-mayro");
+  });
+
+  it("transliterates the colour the same way the slug itself was built", () => {
+    // "Μαύρο" must not sit in Greek in an otherwise-Latin identifier string.
+    expect(composeIdentifierAlt({ slug: "s", sku: "1", colorName: "Μπεζ" })).toBe("s-1-mpez");
+  });
+
+  it("returns nothing before there is a slug to identify the product by", () => {
+    // The caller re-derives once a slug exists — see ProductImageManager's effect.
+    expect(composeIdentifierAlt({ slug: "", sku: "1", colorName: "Μαύρο" })).toBe("");
+    expect(composeIdentifierAlt({ slug: "   ", sku: "1" })).toBe("");
+  });
+
+  it("works with only a slug, before a SKU or a colour exists yet", () => {
+    expect(composeIdentifierAlt({ slug: "mauro-loafer" })).toBe("mauro-loafer");
+  });
+
+  it("numbers photos after the first, so several images do not share one alt text", () => {
+    const input = { slug: "s", sku: "9262", colorName: "Μαύρο" };
+    expect(composeIdentifierAlt({ ...input, index: 0 })).toBe("s-9262-mayro");
+    expect(composeIdentifierAlt({ ...input, index: 1 })).toBe("s-9262-mayro-2");
+    expect(composeIdentifierAlt({ ...input, index: 2 })).toBe("s-9262-mayro-3");
   });
 });
 
