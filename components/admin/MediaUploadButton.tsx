@@ -12,7 +12,20 @@ import { useRouter } from "next/navigation";
  * Exported as a hook-shaped helper as well, so the library's drop zone and this button
  * share one upload path rather than two that can drift.
  */
-export async function uploadMediaFiles(files: File[]): Promise<{ ok: boolean; error?: string }> {
+export interface UploadedMedia {
+  url: string;
+  filename: string;
+}
+
+/**
+ * Returns the stored URLs, not just success. The Media Library only needed to know the
+ * upload worked and then refresh; the product form needs the URLs themselves, so it can
+ * attach the images to the product without anyone copying a link out of one screen and
+ * into another.
+ */
+export async function uploadMediaFiles(
+  files: File[]
+): Promise<{ ok: true; media: UploadedMedia[] } | { ok: false; error: string }> {
   const form = new FormData();
   for (const file of files) {
     form.append("file", file);
@@ -22,7 +35,10 @@ export async function uploadMediaFiles(files: File[]): Promise<{ ok: boolean; er
   }
 
   const res = await fetch("/api/admin/media/upload", { method: "POST", body: form });
-  if (res.ok) return { ok: true };
+  if (res.ok) {
+    const body = (await res.json()) as { assets?: { url: string; filename: string }[] };
+    return { ok: true, media: (body.assets ?? []).map((a) => ({ url: a.url, filename: a.filename })) };
+  }
 
   const body = await res.json().catch(() => null);
   return { ok: false, error: body?.error?.message ?? "Upload failed. Is a Blob store connected?" };

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, type InputHTMLAttributes } from "react";
+import { useEffect, useState, type InputHTMLAttributes } from "react";
 import { useForm, useFieldArray, useWatch, Controller, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { formatMoney } from "@/lib/format";
+import { slugify } from "@/lib/slug";
 import { SeoFieldset } from "@/components/admin/SeoFieldset";
+import { ProductImageManager } from "@/components/admin/ProductImageManager";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import type { ProductActionState } from "@/app/admin/(dashboard)/products/actions";
 
@@ -122,6 +124,7 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
   const {
     register,
     control,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ProductFormValues>({
@@ -133,7 +136,28 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
   // Compiler lint rule flags it. Same reason MarginReadout above uses it.
   const [seoName, seoDescription, seoSlug] = useWatch({ control, name: ["name", "description", "slug"] });
 
-  const images = useFieldArray({ control, name: "images" });
+  /**
+   * The slug writes itself from the name, but only on a NEW product and only until someone
+   * types in the slug field themselves.
+   *
+   * Every product name in this shop is Greek and the slug field accepts `[a-z0-9-]`, so
+   * creating a product meant transliterating a name by hand into a second box — the single
+   * most tedious step in the form, and the one most likely to end in `proion-2`.
+   *
+   * Never on an existing product: changing a slug retires the old URL and creates a
+   * redirect (ProductSlugHistory). That should follow a deliberate edit, never a stray
+   * keystroke in the name field.
+   */
+  // Lazy `useState`, not a ref: this is a value decided once at mount, and reading a ref
+  // during render is what React forbids.
+  const [isNewProduct] = useState(() => !defaultValues.slug);
+  const [slugEdited, setSlugEdited] = useState(false);
+
+  useEffect(() => {
+    if (!isNewProduct || slugEdited) return;
+    setValue("slug", slugify(seoName ?? ""), { shouldValidate: false });
+  }, [seoName, isNewProduct, slugEdited, setValue]);
+
   const colors = useFieldArray({ control, name: "colors" });
   const sizes = useFieldArray({ control, name: "sizes" });
 
@@ -159,8 +183,17 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-slug">Slug</label>
-            <input id="pf-slug" className={inputClass} aria-invalid={Boolean(errors.slug)} {...register("slug")} />
-            {errors.slug ? <p className={errorClass}>{errors.slug.message}</p> : null}
+            <input
+              id="pf-slug"
+              className={inputClass}
+              aria-invalid={Boolean(errors.slug)}
+              {...register("slug", { onChange: () => setSlugEdited(true) })}
+            />
+            {errors.slug ? (
+              <p className={errorClass}>{errors.slug.message}</p>
+            ) : isNewProduct && !slugEdited ? (
+              <p className="mt-1.5 text-xs text-luxe-gray-dark">Filled in from the name. Type here to set your own.</p>
+            ) : null}
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-sku">SKU</label>
@@ -363,36 +396,10 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
 
       <div className={sectionClass}>
         <h3 className={sectionTitleClass}>Images</h3>
-        <div className="space-y-2">
-          {images.fields.map((field, index) => (
-            <div key={field.id} className="flex items-center gap-2">
-              <input
-                className={inputClass}
-                placeholder="Image URL"
-                aria-invalid={Boolean(errors.images?.[index]?.src)}
-                {...register(`images.${index}.src`)}
-              />
-              <input className={inputClass} placeholder="Alt text" {...register(`images.${index}.alt`)} />
-              <button
-                type="button"
-                aria-label="Remove image"
-                onClick={() => images.remove(index)}
-                className="flex size-10 shrink-0 items-center justify-center border border-border"
-              >
-                <X className="size-4" strokeWidth={1.5} />
-              </button>
-            </div>
-          ))}
-        </div>
-        {errors.images?.message ? <p className={errorClass}>{errors.images.message}</p> : null}
-        <button
-          type="button"
-          onClick={() => images.append({ src: "", alt: "" })}
-          className="flex items-center gap-1 text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark hover:text-luxe-black"
-        >
-          <Plus className="size-3.5" strokeWidth={1.5} />
-          Add Image
-        </button>
+        <p className="text-xs text-luxe-gray-dark">
+          The first image is the one shown on every listing. Hover another to make it the main one.
+        </p>
+        <ProductImageManager control={control} register={register} error={errors.images?.message} />
       </div>
 
       <div className={sectionClass}>
