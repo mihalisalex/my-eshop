@@ -42,11 +42,14 @@ export function CarouselScroller({ children, label }: CarouselScrollerProps) {
   /**
    * Measured from where the first and last cards actually sit, NOT from `scrollLeft`.
    *
-   * `scrollLeft === 0` is not the start of this row. The scroller carries the site's
-   * container padding and uses scroll snapping, so at rest it sits at 64 — which made a
-   * `scrollLeft <= 1` test report "not at the start" on a row nobody had scrolled, and left
-   * a back arrow on screen that could do nothing. Comparing rectangles sidesteps the
-   * padding, the snap offset and the centring maths in one go.
+   * Was written when `scrollLeft === 0` genuinely wasn't the start of this row: with
+   * ordinary padding instead of `scroll-padding` (see the className below), the browser
+   * rested the container scrolled PAST its own padding on load, so a `scrollLeft <= 1`
+   * test reported "not at the start" on a row nobody had touched, leaving a back arrow on
+   * screen that could do nothing. `scroll-padding` fixed the rest position itself, but this
+   * stayed rectangle-based rather than reintroducing a `scrollLeft` check narrow enough to
+   * trust — it is correct regardless of what the container's own scroll offset happens to
+   * be at either edge.
    */
   const syncEdges = useCallback(() => {
     const el = scrollerRef.current;
@@ -96,7 +99,18 @@ export function CarouselScroller({ children, label }: CarouselScrollerProps) {
         viewport={viewportOnce}
         variants={fadeUp}
         ref={scrollerRef}
-        className="container-luxe flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // `scroll-p*`, not just `p*` — a snap container with `container-luxe`'s ordinary
+        // padding rendered the first card flush against the browser's edge. CSS scroll
+        // snap aligns a `snap-start` child to the start of the SCROLLPORT, which by
+        // default ignores the container's own padding entirely; the browser was jumping
+        // scrollLeft straight to 64 on load specifically to line the first card up with
+        // that padding-less edge, which is what hid the padding from the very first
+        // paint rather than merely after a scroll. `scroll-padding` is the property CSS
+        // Scroll Snap actually defines for this — it teaches the snapport itself to
+        // reserve the inset, so the browser rests at scrollLeft 0 with the gutter intact
+        // instead of scrolling past it. Same 24/40/64 scale as `container-luxe`, so this
+        // row still lines up with the section heading above it.
+        className="container-luxe flex snap-x snap-mandatory gap-6 overflow-x-auto scroll-pl-6 scroll-pr-6 pb-4 md:scroll-pl-10 md:scroll-pr-10 lg:scroll-pl-16 lg:scroll-pr-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </motion.div>
