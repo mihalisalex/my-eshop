@@ -1,11 +1,11 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_SESSION_COOKIE, ADMIN_SESSION_COOKIE_OPTIONS, signAdminSession } from "@/lib/auth";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
+import { verifyPassword } from "@/lib/password";
 
 export interface LoginState {
   error?: string;
@@ -23,7 +23,8 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
   }
 
   const user = await prisma.adminUser.findUnique({ where: { email } });
-  const passwordMatches = user ? await bcrypt.compare(password, user.passwordHash) : false;
+  // Constant-time regardless of whether the account exists — see lib/password.ts (AUTH-002).
+  const passwordMatches = await verifyPassword(password, user?.passwordHash);
 
   if (!user || !passwordMatches) {
     await recordAttempt(key);

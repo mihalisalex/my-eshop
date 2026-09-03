@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { handleProviderWebhook } from "@/services/payments";
+import { logger } from "@/lib/logger";
 
 /**
  * One endpoint, every provider (§14): `/api/payments/webhooks/:provider`.
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   } catch (error) {
     // A genuine server fault (database down, unexpected bug) SHOULD be retried by
     // the provider, so this is the only path that returns a 5xx.
-    console.error(`[payments] Webhook processing failed for provider "${provider}"`, error);
+    logger.error("Webhook processing failed", error, { provider });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

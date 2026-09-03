@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation/auth";
+import { verifyPassword } from "@/lib/password";
 import { getCustomerById } from "@/services/customers";
 import {
   CUSTOMER_SESSION_COOKIE,
@@ -40,7 +40,8 @@ export async function POST(request: Request) {
     }
 
     const row = await prisma.customer.findUnique({ where: { email } });
-    const passwordMatches = row?.passwordHash ? await bcrypt.compare(parsed.data.password, row.passwordHash) : false;
+    // Constant-time regardless of whether the account exists — see lib/password.ts (AUTH-002).
+    const passwordMatches = await verifyPassword(parsed.data.password, row?.passwordHash);
     if (!row || !passwordMatches) {
       await Promise.all([recordAttempt(IP_KEY(ip)), recordAttempt(EMAIL_KEY(email))]);
       return NextResponse.json(

@@ -275,7 +275,7 @@ export function orderConfirmationEmail(input: {
       <tr>
         <td style="width:50%;vertical-align:top;">
           ${sectionLabel("Διεύθυνση αποστολής")}
-          <p style="font-size:13px;color:${INK};white-space:pre-line;margin:0;">${addressLines(shippingAddress)}</p>
+          <p style="font-size:13px;color:${INK};white-space:pre-line;margin:0;">${escapeHtml(addressLines(shippingAddress))}</p>
         </td>
         <td style="width:50%;vertical-align:top;">
           ${sectionLabel("Τρόπος παράδοσης")}
@@ -376,11 +376,11 @@ export function referralRewardEmail(input: {
   const subject = `Κερδίσατε δωροκάρτα ${formatMoney(giftCardAmount)}`;
   const html = layout(
     siteName,
-    `Ο/Η ${friendFirstName} έκανε την πρώτη του/της παραγγελία — ορίστε η ανταμοιβή σας.`,
+    `Ο/Η ${escapeHtml(friendFirstName)} έκανε την πρώτη του/της παραγγελία — ορίστε η ανταμοιβή σας.`,
     `
     ${eyebrow("Ανταμοιβή σύστασης")}
-    ${heading(`Ευχαριστούμε για τη σύσταση, ${firstName}`)}
-    ${bodyText(`Ο/Η ${friendFirstName} μόλις έκανε την πρώτη παραγγελία μέσω του συνδέσμου σας — ορίστε μια δωροκάρτα ${formatMoney(giftCardAmount)} ως ευχαριστώ.`)}
+    ${heading(`Ευχαριστούμε για τη σύσταση, ${escapeHtml(firstName)}`)}
+    ${bodyText(`Ο/Η ${escapeHtml(friendFirstName)} μόλις έκανε την πρώτη παραγγελία μέσω του συνδέσμου σας — ορίστε μια δωροκάρτα ${formatMoney(giftCardAmount)} ως ευχαριστώ.`)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;background-color:${INK};">
       <tr><td style="padding:28px;text-align:center;">
         <p style="font-size:11px;letter-spacing:2px;color:#B8B8B8;text-transform:uppercase;margin:0 0 10px;">Ο κωδικός της δωροκάρτας σας</p>
@@ -398,10 +398,10 @@ export function welcomeEmail(input: { siteName: string; firstName: string; shopU
   const subject = `Καλώς ήρθατε στο ${siteName}`;
   const html = layout(
     siteName,
-    `Καλώς ήρθατε στο ${siteName}, ${firstName}.`,
+    `Καλώς ήρθατε στο ${siteName}, ${escapeHtml(firstName)}.`,
     `
     ${eyebrow("Καλώς ήρθατε")}
-    ${heading(`Καλώς ήρθατε, ${firstName}`)}
+    ${heading(`Καλώς ήρθατε, ${escapeHtml(firstName)}`)}
     ${bodyText("Ο λογαριασμός σας είναι έτοιμος. Παρακολουθήστε τις παραγγελίες σας, αποθηκεύστε διευθύνσεις και δημιουργήστε τη λίστα επιθυμιών σας όποτε θέλετε.")}
     ${ctaButton("Ανακαλύψτε τη συλλογή", shopUrl)}`
   );
@@ -554,11 +554,11 @@ export function backInStockEmail(input: {
   const subject = `${productName} — ξανά διαθέσιμο`;
   const html = layout(
     siteName,
-    `${productName} (${sizeName}) είναι ξανά διαθέσιμο.`,
+    `${escapeHtml(productName)} (${escapeHtml(sizeName)}) είναι ξανά διαθέσιμο.`,
     `
     ${eyebrow("Ξανά διαθέσιμο")}
     ${heading("Καλά νέα — επέστρεψε")}
-    ${bodyText(`Το <strong>${productName}</strong> σε μέγεθος <strong>${sizeName}</strong> είναι ξανά διαθέσιμο. Τα δημοφιλή μεγέθη εξαντλούνται γρήγορα.`)}
+    ${bodyText(`Το <strong>${escapeHtml(productName)}</strong> σε μέγεθος <strong>${escapeHtml(sizeName)}</strong> είναι ξανά διαθέσιμο. Τα δημοφιλή μεγέθη εξαντλούνται γρήγορα.`)}
     ${ctaButton("Δείτε το προϊόν", productUrl)}`
   );
   const text = `Καλά νέα — επέστρεψε\n\nΤο ${productName} σε μέγεθος ${sizeName} είναι ξανά διαθέσιμο.\n\n${productUrl}`;

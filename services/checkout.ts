@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { cartInclude, toCart, toCheckout, toJsonInput, toOrder } from "@/lib/commerce/postgres/mappers";
 import { resolveCartAmounts } from "@/lib/commerce/postgres/cart-totals";
@@ -442,7 +443,7 @@ export async function completeCheckout(checkoutId: string): Promise<CompleteChec
     try {
       await rewardReferralIfPending(cartRow.customerId);
     } catch (referralError) {
-      console.error("Failed to process referral reward", referralError);
+      logger.error("Referral reward failed after order completion", referralError, { orderId: order.id, customerId: cartRow.customerId });
     }
   }
 
@@ -489,7 +490,7 @@ async function startPaymentForOrder(
     // Already recorded against the payment row by services/payments.ts. Swallowed
     // here so the shopper sees their real order with a clear "payment didn't
     // start" state rather than a 500 that implies the whole purchase failed.
-    console.error("Failed to start payment for order", order.id, error);
+    logger.error("Payment initiation failed — order exists but is unpaid", error, { orderId: order.id, paymentMethodId });
     return { payment: null, customerAction: null };
   }
 }
@@ -538,6 +539,6 @@ export async function sendOrderConfirmationEmail(
     // Release the claim so a later attempt (a webhook, an admin resend) can retry
     // rather than the order being permanently marked as notified.
     await prisma.order.update({ where: { id: order.id }, data: { confirmationEmailSentAt: null } }).catch(() => {});
-    console.error("Failed to send order confirmation email", emailError);
+    logger.error("Order confirmation email failed — claim released for retry", emailError, { orderId: order.id, to: order.customerEmail });
   }
 }

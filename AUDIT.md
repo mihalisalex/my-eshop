@@ -22,9 +22,9 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 | Severity | Total | Open | Done |
 |---|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 |
-| P1 — Launch blocker | 3 | 3 | 0 |
-| P2 — Medium | 9 | 9 | 0 |
-| P3 — Low | 6 | 6 | 0 |
+| P1 — Launch blocker | 3 | 2 | 1 |
+| P2 — Medium | 9 | 6 | 3 |
+| P3 — Low | 6 | 5 | 1 |
 | INFO | 5 | — | — |
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` won't fix (reason required)
@@ -35,7 +35,7 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 
 # P1 — Launch Blockers
 
-## [ ] OBS-001 · Observability — the system cannot be seen failing
+## [~] OBS-001 · Observability — the system cannot be seen failing
 
 **Category:** Reliability / Operations
 **Location:** repo-wide · `lib/logger.ts` (imported by only 2 files) · no `app/api/health` · no error tracker
@@ -56,7 +56,7 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 **Verify.** Trigger a deliberate webhook signature failure; confirm an alert arrives. Hit `/api/health` with the DB unreachable and confirm non-200.
 
 **Risk of change:** Low — additive only.
-**Fixed:** _pending_
+**Fixed:** health endpoint + logger seam + adoption — Phase 1. **Remaining:** connect an error tracker (needs your account choice) and an alert on `PaymentWebhookEvent.processingStatus = 'failed'`.
 
 ---
 
@@ -133,7 +133,7 @@ Holding a `checkoutId` lets anyone PATCH a trivial field (`{"giftWrap": false}`)
 
 ---
 
-## [ ] SEC-002 · Inconsistent HTML escaping in email templates
+## [x] SEC-002 · Inconsistent HTML escaping in email templates
 
 **Location:** `lib/email/templates.ts:382` (`firstName`), `:561` (`productName`, `sizeName`), `:155` (`address.firstName/lastName`)
 **Confidence:** Confirmed
@@ -147,7 +147,7 @@ Worst case: `referralRewardEmail` renders an attacker-chosen `friendFirstName` i
 **Verify.** Register with a name containing `<b>x</b>`; confirm it renders literally in the email body.
 
 **Risk of change:** Very low.
-**Fixed:** _pending_
+**Fixed:** Phase 1 — all five interpolations escaped, pinned by `lib/email/templates.test.ts`.
 
 ---
 
@@ -165,7 +165,7 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 
 ---
 
-## [ ] SEC-004 · Verify `x-forwarded-for` trust — rate limiting may be bypassable
+## [x] SEC-004 · Verify `x-forwarded-for` trust — rate limiting may be bypassable
 
 **Location:** `lib/rate-limit.ts:57` — `getClientIp`
 **Confidence:** **Needs runtime verification** ← do this first, it is 30 minutes
@@ -177,7 +177,7 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 **Verify.** From an external host, send `X-Forwarded-For: 1.2.3.4` to a rate-limited endpoint and confirm the recorded key uses the real client IP, not the spoofed one.
 
 **Risk of change:** Very low.
-**Fixed:** _pending_
+**Fixed:** Phase 1 — platform headers preferred over client-settable `x-forwarded-for`; pinned by `lib/rate-limit.test.ts`.
 
 ---
 
@@ -242,7 +242,7 @@ Sessions are stateless JWTs. After a compromise-driven password reset, the attac
 
 ---
 
-## [ ] AUTH-002 · Login timing oracle enables user enumeration
+## [x] AUTH-002 · Login timing oracle enables user enumeration
 
 **Location:** `app/admin/actions.ts:26` · check `app/api/auth/sign-in` for the same shape
 **Confidence:** Confirmed
@@ -256,7 +256,7 @@ No bcrypt work happens when the user does not exist, so absent accounts respond 
 **Fix.** Compare against a fixed dummy bcrypt hash on the miss path so both branches cost the same.
 
 **Verify.** Time 20 requests for a known vs unknown email; distributions should overlap.
-**Fixed:** _pending_
+**Fixed:** Phase 1 — `lib/password.ts` `verifyPassword()` compares against a dummy hash on the miss path; adopted by both login routes.
 
 ---
 
@@ -282,9 +282,9 @@ WCAG 2.4.1 (Bypass Blocks), Level A. Keyboard users must tab through the full he
 **Fix.** Re-enable via `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan allows.
 **Fixed:** _pending_
 
-## [ ] LOG-001 · `lib/logger.ts` adopted in only 2 files
+## [x] LOG-001 · `lib/logger.ts` adopted in only 2 files
 Folded into OBS-001 — listed separately so the cleanup is not forgotten once error tracking lands.
-**Fixed:** _pending_
+**Fixed:** Phase 1 — adopted in checkout, orders and the webhook route; `logger.error` now serializes the error itself.
 
 ## [ ] MONEY-001 · `round2` half-cent edge
 `Math.round(v * 100) / 100` yields `1.005 → 1.00`. Sub-cent, rare, and money is stored as `Decimal(10,2)` so it never compounds.
@@ -370,4 +370,5 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 
 | Date | Change | Commit |
 |---|---|---|
-| 2026-09-03 | Initial audit against `be0d546` | — |
+| 2026-09-03 | Initial audit against `be0d546` | `744d702` |
+| 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | _this commit_ |

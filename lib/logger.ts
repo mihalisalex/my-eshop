@@ -2,11 +2,27 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 type LogContext = Record<string, unknown>;
 
 /**
- * Structured logging seam. Every call goes through here instead of raw
- * console.* so swapping in a real backend (Datadog, Sentry breadcrumbs, an
- * internal log shipper) later is a change to this one file, not every call
- * site. Console output is still useful in dev and in server logs today.
+ * The one place server-side diagnostics go (OBS-001).
+ *
+ * This existed before as a seam nobody used — two files imported it while the rest called
+ * `console.error` directly, so the stated benefit ("swapping in a real backend is a change
+ * to this one file") was never actually available. The payment, checkout and webhook paths
+ * route through it now, which are the ones whose silent failure costs money.
+ *
+ * TO CONNECT AN ERROR TRACKER (Sentry, Betterstack, Axiom): implement `reportError` below
+ * and call it from the `error` branch. That is the whole integration — no call site
+ * changes. It is deliberately left unimplemented rather than stubbed against a service
+ * this shop has not chosen, because a fake integration reads as a real one.
  */
+
+/** Errors do not survive JSON.stringify — message and stack both vanish silently. */
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { value: String(error) };
+}
+
 function log(level: LogLevel, message: string, context?: LogContext): void {
   const entry = {
     level,
@@ -35,5 +51,15 @@ export const logger = {
   debug: (message: string, context?: LogContext) => log("debug", message, context),
   info: (message: string, context?: LogContext) => log("info", message, context),
   warn: (message: string, context?: LogContext) => log("warn", message, context),
-  error: (message: string, context?: LogContext) => log("error", message, context),
+
+  /**
+   * Takes the caught value as its own argument rather than leaving each caller to remember
+   * that `{ error }` serializes to `{}`. Everything a post-mortem needs — message, stack,
+   * and whatever identifiers the caller knows — lands in one structured record.
+   */
+  error: (message: string, error?: unknown, context?: LogContext) =>
+    log("error", message, {
+      ...(context ?? {}),
+      ...(error !== undefined ? { error: serializeError(error) } : {}),
+    }),
 };

@@ -1,6 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { DEFAULT_PAGE_SIZE, resolvePage, toPaged, type Paged } from "@/lib/pagination";
 import { toOrder } from "@/lib/commerce/postgres/mappers";
 import { getEmailProvider, shippingUpdateEmail } from "@/lib/email";
@@ -129,7 +130,7 @@ async function restockOrderIfNeeded(orderId: string, lineItems: Order["lineItems
     await prisma.order.update({ where: { id: orderId }, data: { restockedAt: null } }).catch(() => {});
     // Surfaced rather than swallowed: unlike a failed email, stock that silently stayed
     // off the shelf is invisible until a customer cannot buy something.
-    console.error("Failed to restock order", orderId, error);
+    logger.error("Restock failed after order cancellation", error, { orderId });
   }
 }
 
@@ -166,7 +167,7 @@ export async function updateOrderStatus(id: string, status: Order["status"]): Pr
       });
       await getEmailProvider().send({ to: order.customerEmail, template: "shipping-update", ...message });
     } catch (emailError) {
-      console.error("Failed to send order status email", emailError);
+      logger.error("Order status email failed", emailError, { orderId: order.id, status });
     }
   }
 

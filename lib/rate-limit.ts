@@ -51,11 +51,35 @@ export async function recordAttempt(key: string): Promise<void> {
   }
 }
 
-/** Best-effort client IP from standard proxy headers — "unknown" in local dev, where nothing sets them. */
+/**
+ * The client IP every rate limit in this app is keyed on — including admin sign-in.
+ *
+ * Header order is a trust decision, not a preference. `x-forwarded-for` is an ordinary
+ * request header: anyone can send one. If the platform in front APPENDS to a client-supplied
+ * value rather than replacing it, then reading the leftmost entry reads whatever the caller
+ * put there — and a single attacker gets a fresh rate-limit bucket per request by varying
+ * it, defeating brute-force protection on the login form along with every other limit here.
+ *
+ * So the platform's own header is preferred. `x-vercel-forwarded-for` is set by Vercel's
+ * edge and cannot be spoofed: the `x-vercel-*` prefix is reserved, and inbound copies are
+ * stripped before a request reaches the function. `x-real-ip` is likewise set by the
+ * platform. Only when neither is present — local dev, or a host that sets nothing — does
+ * this fall back to `x-forwarded-for`, where there is no proxy in front to be lied to about
+ * in the first place.
+ *
+ * Deliberately NOT resolved by counting hops from the right: that needs the exact number of
+ * trusted proxies, which is a deployment detail this module has no way to know and which
+ * changes silently when one is added.
+ */
 export function getClientIp(headers: Headers): string {
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0]?.trim() || "unknown";
-  return headers.get("x-real-ip") ?? "unknown";
+  for (const header of ["x-vercel-forwarded-for", "x-real-ip", "x-forwarded-for"]) {
+    const value = headers.get(header);
+    // A comma-separated list only ever appears in a forwarded-for style header; taking the
+    // first entry is correct for the platform-set ones, which name the true client first.
+    const first = value?.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return "unknown";
 }
 
 /**
