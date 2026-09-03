@@ -34,6 +34,13 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { detectBrand } from "../lib/seo/brands";
+import {
+  CATEGORY_LABEL,
+  cleanProductTitle,
+  composeProductDescription,
+  extractHeel,
+  extractMaterials,
+} from "../lib/seo/product-content";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -72,49 +79,20 @@ const prisma = new PrismaClient({
 const extractBrand = detectBrand;
 
 /**
- * Materials, as the shop's own descriptions name them, mapped to one canonical Greek label
- * each. Order matters: "οικολογικό δέρμα" and "eco leather" must be tested before the bare
- * "δέρμα" they contain, or every vegan shoe would be labelled leather.
+ * Title cleaning, material and heel extraction, and the description itself all live in
+ * lib/seo/product-content.ts, shared with the "Generate SEO" button in the admin product
+ * form. Two implementations producing different text for the same product is the kind of
+ * drift that makes an owner distrust both.
  */
-const MATERIALS: { match: string[]; label: string }[] = [
-  { match: ["eco leather", "οικ. δέρμα", "οικολογικό δέρμα", "δερματίνη", "δερματίν"], label: "Οικολογικό δέρμα" },
-  { match: ["vegan"], label: "Vegan" },
-  { match: ["καστόρι", "suede"], label: "Καστόρι" },
-  { match: ["γνήσιο δέρμα", "δερμάτιν", "leather", "δέρμα"], label: "Δέρμα" },
-  { match: ["ύφασμα", "textile"], label: "Ύφασμα" },
-];
-
-/** Phrases that only ever describe real leather, never the synthetic kind. */
-const REAL_LEATHER_MARKERS = ["γνήσιο δέρμα", "δερμάτιν", "leather boots", "φυσικό δέρμα"];
-
-function extractMaterials(text: string): string[] {
-  const haystack = text.toLowerCase();
-  const found: string[] = [];
-  for (const entry of MATERIALS) {
-    if (entry.match.some((needle) => haystack.includes(needle)) && !found.includes(entry.label)) {
-      found.push(entry.label);
-    }
-  }
-
-  /**
-   * "Οικ. δέρμα" and "δερματίνη" both CONTAIN the word δέρμα, so a naive pass labels every
-   * vegan shoe as leather as well — which is not a cosmetic bug, it is telling a customer a
-   * synthetic shoe is real leather.
-   *
-   * Real leather is therefore kept only when something says so explicitly. "VEGAN / Οικ.
-   * δέρμα", which is how most of these descriptions are written, resolves to eco alone.
-   */
-  if (found.includes("Οικολογικό δέρμα")) {
-    const hasRealLeather = REAL_LEATHER_MARKERS.some((marker) => haystack.includes(marker));
-    return found.filter((m) => m !== "Vegan" && (m !== "Δέρμα" || hasRealLeather));
-  }
-  return found;
-}
+const cleanTitle = cleanProductTitle;
+const composeDescription = composeProductDescription;
 
 /**
  * Filter facets, as English slugs — the convention already in the database (`slippers`,
  * `large-sizes`, `anatomical`, `boat-shoes`). These drive the PLP filter sidebar, so they
  * are values a shopper picks from a list rather than prose.
+ *
+ * Not in the shared module: the form has no tag editor, so only the bulk pass needs them.
  */
 const TAG_RULES: { match: string[]; tag: string }[] = [
   { match: ["sneaker"], tag: "sneakers" },
@@ -153,101 +131,16 @@ function extractTags(name: string, description: string, materials: string[]): st
 }
 
 /**
- * The product code is useful in the shop and useless in a search result — it is 12-16
- * characters of a title that Google already truncates. Stripped for the SEO title only;
- * the product's actual name is left alone, because staff search for that code.
- */
-function cleanTitle(name: string): string {
-  return (
-    name
-      /**
-       * The code is not always last: several names read "… – κωδικός 325 - Μπλε", where the
-       * colour after it is worth keeping. So the code is removed wherever it sits, along
-       * with whichever dash introduced it.
-       *
-       * The code itself is not always one token either — real ones here include `TR-1 S`,
-       * `4787-1`, `OC-01` and `WC-11501`. A pattern that stopped at the first hyphen left
-       * "-1 S" dangling on the end of a title, which is how this was found. So hyphen-joined
-       * segments are consumed, plus one trailing single Latin capital (the `S` in `TR-1 S`).
-       *
-       * A trailing " - Μπλε" survives because the space before its dash is not part of the
-       * code, and because a lone Greek word is not a single Latin capital.
-       */
-      .replace(/\s*[-–—]?\s*κωδικ[όο]ς\s*[\w\dΑ-Ωα-ωίϊΐόάέύϋΰήώ]+(?:[-–][\w\d]+)*(?:\s+[A-Z]\b)?/gi, "")
-      .replace(/\s*[-–—]\s*[-–—]\s*/g, " - ")
-      .replace(/^\s*[-–—]\s*/, "")
-      .replace(/\s*[-–—]\s*$/, "")
-      .replace(/\s{2,}/g, " ")
-      .trim()
-  );
-}
-
-const HEEL_PATTERN = /ύψος\s*τακουνιού\s*:?\s*([\d.,]+)\s*(?:cm|εκ)/i;
-
-/** Returns "4" or "1,5" — the unit and the sentence's full stop are the caller's business. */
-function extractHeel(description: string): string | null {
-  const match = description.match(HEEL_PATTERN);
-  return match ? match[1].replace(".", ",").replace(/,$/, "") : null;
-}
-
-// ---------------------------------------------------------------------------
-// Composition
-// ---------------------------------------------------------------------------
-
-/**
- * A meta description built from what the product actually is.
- *
- * Deliberately concrete: style and colour from the name, material and heel height from the
- * description, the real size run, and one true delivery fact. No adjectives the shop cannot
- * stand behind, and nothing about quality or craftsmanship that the catalogue does not
- * evidence — this shop has already had invented provenance copy removed once.
- */
-function composeDescription(input: {
-  title: string;
-  materials: string[];
-  heel: string | null;
-  sizes: string[];
-  categoryLabel: string;
-}): string {
-  const parts: string[] = [`${input.title}.`];
-
-  if (input.materials.length) parts.push(`Υλικό: ${input.materials.join(" / ")}.`);
-  if (input.heel) parts.push(`Ύψος τακουνιού ${input.heel} εκ.`);
-
-  const numeric = input.sizes.map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
-  if (numeric.length >= 2) parts.push(`Νούμερα ${numeric[0]}–${numeric[numeric.length - 1]}.`);
-  else if (numeric.length === 1) parts.push(`Νούμερο ${numeric[0]}.`);
-
-  parts.push(`${input.categoryLabel} με αποστολή σε 3–5 εργάσιμες.`);
-
-  const composed = parts.join(" ").replace(/\s{2,}/g, " ").trim();
-  // Trimmed at a word boundary rather than mid-word if the attributes ran long.
-  if (composed.length <= 158) return composed;
-  const cut = composed.slice(0, 158);
-  return `${cut.slice(0, cut.lastIndexOf(" ")).trimEnd()}…`;
-}
-
-/**
  * Alt text for a product's photographs.
  *
  * The imported values are WooCommerce boilerplate: the full product name including its
- * code, then the same again with ", view 2" and ", view 3" appended. That is the product's
- * own heading read back to a screen-reader user who has just heard it, plus a stock number
- * nobody needs, and it gives image search nothing to match on.
+ * code, then the same again with ", view 2" appended. What this writes instead is the
+ * product described — colour and style from the name, material where the description
+ * states it, brand where there is one — with the code removed.
  *
- * What this writes instead is the product described — colour and style from the name,
- * material where the description states it, brand where there is one — with the code
- * removed.
- *
- * What it deliberately does NOT do is say what each photograph SHOWS. "Πλάγια όψη",
- * "λεπτομέρεια σόλας" and the like would be invented: nobody has looked at these images,
- * and alt text that describes the wrong thing is worse for a blind user than alt text that
- * is merely unambitious. Later images are numbered plainly, which is honest about being a
- * second photograph of the same shoe without pretending to know its angle.
- *
- * Genuinely good alt text needs someone who can see the pictures. This is the floor, not
- * the ceiling, and the audit's own rule is tightened alongside it so the improvement does
- * not read as a solved problem.
+ * What it deliberately does NOT do is say what each photograph SHOWS. "Πλάγια όψη" and the
+ * like would be invented: nobody has looked at these images, and alt text that describes
+ * the wrong thing is worse for a blind user than alt text that is merely unambitious.
  */
 function composeAlt(input: {
   title: string;
@@ -256,7 +149,10 @@ function composeAlt(input: {
   index: number;
   total: number;
 }): string {
-  const descriptor = [input.brand && !input.title.toLowerCase().includes(input.brand.toLowerCase()) ? input.brand : null, input.title]
+  const descriptor = [
+    input.brand && !input.title.toLowerCase().includes(input.brand.toLowerCase()) ? input.brand : null,
+    input.title,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -267,18 +163,6 @@ function composeAlt(input: {
   return input.total > 1 && input.index > 0 ? `${base} (φωτογραφία ${input.index + 1})` : base;
 }
 
-/** What a product of this category IS, for the closing clause of its description. */
-const CATEGORY_LABEL: Record<string, string> = {
-  sandals: "Γυναικεία πέδιλα",
-  heels: "Παπούτσια με τακούνι",
-  "andrika-sneakers": "Ανδρικά sneakers",
-  "andrika-loafers": "Ανδρικά loafers",
-  "gynaikeia-boots": "Γυναικείες μπότες",
-  oxfords: "Ανδρικά oxfords",
-  "gynaikeia-loafers": "Γυναικεία loafers",
-  "gynaikeia-sneakers": "Γυναικεία sneakers",
-  "andrika-boots": "Ανδρικά μποτάκια",
-};
 
 // ---------------------------------------------------------------------------
 // Categories — hand-written. Nine pages carry most of the traffic, so these are

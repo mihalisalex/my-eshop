@@ -7,6 +7,9 @@ import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { formatMoney } from "@/lib/format";
 import { slugify } from "@/lib/slug";
+import { generateProductSeo } from "@/lib/seo/product-content";
+import { SIZE_RUNS, expandSizeRun } from "@/constants/size-runs";
+import { PRODUCT_COLOR_PRESETS } from "@/constants/product-colors";
 import { SeoFieldset } from "@/components/admin/SeoFieldset";
 import { ProductImageManager } from "@/components/admin/ProductImageManager";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
@@ -134,7 +137,10 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
 
   // `useWatch` rather than `watch()` — the latter cannot be memoized safely and the React
   // Compiler lint rule flags it. Same reason MarginReadout above uses it.
-  const [seoName, seoDescription, seoSlug] = useWatch({ control, name: ["name", "description", "slug"] });
+  const [seoName, seoDescription, seoSlug, categorySlug] = useWatch({
+    control,
+    name: ["name", "description", "slug", "category"],
+  });
 
   /**
    * The slug writes itself from the name, but only on a NEW product and only until someone
@@ -404,6 +410,37 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
 
       <div className={sectionClass}>
         <h3 className={sectionTitleClass}>Colors</h3>
+
+        {/* Every hex here was read from the catalogue, not chosen — see
+            constants/product-colors.ts. Picking one guarantees this product's beige is the
+            same beige as the twenty-four already on the same listing page. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-luxe-gray-dark">Add a colour:</span>
+          {PRODUCT_COLOR_PRESETS.map((preset) => {
+            const alreadyAdded = (colors.fields as { name?: string }[]).some((c) => c.name === preset.name);
+            return (
+              <button
+                key={preset.hex}
+                type="button"
+                // Adding the same colour twice would give the product two identical
+                // swatches, so an already-used one is offered as disabled rather than
+                // silently doing nothing.
+                disabled={alreadyAdded}
+                onClick={() => colors.append({ name: preset.name, hex: preset.hex })}
+                title={alreadyAdded ? `${preset.english} is already on this product` : `${preset.english} · ${preset.hex}`}
+                className="flex items-center gap-1.5 border border-border py-1 pr-2.5 pl-1.5 text-xs transition-colors hover:border-luxe-black disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border"
+              >
+                <span
+                  aria-hidden
+                  className="size-4 shrink-0 rounded-full ring-1 ring-black/15"
+                  style={{ backgroundColor: preset.hex }}
+                />
+                {preset.name}
+              </button>
+            );
+          })}
+        </div>
+
         <div className="space-y-2">
           {colors.fields.map((field, index) => (
             <div key={field.id} className="flex items-center gap-2">
@@ -433,6 +470,25 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
 
       <div className={sectionClass}>
         <h3 className={sectionTitleClass}>Sizes &amp; Inventory</h3>
+
+        {/* Shoes arrive as a run, not as individual sizes — see constants/size-runs.ts.
+            Replaces the whole list rather than appending, because a run IS the stock for a
+            product, and merging one into rows already there would silently double a size. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-luxe-gray-dark">Fill from a size run:</span>
+          {SIZE_RUNS.map((run) => (
+            <button
+              key={run.id}
+              type="button"
+              title={run.notation}
+              onClick={() => sizes.replace(expandSizeRun(run).map((size) => ({ ...size, inStock: true })))}
+              className="h-8 border border-border px-3 text-xs font-medium tracking-[0.05em] uppercase transition-colors hover:border-luxe-black"
+            >
+              {run.label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-2">
           {sizes.fields.map((field, index) => (
             <div key={field.id} className="flex items-center gap-2">
@@ -541,7 +597,31 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
       </div>
 
       <div className={sectionClass}>
-        <h3 className={sectionTitleClass}>Search &amp; social</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className={sectionTitleClass}>Search &amp; social</h3>
+          {/* Fills the two fields from the product's own attributes, using the same
+              composition the bulk script uses — so a product written here and one written
+              by the script read identically. It overwrites deliberately: the button is
+              pressed to replace what is there, and nothing is lost that cannot be retyped. */}
+          <button
+            type="button"
+            onClick={() => {
+              const generated = generateProductSeo({
+                name: seoName ?? "",
+                description: seoDescription ?? "",
+                sizes: (sizes.fields as { name?: string }[]).map((s) => s.name ?? ""),
+                categorySlug: categories.find((c) => c.slug === categorySlug)?.slug,
+              });
+              setValue("seo.title", generated.title, { shouldValidate: true });
+              setValue("seo.description", generated.description, { shouldValidate: true });
+            }}
+            disabled={!seoName?.trim()}
+            title={seoName?.trim() ? undefined : "Give the product a name first"}
+            className="h-8 border border-luxe-black px-3 text-xs font-medium tracking-[0.05em] uppercase transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:border-border disabled:text-luxe-gray-dark disabled:hover:opacity-100"
+          >
+            Generate SEO
+          </button>
+        </div>
         {/* Every field is optional. The preview shows what ships when they are left alone,
             which is the only way to judge whether an override is worth writing. */}
         <SeoFieldset
