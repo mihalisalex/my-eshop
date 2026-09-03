@@ -7,6 +7,7 @@ import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { formatMoney } from "@/lib/format";
 import { slugify } from "@/lib/slug";
+import { deriveSizeSku, isDerivedSizeSku } from "@/lib/sku";
 import { extractHeel, generateProductDescription, generateProductSeo } from "@/lib/seo/product-content";
 import { detectBrand } from "@/lib/seo/brands";
 import { SIZE_RUNS, expandSizeRun } from "@/constants/size-runs";
@@ -138,10 +139,17 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
 
   // `useWatch` rather than `watch()` — the latter cannot be memoized safely and the React
   // Compiler lint rule flags it. Same reason MarginReadout above uses it.
-  const [seoName, seoDescription, seoSlug, categorySlug] = useWatch({
+  const [seoName, seoDescription, seoSlug, categorySlug, productSku] = useWatch({
     control,
-    name: ["name", "description", "slug", "category"],
+    name: ["name", "description", "slug", "category", "sku"],
   });
+
+  /**
+   * Live size rows. `useFieldArray`'s own `fields` are a snapshot taken when the array
+   * changes shape, so they do not see someone typing a size number — and the SKU below is
+   * derived from exactly that.
+   */
+  const watchedSizes = useWatch({ control, name: "sizes" });
 
   /**
    * The slug writes itself from the name, but only on a NEW product and only until someone
@@ -164,6 +172,26 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
     if (!isNewProduct || slugEdited) return;
     setValue("slug", slugify(seoName ?? ""), { shouldValidate: false });
   }, [seoName, isNewProduct, slugEdited, setValue]);
+
+  /**
+   * Each size's SKU writes itself from the product's — 9262 becomes 9262-36, 9262-37, and
+   * so on down the run — and keeps up when either half is edited afterwards.
+   *
+   * A supplier's own code, typed into the field by hand, is never touched. lib/sku.ts owns
+   * that judgement and explains how it is made.
+   *
+   * The guard is what stops this looping: setValue on a row re-runs the effect through
+   * `watchedSizes`, so it must only write when the value actually differs. After one pass
+   * every row already holds its derived code and nothing more is written.
+   */
+  useEffect(() => {
+    watchedSizes?.forEach((size, index) => {
+      if (!isDerivedSizeSku(size?.sku, productSku, size?.name)) return;
+      const derived = deriveSizeSku(productSku, size?.name);
+      if (derived === null || derived === size?.sku) return;
+      setValue(`sizes.${index}.sku`, derived, { shouldValidate: false });
+    });
+  }, [watchedSizes, productSku, setValue]);
 
   const colors = useFieldArray({ control, name: "colors" });
   const sizes = useFieldArray({ control, name: "sizes" });
@@ -552,7 +580,7 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
                   />
                 )}
               />
-              <input className={inputClass} placeholder="SKU (optional)" {...register(`sizes.${index}.sku`)} />
+              <input className={inputClass} placeholder="SKU (auto)" {...register(`sizes.${index}.sku`)} />
               <Controller
                 name={`sizes.${index}.inStock`}
                 control={control}
@@ -577,7 +605,7 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
         {errors.sizes?.message ? <p className={errorClass}>{errors.sizes.message}</p> : null}
         <button
           type="button"
-          onClick={() => sizes.append({ name: "New Size", inStock: true, quantity: 0 })}
+          onClick={() => sizes.append({ name: "", inStock: true, quantity: 0 })}
           className="flex items-center gap-1 text-xs font-medium tracking-[0.05em] uppercase text-luxe-gray-dark hover:text-luxe-black"
         >
           <Plus className="size-3.5" strokeWidth={1.5} />

@@ -63,12 +63,14 @@ describe("generateProductDescription", () => {
   it("opens with what the shoe is, in its colour, with how it is built", () => {
     const text = generateProductDescription({
       name: "Μπεζ δίσολα sneaker με ανατομικό πάτο - κωδικός 9181",
+      categorySlug: "gynaikeia-sneakers",
       sizes: ["36", "37", "38", "39", "40"],
     });
-    expect(text).toContain("Sneaker για καθημερινή χρήση");
+    expect(text).toContain("Sneaker");
     expect(text).toContain("σε μπεζ");
     expect(text).toContain("ανατομικό πάτο");
-    expect(text).toContain("Διαθέσιμο σε νούμερα 36–40.");
+    // The head term rides along in the size sentence rather than being announced.
+    expect(text).toContain("Γυναικεία sneakers σε νούμερα 36–40.");
   });
 
   it("never carries the stock code into the description", () => {
@@ -99,7 +101,7 @@ describe("generateProductDescription", () => {
       name: "Mont Martre Paris μαύρα ανατομικά loafers με τοκά",
       sizes: ["36", "41"],
     });
-    expect(text.length).toBeLessThan(260);
+    expect(text.length).toBeLessThan(420);
   });
 
   it("puts the brand first, which is how Greek reads", () => {
@@ -109,7 +111,7 @@ describe("generateProductDescription", () => {
       brand: "Mont Martre Paris",
       sizes: [],
     });
-    expect(text.startsWith("Mont Martre Paris πέδιλο για το καλοκαίρι")).toBe(true);
+    expect(text.startsWith("Mont Martre Paris πέδιλο")).toBe(true);
   });
 
   it("capitalises the lead when there is no brand to precede it", () => {
@@ -124,11 +126,42 @@ describe("generateProductDescription", () => {
       sizes: [],
     });
     // Capitalised here because no brand was passed to precede it.
-    expect(text).toContain("Sneaker για καθημερινή χρήση");
+    expect(text).toContain("Sneaker");
   });
 
   it("says only «παπούτσι» when neither the name nor a category settles the style", () => {
     expect(generateProductDescription({ name: "Κάτι άλλο", sizes: [] }).startsWith("Παπούτσι")).toBe(true);
+  });
+
+  it("does not say the same thing twice", () => {
+    // The style leads used to carry the occasion as well, so a boot read «μποτάκι για τον
+    // χειμώνα. … Για τον χειμώνα, με jeans». Any two-word phrase repeating is that bug.
+    for (const name of ["Μαύρο μποτάκι", "Μαύρο πέδιλο", "Μαύρο sneaker", "Μαύρο derby", "Μαύρο oxford"]) {
+      const text = generateProductDescription({ name, sizes: ["36", "40"] });
+      const words = text.toLowerCase().replace(/[.,—]/g, " ").split(/\s+/).filter(Boolean);
+      const bigrams = words.slice(0, -1).map((word, i) => [word, words[i + 1]].join(" "));
+      expect(new Set(bigrams).size, `repeated phrase in: ${text}`).toBe(bigrams.length);
+    }
+  });
+
+  it("carries the phrases people actually search, not adjectives", () => {
+    const boot = generateProductDescription({ name: "Μαύρα μποτάκια", categorySlug: "gynaikeia-boots", sizes: ["36", "41"] });
+    expect(boot).toContain("jeans");
+    expect(boot).toContain("Γυναικείες μπότες");
+
+    const heel = generateProductDescription({ name: "Μαύρη γόβα", categorySlug: "heels", sizes: ["36", "40"] });
+    expect(heel).toContain("γάμο");
+  });
+
+  it("does not sell a 7cm sandal as beachwear", () => {
+    // 26 products here are named πέδιλα or παντόφλες and carry a 5cm-plus heel.
+    const dressy = generateProductDescription({ name: "Μαύρα πέδιλα", heel: "7", sizes: ["36", "40"] });
+    expect(dressy).toContain("γάμο");
+    expect(dressy).not.toContain("παραλία");
+
+    // A flat one still goes to the beach.
+    const flat = generateProductDescription({ name: "Μαύρα πέδιλα", sizes: ["36", "40"] });
+    expect(flat).toContain("παραλία");
   });
 
   it("varies by style, so a sandal does not read like a sneaker", () => {

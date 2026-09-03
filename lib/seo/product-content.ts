@@ -170,19 +170,27 @@ const STYLE_RULES: { match: string[]; style: string }[] = [
  * Descriptive of the product type rather than promotional — "a sandal for summer" is what
  * a sandal is, whereas "the perfect sandal for your summer" is a claim about the shopper.
  */
+/**
+ * What the shoe IS, in one noun — nothing about when it is worn.
+ *
+ * These used to carry the occasion too ("μποτάκι για τον χειμώνα"), which read fine until
+ * STYLE_OCCASION started saying the same thing one sentence later: «μποτάκι για τον
+ * χειμώνα … Για τον χειμώνα, με jeans». The occasion has a sentence of its own now, so the
+ * lead just names the thing and the two stop competing.
+ */
 const STYLE_LEAD: Record<string, string> = {
-  sneakers: "sneaker για καθημερινή χρήση",
-  loafers: "loafer χωρίς κορδόνια",
-  sandals: "πέδιλο για το καλοκαίρι",
-  boots: "μποτάκι για τον χειμώνα",
+  sneakers: "sneaker",
+  loafers: "loafer",
+  sandals: "πέδιλο",
+  boots: "μποτάκι",
   // Deliberately just "παντόφλα": this catalogue files both fashion mules and furry house
   // slippers under the same word, and calling a lined winter slipper an "open mule" would
   // be wrong about the product rather than merely vague about it.
   mules: "παντόφλα",
   heels: "παπούτσι με τακούνι",
-  oxfords: "κλασικό δετό oxford",
-  derby: "δετό παπούτσι derby",
-  cowboy: "μποτάκι σε γραμμή cowboy",
+  oxfords: "δετό oxford",
+  derby: "δετό derby",
+  cowboy: "μποτάκι cowboy",
 };
 
 const DEFAULT_LEAD = "παπούτσι";
@@ -250,11 +258,61 @@ function detectFeatures(name: string): string[] {
 }
 
 /**
- * A short product description, written from the name and the form's own attributes.
+ * When and with what a shoe of this style is worn.
  *
- * Short on purpose. Three or four sentences of true, specific detail rank better than a
- * paragraph of filler, and are also something an owner will actually read and correct — a
- * wall of generated text just gets saved unread.
+ * This is where the search demand actually is. Nobody types «ποιοτικά παπούτσια» — they
+ * type «παπούτσια για γάμο», «sneakers για καθημερινή χρήση», «μποτάκια για τον χειμώνα».
+ * These sentences are the long-tail intent behind the head term, and they are also just
+ * true statements about what the shoe is for, which is why they are safe to generate:
+ * saying a heeled shoe suits a wedding is a fact about heels, not a claim about this pair.
+ *
+ * English words are left in where Greek shoppers genuinely use them — casual, smart casual,
+ * ankle boot, western. Those are the words in the queries, not translations of them.
+ */
+const STYLE_OCCASION: Record<string, string> = {
+  sneakers: "Ταιριάζει με jeans και casual σύνολα, για καθημερινές εμφανίσεις και πολλές ώρες περπάτημα.",
+  loafers: "Φοριέται στο γραφείο και σε smart casual εμφανίσεις, με ή χωρίς κάλτσα.",
+  sandals: "Για το καλοκαίρι, τις διακοπές και την παραλία, με φόρεμα ή σορτς.",
+  boots: "Για τον χειμώνα, με jeans ή φόρεμα — ankle boot από το πρωί ως το βράδυ.",
+  heels: "Επιλογή για γάμο, βάπτιση και βραδινές εμφανίσεις, αλλά και για το γραφείο.",
+  oxfords: "Για επίσημες εμφανίσεις, κοστούμι και γαμπριάτικα σύνολα.",
+  derby: "Φοριέται με κοστούμι ή chinos, σε γραφείο και επίσημες εμφανίσεις.",
+  cowboy: "Western στιλ που ταιριάζει με jeans, φόρεμα ή φούστα.",
+  /**
+   * Says how it is worn, not where. Every one of the 40 mules in this catalogue is
+   * merchandised under sandals or heels, so they are fashion mules rather than house
+   * slippers — but some are lined and furry, and a beach line would be wrong about those.
+   * Being open-backed is the one thing all of them share.
+   */
+  mules: "Μπαίνει και βγαίνει εύκολα, χωρίς κούμπωμα, για καθημερινές εμφανίσεις.",
+};
+
+/**
+ * Above this many centimetres a shoe is dressed up, whatever the name calls it.
+ *
+ * 26 products in this catalogue are named πέδιλα or παντόφλες and carry a 5cm-plus heel.
+ * Sold on the summer line they would read as beachwear, which is wrong about the shoe and
+ * wrong for the shopper searching for it — a 7cm sandal is what someone buys for a wedding.
+ */
+const DRESSY_HEEL_CM = 5;
+
+/**
+ * What a construction detail means for the wearer. Only ever reached when the product's own
+ * name states the feature, so each of these is grounded in something the shop wrote.
+ */
+const FEATURE_BENEFIT: Record<string, string> = {
+  "με ανατομικό πάτο": "Ο ανατομικός πάτος το κάνει άνετο για όλη την ημέρα.",
+  "σε δίσολη σόλα": "Η δίσολη σόλα δίνει ύψος χωρίς τακούνι.",
+  "με φερμουάρ": "Το πλαϊνό φερμουάρ το κάνει εύκολο στο φόρεμα.",
+};
+
+/**
+ * A product description, written from the name and the form's own attributes.
+ *
+ * Six or seven sentences: what it is, what it is made of, when it is worn, what its
+ * construction does for the wearer, the head term, the size run and the dispatch window.
+ * Long enough to say something and to carry the phrases people search for; short enough
+ * that the owner will actually read it and correct it, which a wall of text never gets.
  */
 export function generateProductDescription(input: {
   name: string;
@@ -295,10 +353,33 @@ export function generateProductDescription(input: {
   if (materials.length) sentences.push(`Από ${materials.join(" και ").toLowerCase()}.`);
   if (input.heel) sentences.push(`Ύψος τακουνιού ${input.heel} εκ.`);
 
-  const numeric = input.sizes.map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
-  if (numeric.length >= 2) sentences.push(`Διαθέσιμο σε νούμερα ${numeric[0]}–${numeric[numeric.length - 1]}.`);
-  else if (numeric.length === 1) sentences.push(`Διαθέσιμο σε νούμερο ${numeric[0]}.`);
+  // A tall heel outranks the name: a 7cm πέδιλο is an evening shoe, not a beach one.
+  const heelCm = input.heel ? parseFloat(input.heel.replace(",", ".")) : NaN;
+  // The heels CATEGORY counts too: the shop filing it there is a statement about the
+  // shoe, and several such products never had a heel height recorded.
+  const dressy = (Number.isFinite(heelCm) && heelCm >= DRESSY_HEEL_CM) || input.categorySlug === "heels";
+  const occasionStyle = dressy && (style === "sandals" || style === "mules") ? "heels" : style;
+  if (occasionStyle && STYLE_OCCASION[occasionStyle]) sentences.push(STYLE_OCCASION[occasionStyle]);
 
+  // One benefit, from the first feature that has one. Two starts to read like a brochure.
+  const benefit = features.map((f) => FEATURE_BENEFIT[f]).find(Boolean);
+  if (benefit) sentences.push(benefit);
+
+  /**
+   * The head term goes in the size sentence rather than a sentence of its own, so
+   * «Ανδρικά sneakers» earns its place by carrying information instead of being announced.
+   *
+   * Phrased as a bare noun phrase — «Ανδρικά sneakers σε νούμερα 40–44» — because the
+   * labels differ in gender («Γυναικείες μπότες», «Ανδρικά sneakers») and any adjective
+   * after them would have to agree. A noun phrase agrees with everything.
+   */
+  const label = (input.categorySlug && CATEGORY_LABEL[input.categorySlug]) || DEFAULT_CATEGORY_LABEL;
+  const numeric = input.sizes.map(Number).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
+  if (numeric.length >= 2) sentences.push(`${label} σε νούμερα ${numeric[0]}–${numeric[numeric.length - 1]}.`);
+  else if (numeric.length === 1) sentences.push(`${label} σε νούμερο ${numeric[0]}.`);
+
+  // No "σε όλη την Ελλάδα" here on purpose: the shop is single-market so it is true as a
+  // statement, but bolted onto the timing it promises 3–5 days to the islands as well.
   sentences.push("Αποστολή σε 3–5 εργάσιμες.");
 
   return sentences.join(" ").replace(/\s{2,}/g, " ").trim();
