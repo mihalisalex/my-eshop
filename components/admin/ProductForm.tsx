@@ -7,7 +7,8 @@ import { Plus, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { formatMoney } from "@/lib/format";
 import { slugify } from "@/lib/slug";
-import { generateProductSeo } from "@/lib/seo/product-content";
+import { extractHeel, generateProductDescription, generateProductSeo } from "@/lib/seo/product-content";
+import { detectBrand } from "@/lib/seo/brands";
 import { SIZE_RUNS, expandSizeRun } from "@/constants/size-runs";
 import { PRODUCT_COLOR_PRESETS } from "@/constants/product-colors";
 import { SeoFieldset } from "@/components/admin/SeoFieldset";
@@ -212,9 +213,46 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
           </div>
         </div>
         <div>
-          <label className={labelClass} htmlFor="pf-description">Description</label>
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+            <label className={labelClass.replace("mb-1.5 ", "")} htmlFor="pf-description">Description</label>
+            {/*
+              Writes the shopper-facing copy from the name and the attributes already on the
+              form. Confirms first when there is text to lose: 175 products carry real
+              supplier spec sheets, and silently replacing one would destroy information
+              this generator cannot reproduce.
+            */}
+            <button
+              type="button"
+              onClick={() => {
+                const current = seoDescription?.trim();
+                if (current && !window.confirm("Replace the current description with a generated one?")) return;
+                setValue(
+                  "description",
+                  generateProductDescription({
+                    name: seoName ?? "",
+                    brand: detectBrand(seoName ?? "") ?? undefined,
+                    heel: extractHeel(current ?? ""),
+                    sizes: (sizes.fields as { name?: string }[]).map((s) => s.name ?? ""),
+                    categorySlug,
+                  }),
+                  { shouldValidate: true }
+                );
+              }}
+              disabled={!seoName?.trim()}
+              title={seoName?.trim() ? undefined : "Give the product a name first"}
+              className="h-8 border border-luxe-black px-3 text-xs font-medium tracking-[0.05em] uppercase transition-opacity hover:opacity-70 disabled:cursor-not-allowed disabled:border-border disabled:text-luxe-gray-dark disabled:hover:opacity-100"
+            >
+              Generate description
+            </button>
+          </div>
           <textarea id="pf-description" rows={4} className={inputClass.replace("h-10", "h-auto py-2")} aria-invalid={Boolean(errors.description)} {...register("description")} />
-          {errors.description ? <p className={errorClass}>{errors.description.message}</p> : null}
+          {errors.description ? (
+            <p className={errorClass}>{errors.description.message}</p>
+          ) : (
+            <p className="mt-1.5 text-xs text-luxe-gray-dark">
+              Generate SEO below reads this, so write or generate it first.
+            </p>
+          )}
         </div>
       </div>
 
