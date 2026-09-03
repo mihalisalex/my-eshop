@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { toJsonInput } from "@/lib/commerce/postgres/mappers";
 import { round2 } from "@/lib/commerce/postgres/cart-totals";
@@ -721,13 +722,52 @@ export async function refundPayment(
     throw new PaymentError("REFUND_NOT_SUPPORTED", `${definition.name} only supports full refunds.`);
   }
 
-  const provider = paymentProviderRegistry.require(record.providerId);
-  const baseCtx = await contextForPayment(record);
-  const result = await provider.refundPayment({
-    ...baseCtx,
-    amount: { amount: requested, currencyCode: record.amount.currencyCode },
-    reason,
+  /**
+   * Claim the amount BEFORE calling the provider (PAY-002).
+   *
+   * The checks above read `refundedAmount`, compare it in JS, and then — several awaits
+   * later — spend money. Two refunds submitted at once (a double-clicked button, a retried
+   * request) both read the same balance, both pass, and both reach the provider: the shop
+   * refunds twice. A conditional update on the way OUT would not have helped, because by
+   * then the money has already left.
+   *
+   * So the claim is the guard, in the same conditional-UPDATE shape the stock and
+   * gift-card decrements in services/checkout.ts use: Postgres serialises writers on the
+   * row and re-evaluates the ceiling against the committed value, and the affected-row
+   * count reports whether we won. Zero means another refund already claimed this headroom.
+   *
+   * `applyStatus` below then reconciles `refundedAmount` to whatever the provider reports,
+   * which stays the source of truth — the claim is a lock, not the final figure.
+   */
+  const claimed = await prisma.payment.updateMany({
+    where: { id: record.id, refundedAmount: { lte: record.amount.amount - requested + 0.005 } },
+    data: { refundedAmount: { increment: requested } },
   });
+  if (claimed.count === 0) {
+    throw new PaymentError(
+      "REFUND_AMOUNT_INVALID",
+      "Another refund for this payment is already in progress — reload to see the current balance."
+    );
+  }
+
+  const provider = paymentProviderRegistry.require(record.providerId);
+
+  let result;
+  try {
+    const baseCtx = await contextForPayment(record);
+    result = await provider.refundPayment({
+      ...baseCtx,
+      amount: { amount: requested, currencyCode: record.amount.currencyCode },
+      reason,
+    });
+  } catch (error) {
+    // Release the claim: the money never moved, so the headroom belongs back on the
+    // payment. Same claim-then-release shape as sendOrderConfirmationEmail.
+    await prisma.payment
+      .update({ where: { id: record.id }, data: { refundedAmount: { decrement: requested } } })
+      .catch(() => {});
+    throw error;
+  }
 
   return applyStatus(record, result, {
     actorType: "admin",
@@ -861,6 +901,59 @@ export async function handleProviderWebhook(
       status: "ignored",
       message: payment ? `No action for event type "${event.eventType}".` : "No matching payment for this event.",
     };
+  }
+
+  /**
+   * The amount the provider reports must match the amount we expected to charge (PAY-001).
+   *
+   * A valid signature proves only that the provider sent this message — never that it
+   * concerns the sum we asked for. Without this check, any signature-valid event carrying a
+   * different figure marked the order paid: a Checkout Session reused across orders, a
+   * provider-side misconfiguration, or a tampered integration all settle an order for the
+   * wrong money, and nothing downstream ever compares the two again.
+   *
+   * An ABSENT amount is not treated as agreement. Providers and event types that state no
+   * figure cannot be checked, so the event is applied and the gap recorded — the honest
+   * representation of "not verifiable" rather than a silent pass.
+   *
+   * Refused rather than ignored: besides a bad signature, this is the one case where an
+   * event is stored, deliberately left unapplied, and surfaced for an operator to look at.
+   */
+  if (event.amount) {
+    const expected = payment.amount;
+    const sameCurrency = event.amount.currencyCode.toUpperCase() === expected.currencyCode.toUpperCase();
+    // The same epsilon the refund path uses — these are floats by the time they arrive, and
+    // an exact `===` would reject a legitimate 39.90 for being 39.900000000000006.
+    const sameAmount = Math.abs(event.amount.amount - expected.amount) < 0.005;
+
+    if (!sameCurrency || !sameAmount) {
+      const message =
+        "Webhook amount " +
+        `${event.amount.amount} ${event.amount.currencyCode}` +
+        " does not match the expected " +
+        `${expected.amount} ${expected.currencyCode}` +
+        ".";
+      await prisma.paymentWebhookEvent.update({
+        where: { id: stored.id },
+        data: { processingStatus: "failed", errorMessage: message, processedAt: new Date() },
+      });
+      logger.error("Refused a webhook whose amount disagreed with the payment", undefined, {
+        provider: providerId,
+        eventId,
+        eventType,
+        paymentId: payment.id,
+        reportedAmount: event.amount,
+        expectedAmount: expected,
+      });
+      return { status: "failed", message };
+    }
+  } else {
+    logger.warn("Webhook carried no amount to verify against the payment", {
+      provider: providerId,
+      eventId,
+      eventType,
+      paymentId: payment.id,
+    });
   }
 
   await recordTransaction(payment.id, {

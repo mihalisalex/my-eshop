@@ -22,8 +22,8 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 | Severity | Total | Open | Done |
 |---|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 |
-| P1 — Launch blocker | 3 | 2 | 1 |
-| P2 — Medium | 9 | 6 | 3 |
+| P1 — Launch blocker | 3 | 0 | 3 |
+| P2 — Medium | 9 | 5 | 4 |
 | P3 — Low | 6 | 5 | 1 |
 | INFO | 5 | — | — |
 
@@ -60,7 +60,7 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 
 ---
 
-## [ ] TEST-001 · The stateful commerce core has zero tests
+## [x] TEST-001 · The stateful commerce core has zero tests
 
 **Category:** Testing
 **Location:** `services/checkout.ts`, `services/payments.ts`, `services/orders.ts`, `services/carts.ts`, `services/customers.ts` — no test file for any
@@ -79,11 +79,11 @@ The most valuable engineering in this repo — the conditional-`UPDATE` oversell
 **Verify.** Each test must fail if its guard is removed. Confirm by temporarily reverting the guard.
 
 **Risk of change:** None to production code.
-**Fixed:** _pending_
+**Fixed:** Phase 2 — `services/concurrency-guards.test.ts` pins the DB semantics all three guards rest on, running against the real **pooled** connection. Verified the guard survives PgBouncer transaction mode, which was an open question. Full end-to-end `completeCheckout` coverage still wants a dedicated test database (see Deferred).
 
 ---
 
-## [ ] PAY-001 · Webhook does not verify amount or currency ← hard gate for card payments
+## [x] PAY-001 · Webhook does not verify amount or currency ← hard gate for card payments
 
 **Category:** Payments
 **Location:** `services/payments.ts:866-884` — `handleProviderWebhook` → `applyStatus`
@@ -109,7 +109,7 @@ await applyStatus(payment, {
 **Verify.** Unit test: signature-valid event with amount ≠ payment amount must not reach `succeeded`.
 
 **Risk of change:** Low, but must not break providers that omit amount — treat absent as "no assertion possible" and log it.
-**Fixed:** _pending_
+**Fixed:** Phase 2 — `NormalizedWebhookEvent.amount` added, populated from Stripe, enforced centrally in `handleProviderWebhook` before `applyStatus`. Mismatch is stored, refused and logged; an absent amount is recorded as unverifiable rather than passed silently.
 
 ---
 
@@ -181,7 +181,7 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 
 ---
 
-## [ ] PAY-002 · Refund read-check-write race
+## [x] PAY-002 · Refund read-check-write race
 
 **Location:** `services/payments.ts:705-730` — `refundPayment`
 **Confidence:** Confirmed (theoretical race; narrow window)
@@ -194,7 +194,7 @@ Narrow (admin-only, requires a double-submit) and the provider may reject the du
 `updateMany({ where: { id, refundedAmount: { lte: amount.amount - requested } }, … })` and treat `count === 0` as a conflict.
 
 **Verify.** Two simultaneous refund calls for the full amount → exactly one succeeds.
-**Fixed:** _pending_
+**Fixed:** Phase 2 — the amount is now claimed with a conditional UPDATE *before* the provider is called, and released if the provider throws. Guarding on the way out would not have helped: by then the money has already moved.
 
 ---
 
@@ -371,4 +371,5 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 | Date | Change | Commit |
 |---|---|---|
 | 2026-09-03 | Initial audit against `be0d546` | `744d702` |
-| 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | _this commit_ |
+| 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | `782d243` |
+| 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 fixed | _this commit_ |

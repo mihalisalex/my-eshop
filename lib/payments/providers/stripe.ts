@@ -537,6 +537,18 @@ export function normalizeStripeEvent(event: StripeEventEnvelope, config: Resolve
   const eventType = event.type ?? "unknown";
   const occurredAt = event.created ? new Date(event.created * 1000).toISOString() : undefined;
 
+  /**
+   * The settled amount, where the object states one — checked against our own Payment row
+   * by services/payments.ts (PAY-001). Left undefined rather than defaulted to 0 when the
+   * object has no amount: 0 would read as a real figure and fail every comparison.
+   */
+  const currencyCode = typeof object.currency === "string" ? object.currency.toUpperCase() : "EUR";
+  const settledMinor = object.amount_received ?? object.amount_total ?? object.amount;
+  const amount =
+    typeof settledMinor === "number" && Number.isFinite(settledMinor)
+      ? { amount: fromStripeAmount(settledMinor, currencyCode), currencyCode }
+      : undefined;
+
   const base = {
     eventId,
     eventType,
@@ -556,6 +568,7 @@ export function normalizeStripeEvent(event: StripeEventEnvelope, config: Resolve
         ...base,
         externalPaymentId: intentId,
         status: isPaid ? "paid" : "processing",
+        amount,
       };
     }
     case "checkout.session.async_payment_failed":
@@ -572,7 +585,7 @@ export function normalizeStripeEvent(event: StripeEventEnvelope, config: Resolve
         status: "expired",
       };
     case "payment_intent.succeeded":
-      return { ...base, externalPaymentId: (object.id as string) ?? null, status: "paid" };
+      return { ...base, externalPaymentId: (object.id as string) ?? null, status: "paid", amount };
     case "payment_intent.processing":
       return { ...base, externalPaymentId: (object.id as string) ?? null, status: "processing" };
     case "payment_intent.requires_action":

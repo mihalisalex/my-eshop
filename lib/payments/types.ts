@@ -364,6 +364,16 @@ export interface NormalizedWebhookEvent {
   externalPaymentId: string | null;
   status: PaymentStatus | null;
   failureReason?: string;
+  /**
+   * What the provider says was actually settled, where its payload states it.
+   *
+   * services/payments.ts refuses to apply an event whose amount disagrees with the
+   * Payment row it resolved to (PAY-001) — a signature only proves the provider sent
+   * the message, never that it concerns the sum we expected to charge. Optional because
+   * not every provider or event type carries one; absent means "no assertion possible",
+   * which is recorded rather than silently treated as agreement.
+   */
+  amount?: Money;
   refundedAmount?: Money;
   occurredAt?: string;
   ignored?: boolean;

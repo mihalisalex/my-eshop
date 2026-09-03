@@ -218,3 +218,46 @@ describe("Stripe configuration", () => {
     ).rejects.toThrow(PaymentWebhookVerificationError);
   });
 });
+
+describe("settled amount is normalized for verification (PAY-001)", () => {
+  const cfg = config();
+
+  /**
+   * services/payments.ts refuses any event whose amount disagrees with the Payment row.
+   * That check is only as good as the figure the provider layer puts on the event, so
+   * these pin the extraction rather than the comparison.
+   */
+  it("reads amount_total from a completed checkout session", () => {
+    const event = normalizeStripeEvent(
+      {
+        id: "evt_amt_1",
+        type: "checkout.session.completed",
+        data: { object: { payment_intent: "pi_a", payment_status: "paid", currency: "eur", amount_total: 3990 } },
+      },
+      cfg
+    );
+    expect(event.amount).toEqual({ amount: 39.9, currencyCode: "EUR" });
+  });
+
+  it("prefers amount_received on a succeeded payment intent — what was actually captured", () => {
+    const event = normalizeStripeEvent(
+      {
+        id: "evt_amt_2",
+        type: "payment_intent.succeeded",
+        data: { object: { id: "pi_b", currency: "eur", amount: 9900, amount_received: 4500 } },
+      },
+      cfg
+    );
+    expect(event.amount).toEqual({ amount: 45, currencyCode: "EUR" });
+  });
+
+  it("leaves the amount undefined when the object states none", () => {
+    // Undefined means "not verifiable" and is recorded as such. A defaulted 0 would read
+    // as a real figure and fail every comparison it was put through.
+    const event = normalizeStripeEvent(
+      { id: "evt_amt_3", type: "payment_intent.succeeded", data: { object: { id: "pi_c" } } },
+      cfg
+    );
+    expect(event.amount).toBeUndefined();
+  });
+});

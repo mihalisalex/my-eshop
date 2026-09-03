@@ -13,6 +13,13 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
+    /**
+     * Loads .env so tests that talk to the real database (services/concurrency-guards.test.ts)
+     * can find DATABASE_URL. Vitest does not read .env on its own, and without this those
+     * tests SKIP rather than fail — the worst outcome, since a skipped guard test looks
+     * exactly like a passing one in the summary.
+     */
+    setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.ts"],
     exclude: ["**/node_modules/**"],
   },
