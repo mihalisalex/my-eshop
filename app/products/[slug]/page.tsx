@@ -130,7 +130,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <div>
             <div className="lg:sticky lg:top-[132px]">
-              <PurchasePanel product={product} rates={shippingRates} />
+              <PurchasePanel
+                product={product}
+                // Same string the breadcrumb above shows — both come from one localized
+                // read of the category, so they cannot say two different things about what
+                // this product is. Falls back to the raw slug ("gynaikeia-loafers") only
+                // when the category itself could not be resolved.
+                categoryName={category ? localizeCategory(category, locale as Locale).name : product.category}
+                rates={shippingRates}
+              />
             </div>
           </div>
         </div>

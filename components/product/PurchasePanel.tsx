@@ -26,6 +26,13 @@ import type { ShippingRate } from "@/lib/commerce/types";
 
 interface PurchasePanelProps {
   product: Product;
+  /**
+   * The category's real, localised name («Γυναικεία Loafers») — the same string the
+   * breadcrumb above the gallery shows. Falls back to the raw slug only when the product's
+   * category could not be resolved, the one case the breadcrumb silently drops the crumb
+   * for instead.
+   */
+  categoryName: string;
   /** Only the rates a shopper can actually pick — see services/shipping.ts. */
   rates: ShippingRate[];
 }
@@ -39,7 +46,7 @@ const BADGE_STYLES: Record<string, string> = {
   bestseller: "bg-luxe-gray-light text-luxe-black",
 };
 
-export function PurchasePanel({ product, rates }: PurchasePanelProps) {
+export function PurchasePanel({ product, categoryName, rates }: PurchasePanelProps) {
   const t = useTranslations("Pdp");
   const tBadge = useTranslations("ProductBadge");
   const { addItem, isMutating } = useCart();
@@ -90,7 +97,7 @@ export function PurchasePanel({ product, rates }: PurchasePanelProps) {
 
   return (
     <div className="flex flex-col">
-      <p className="text-eyebrow">{product.category}</p>
+      <p className="text-eyebrow">{categoryName}</p>
       <h1 className="font-heading mt-2 text-3xl md:text-4xl">{product.name}</h1>
 
       {/* Quoted in every phone call and every Instagram DM about a pair, and until now it
