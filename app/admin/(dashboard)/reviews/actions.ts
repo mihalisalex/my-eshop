@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/admin-session";
 import { prisma } from "@/lib/prisma";
-import { setReviewStatus } from "@/services/reviews";
+import { deleteReview, setReviewStatus } from "@/services/reviews";
 
 export interface ReviewActionState {
   error?: string;
@@ -37,4 +37,28 @@ export async function approveReview(id: string): Promise<ReviewActionState> {
 
 export async function rejectReview(id: string): Promise<ReviewActionState> {
   return decide(id, "rejected");
+}
+
+/**
+ * Removes a review outright — the one action available on every review regardless of
+ * status, not only pending ones. Rejecting an already-approved review would also do the
+ * job of taking it off the storefront, but this is for when an owner wants it actually
+ * gone, not just hidden and kept on record.
+ *
+ * Same read-slug-before-write shape as `decide` above, for the same reason: the storefront
+ * page has to be rebuilt so a deleted review does not linger in a cached render.
+ */
+export async function deleteReviewAction(id: string): Promise<ReviewActionState> {
+  await requireCapability("content:reviews");
+
+  const review = await prisma.productReview.findUnique({
+    where: { id },
+    select: { product: { select: { slug: true } } },
+  });
+  if (!review) return { error: "That review no longer exists." };
+
+  await deleteReview(id);
+  revalidatePath(`/products/${review.product.slug}`);
+  revalidatePath("/admin/reviews");
+  return {};
 }

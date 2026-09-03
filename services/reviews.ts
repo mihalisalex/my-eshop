@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { cartLineItemSchema } from "@/lib/validation/commerce";
+import { resolvePage, toPaged, type Paged } from "@/lib/pagination";
 import type { Review } from "@/types";
 import type { ProductReview } from "@/lib/generated/prisma/client";
 
@@ -170,26 +171,58 @@ export async function hasReviewed(productId: string, email: string): Promise<boo
 // Admin
 // ---------------------------------------------------------------------------
 
-export interface PendingReview extends Review {
+export type AdminReviewStatus = "pending" | "approved" | "rejected";
+
+/** Offered by the admin's status filter, in the order a merchant thinks about them: what
+ *  needs a decision, what shoppers currently see, what got turned away. */
+export const REVIEW_STATUS_FILTERS: AdminReviewStatus[] = ["pending", "approved", "rejected"];
+
+export interface AdminReview extends Review {
   authorEmail: string;
+  status: AdminReviewStatus;
   productName: string;
   productSlug: string;
 }
 
-/** The moderation queue: everything awaiting a decision, oldest first. */
-export async function getPendingReviews(): Promise<PendingReview[]> {
+export interface AdminReviewQuery {
+  status?: AdminReviewStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+/**
+ * Every review, for the admin to browse and act on — not only the ones awaiting a
+ * decision. An approved review is live the moment a verified purchaser writes it (see
+ * createReview above), so it never passes through this page's old "pending queue" at all;
+ * without a way to see it here afterward, there was no way to remove one an owner disliked
+ * short of a raw SQL delete.
+ *
+ * Newest first regardless of status — an owner scanning for something to act on thinks in
+ * "what came in recently", not in status order.
+ */
+export async function listReviewsForAdmin(query: AdminReviewQuery = {}): Promise<Paged<AdminReview>> {
+  const pageSize = query.pageSize ?? 25;
+  const where = query.status ? { status: query.status } : {};
+
+  const total = await prisma.productReview.count({ where });
+  const { page, skip, take } = resolvePage(total, { page: query.page ?? 1, pageSize });
   const rows = await prisma.productReview.findMany({
-    where: { status: "pending" },
-    orderBy: { createdAt: "asc" },
+    where,
+    orderBy: { createdAt: "desc" },
+    skip,
+    take,
     include: { product: { select: { name: true, slug: true } } },
   });
 
-  return rows.map((row) => ({
+  const reviews = rows.map((row) => ({
     ...toReview(row),
     authorEmail: row.authorEmail,
+    status: row.status,
     productName: row.product.name,
     productSlug: row.product.slug,
   }));
+
+  return toPaged(reviews, total, page, pageSize);
 }
 
 export async function setReviewStatus(id: string, status: "approved" | "rejected"): Promise<void> {
@@ -197,4 +230,17 @@ export async function setReviewStatus(id: string, status: "approved" | "rejected
     where: { id },
     data: { status, approvedAt: status === "approved" ? new Date() : null },
   });
+}
+
+/**
+ * Permanent removal, distinct from rejecting.
+ *
+ * Rejecting keeps the row so the same email writing the same thing again is recognisable
+ * as a repeat; this is for when an owner wants it actually gone — spam, something
+ * defamatory, or simply a review they no longer want on the record at all. `onDelete:
+ * Cascade` on ProductReview.product is the other direction of this relationship: deleting
+ * a PRODUCT takes its reviews with it. This is the one that deletes a review on its own.
+ */
+export async function deleteReview(id: string): Promise<void> {
+  await prisma.productReview.delete({ where: { id } });
 }
