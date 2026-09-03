@@ -23,7 +23,7 @@ What blocks launch is not the code. It is that **you cannot see it fail** (no er
 |---|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | 3 |
-| P2 — Medium | 9 | 2 | 7 |
+| P2 — Medium | 9 | 1 | 8 |
 | P3 — Low | 6 | 5 | 1 |
 | INFO | 5 | — | — |
 
@@ -115,7 +115,7 @@ await applyStatus(payment, {
 
 # P2 — Medium
 
-## [ ] SEC-001 · Unauthenticated checkout PATCH returns full PII and permits address overwrite
+## [x] SEC-001 · Unauthenticated checkout PATCH returns full PII and permits address overwrite
 
 **Location:** `app/api/checkout/[checkoutId]/route.ts`
 **Confidence:** Confirmed
@@ -129,7 +129,7 @@ Holding a `checkoutId` lets anyone PATCH a trivial field (`{"giftWrap": false}`)
 **Verify.** PATCH with a valid id but no cookie → 403. Existing checkout flow still completes end to end.
 
 **Risk of change:** Medium — touches the live checkout flow. Test the full purchase path after.
-**Fixed:** _pending_
+**Fixed:** Phase 3 — `lib/checkout-access.ts`, a signed httpOnly grant issued when the checkout is created and required by both PATCH and `/complete`. Answers 404 rather than 403, so an id nobody may touch is indistinguishable from one that does not exist. Response shape deliberately left alone: the client legitimately renders those fields, and narrowing it would risk the live checkout for no security gain once the grant is in place.
 
 ---
 
@@ -373,4 +373,5 @@ Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates ev
 | 2026-09-03 | Initial audit against `be0d546` | `744d702` |
 | 2026-09-03 | Phase 1: SEC-004, SEC-002, AUTH-002, LOG-001 fixed; OBS-001 partial | `782d243` |
 | 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 fixed | `c731ab0` |
-| 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 fixed | _this commit_ |
+| 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 fixed | `493ae9c` |
+| 2026-09-04 | Phase 3: SEC-001 fixed — Phase 3 complete | _this commit_ |

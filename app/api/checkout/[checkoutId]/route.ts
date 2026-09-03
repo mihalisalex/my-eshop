@@ -3,6 +3,7 @@ import { setGiftWrap, setPaymentMethod, setShippingRate, updateBillingAddress, u
 import { commerceErrorResponse, invalidInputResponse, rateLimitedResponse } from "@/lib/commerce/http-errors";
 import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { addressSchema, contactSchema } from "@/lib/validation/checkout";
+import { canAccessCheckout } from "@/lib/checkout-access";
 import type { Checkout } from "@/lib/commerce/types";
 
 /**
@@ -13,10 +14,10 @@ import type { Checkout } from "@/lib/commerce/types";
  */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ checkoutId: string }> }) {
   try {
-    // Unauthenticated by design (checkoutId is a capability token, same as cart id) —
-    // rate-limited by IP to bound abuse rather than by identity. Generous: a real
-    // shopper legitimately calls this several times walking through contact/shipping/
-    // billing/delivery, plus edits.
+    // Rate-limited by IP as well as gated by the grant below — the limit bounds how fast
+    // an unauthorized caller can probe, the grant decides whether they get anything.
+    // Generous, because a real shopper legitimately calls this several times walking
+    // through contact/shipping/billing/delivery, plus edits.
     const ip = getClientIp(request.headers);
     const key = `checkout-patch:ip:${ip}`;
     const limit = await isRateLimited({ key, limit: 60, windowMs: 10 * 60 * 1000 });
@@ -24,6 +25,25 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     await recordAttempt(key);
 
     const { checkoutId } = await params;
+
+    /**
+     * The id alone is no longer authority (SEC-001).
+     *
+     * This endpoint returns the whole checkout — email, phone, shipping and billing
+     * address — and can overwrite the delivery address on it. Holding the id used to be
+     * enough for both. The grant cookie is set when the checkout is created, so the browser
+     * that started it is unaffected and nothing about the client flow changes.
+     *
+     * 404, not 403: a checkout somebody may not touch should be indistinguishable from one
+     * that does not exist, or the response becomes an oracle confirming which ids are real.
+     */
+    if (!(await canAccessCheckout(checkoutId))) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "Checkout not found." } },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate every provided field up front, before applying any of them — otherwise

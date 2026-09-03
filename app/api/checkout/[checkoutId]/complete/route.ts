@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { completeCheckout } from "@/services/checkout";
 import { grantOrderAccess } from "@/lib/order-access-cookie";
+import { canAccessCheckout } from "@/lib/checkout-access";
 import { commerceErrorResponse } from "@/lib/commerce/http-errors";
 
 /**
@@ -19,6 +20,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (limited) return limited;
 
     const { checkoutId } = await params;
+
+    // Same grant as the PATCH above (SEC-001). This is the endpoint that decrements stock,
+    // debits gift cards and starts a payment, so a stranger holding an id must not reach it.
+    if (!(await canAccessCheckout(checkoutId))) {
+      return NextResponse.json({ error: { code: "NOT_FOUND", message: "Checkout not found." } }, { status: 404 });
+    }
+
     // `payment`/`customerAction` are provider-agnostic by construction — the client
     // learns "redirect here" or "show these instructions", never which vendor is
     // behind them. See CompleteCheckoutResult in lib/commerce/types.ts.
