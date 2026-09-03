@@ -386,6 +386,43 @@ export function generateProductDescription(input: {
 }
 
 /**
+ * Alt text for a product's photographs.
+ *
+ * The imported values were WooCommerce boilerplate: the full product name including its
+ * code, then the same again with ", view 2" appended. What this writes instead is the
+ * product described — colour and style from the name, material where the description
+ * states it, brand where there is one — with the code removed.
+ *
+ * What it deliberately does NOT do is say what each photograph SHOWS. "Πλάγια όψη" and the
+ * like would be invented: nobody has looked at these images, and alt text that describes
+ * the wrong thing is worse for a blind user than alt text that is merely unambitious.
+ *
+ * Shared by the bulk script and the admin image manager, so a photo added today is
+ * described the same way as the 175 already in the catalogue.
+ */
+export function composeImageAlt(input: {
+  /** Already cleaned — pass `cleanProductTitle(name)`, not the raw name. */
+  title: string;
+  brand?: string | null;
+  materials?: string[];
+  index: number;
+}): string {
+  const descriptor = [
+    input.brand && !input.title.toLowerCase().includes(input.brand.toLowerCase()) ? input.brand : null,
+    input.title,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const material = input.materials?.length ? ` — ${input.materials.join(" / ")}` : "";
+  const base = `${descriptor}${material}`;
+
+  // The first photograph needs no number; the rest do, so a screen reader can tell them
+  // apart. An index above zero is itself the proof that there is more than one.
+  return input.index > 0 ? `${base} (φωτογραφία ${input.index + 1})` : base;
+}
+
+/**
  * Everything the "Generate" button needs, from the values already on the form.
  *
  * Returns both fields together because they are one decision: a title with the stock code

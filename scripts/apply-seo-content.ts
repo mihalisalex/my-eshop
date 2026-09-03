@@ -37,6 +37,7 @@ import { detectBrand } from "../lib/seo/brands";
 import {
   CATEGORY_LABEL,
   cleanProductTitle,
+  composeImageAlt,
   composeProductDescription,
   extractHeel,
   extractMaterials,
@@ -128,39 +129,6 @@ function extractTags(name: string, description: string, materials: string[]): st
     if (tag) tags.add(tag);
   }
   return [...tags];
-}
-
-/**
- * Alt text for a product's photographs.
- *
- * The imported values are WooCommerce boilerplate: the full product name including its
- * code, then the same again with ", view 2" appended. What this writes instead is the
- * product described — colour and style from the name, material where the description
- * states it, brand where there is one — with the code removed.
- *
- * What it deliberately does NOT do is say what each photograph SHOWS. "Πλάγια όψη" and the
- * like would be invented: nobody has looked at these images, and alt text that describes
- * the wrong thing is worse for a blind user than alt text that is merely unambitious.
- */
-function composeAlt(input: {
-  title: string;
-  brand: string | null;
-  materials: string[];
-  index: number;
-  total: number;
-}): string {
-  const descriptor = [
-    input.brand && !input.title.toLowerCase().includes(input.brand.toLowerCase()) ? input.brand : null,
-    input.title,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const material = input.materials.length ? ` — ${input.materials.join(" / ")}` : "";
-  const base = `${descriptor}${material}`;
-
-  // A single photograph needs no number; several do, so a screen reader can tell them apart.
-  return input.total > 1 && input.index > 0 ? `${base} (φωτογραφία ${input.index + 1})` : base;
 }
 
 
@@ -442,7 +410,7 @@ async function applyProducts() {
 
     const nextImages = images.map((image, index) =>
       boilerplate(image.alt ?? "")
-        ? { ...image, alt: composeAlt({ title, brand, materials, index, total: images.length }) }
+        ? { ...image, alt: composeImageAlt({ title, brand, materials, index }) }
         : image
     );
     const altChanged = JSON.stringify(images) !== JSON.stringify(nextImages);

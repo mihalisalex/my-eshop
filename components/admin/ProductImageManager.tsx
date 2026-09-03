@@ -1,10 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useFieldArray, useWatch, type Control, type FieldErrors, type UseFormRegister } from "react-hook-form";
+import {
+  useFieldArray,
+  useWatch,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+} from "react-hook-form";
 import { ImageUp, Link2, Star, X } from "lucide-react";
 import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
+import { cleanProductTitle, composeImageAlt, extractMaterials } from "@/lib/seo/product-content";
+import { detectBrand } from "@/lib/seo/brands";
 import type { ProductFormValues } from "@/lib/validation/product";
 
 /**
@@ -27,17 +36,82 @@ import type { ProductFormValues } from "@/lib/validation/product";
 interface ProductImageManagerProps {
   control: Control<ProductFormValues>;
   register: UseFormRegister<ProductFormValues>;
+  setValue: UseFormSetValue<ProductFormValues>;
   /** The whole `images` branch, so a rejected alt text can be shown ON the photo it
    *  belongs to rather than only as an array-level message with no home. */
   errors?: FieldErrors<ProductFormValues>["images"];
 }
 
-export function ProductImageManager({ control, register, errors }: ProductImageManagerProps) {
+export function ProductImageManager({ control, register, setValue, errors }: ProductImageManagerProps) {
   const { fields, append, remove, move, replace } = useFieldArray({ control, name: "images" });
   // The rendered thumbnails follow the live values, not `fields` — `fields` is a snapshot
   // taken when the array changes, so a URL typed into the fallback input below would never
   // show a preview.
   const images = useWatch({ control, name: "images" }) ?? [];
+
+  /**
+   * Alt text is written from the product, not left to be typed.
+   *
+   * It was empty on purpose at first — a description ought to be considered, and 175
+   * imported products carried alt text that merely repeated their own name. But required
+   * and empty is a trap: the form refuses to save and the reason sits under a thumbnail
+   * nobody has scrolled to. Composed alt text at least describes the shoe (its colour,
+   * style, material and brand, with the stock code stripped), which is more than the
+   * WooCommerce boilerplate it replaces, and it stays editable.
+   *
+   * `composeImageAlt` is the same function the bulk script used, so a photo added today is
+   * described the way the existing catalogue is.
+   */
+  const [productName, productDescription] = useWatch({ control, name: ["name", "description"] });
+
+  function altFor(index: number): string {
+    const name = productName?.trim();
+    if (!name) return "";
+    return composeImageAlt({
+      title: cleanProductTitle(name),
+      brand: detectBrand(name),
+      materials: extractMaterials(`${name} ${productDescription ?? ""}`),
+      index,
+    });
+  }
+
+  /**
+   * What this component last wrote into each alt field.
+   *
+   * Alt text is free prose, so there is no pattern that says "this was generated" the way a
+   * size SKU can be recognised from its shape. Remembering what was written is the
+   * equivalent: an alt still equal to the last derived value is ours to update, anything
+   * else was typed by a person and is left alone.
+   *
+   * Empty at mount, which is what protects the 175 imported products — their stored alt text
+   * was never written by this component, so it is never treated as ours.
+   */
+  const lastDerivedAlt = useRef<Record<number, string>>({});
+
+  /**
+   * Keeps alt text in step with the product name: fills it in when it is blank, and
+   * rewrites it when the name changes under a value this component itself put there.
+   *
+   * An effect rather than something that only happens at upload, because photographs are
+   * usually dropped in before the name is typed. Writing only when the value actually
+   * differs is what keeps it from looping through `images`.
+   */
+  useEffect(() => {
+    images.forEach((image, index) => {
+      if (!image?.src?.trim()) return;
+
+      const current = image.alt ?? "";
+      const isOurs = !current.trim() || current === lastDerivedAlt.current[index];
+      if (!isOurs) return;
+
+      const derived = altFor(index);
+      if (!derived || derived === current) return;
+
+      lastDerivedAlt.current[index] = derived;
+      setValue(`images.${index}.alt`, derived, { shouldValidate: false });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- altFor is derived from these.
+  }, [images, productName, productDescription, setValue]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -59,13 +133,15 @@ export function ProductImageManager({ control, register, errors }: ProductImageM
       return;
     }
 
-    /**
-     * Alt text is left EMPTY rather than pre-filled with the filename. A filename is not a
-     * description, and a pre-filled one reads as already done — which is how 175 products
-     * ended up with alt text that merely repeated their own name. The field below asks for
-     * it explicitly instead, and the form will not save until it is answered.
-     */
-    const uploaded = result.media.map((media) => ({ src: media.url, alt: "" }));
+    // Alt text is composed here rather than after the fact, so a new thumbnail never
+    // appears with an empty box under it. See altFor above.
+    const kept = images.filter((image) => image.src?.trim());
+    const uploaded = result.media.map((media, offset) => {
+      const index = kept.length + offset;
+      const alt = altFor(index);
+      lastDerivedAlt.current[index] = alt;
+      return { src: media.url, alt };
+    });
 
     /**
      * `replace`, not `append`: a new product starts with one blank row from
@@ -77,7 +153,7 @@ export function ProductImageManager({ control, register, errors }: ProductImageM
      * there doing nothing. Dropping empty rows as soon as a real image arrives is what
      * makes the visible state and the validated state the same state.
      */
-    replace([...images.filter((image) => image.src?.trim()), ...uploaded]);
+    replace([...kept, ...uploaded]);
 
     if (inputRef.current) inputRef.current.value = "";
   }

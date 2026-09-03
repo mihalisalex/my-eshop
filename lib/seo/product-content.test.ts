@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cleanProductTitle,
+  composeImageAlt,
   detectColour,
   detectStyle,
   extractHeel,
@@ -168,6 +169,44 @@ describe("generateProductDescription", () => {
     const sneaker = generateProductDescription({ name: "Μαύρο sneaker", sizes: [] });
     const sandal = generateProductDescription({ name: "Μαύρο πέδιλο", sizes: [] });
     expect(sneaker).not.toEqual(sandal);
+  });
+});
+
+describe("composeImageAlt", () => {
+  it("describes the shoe, without the stock code", () => {
+    const alt = composeImageAlt({
+      title: cleanProductTitle("Μπεζ δίσολα sneaker με ανατομικό πάτο - κωδικός 9181"),
+      materials: ["Οικολογικό δέρμα"],
+      index: 0,
+    });
+    expect(alt).toBe("Μπεζ δίσολα sneaker με ανατομικό πάτο — Οικολογικό δέρμα");
+    expect(alt).not.toContain("9181");
+  });
+
+  it("numbers the later photographs so a screen reader can tell them apart", () => {
+    const title = "Πέδιλο με μπαρέτα σε χρώμα λευκό";
+    expect(composeImageAlt({ title, index: 0 })).toBe(title);
+    expect(composeImageAlt({ title, index: 2 })).toBe(`${title} (φωτογραφία 3)`);
+  });
+
+  it("adds the brand only when the title does not already say it", () => {
+    expect(composeImageAlt({ title: "δερμάτινα loafers", brand: "Mont Martre Paris", index: 0 })).toBe(
+      "Mont Martre Paris δερμάτινα loafers"
+    );
+    expect(composeImageAlt({ title: "Mont Martre Paris loafers", brand: "Mont Martre Paris", index: 0 })).toBe(
+      "Mont Martre Paris loafers"
+    );
+  });
+
+  it("matches what the bulk script already wrote into the catalogue", () => {
+    // These three are real stored values; the admin must not invent a second convention.
+    const title = "Πέδιλα χρυσά με στρας";
+    const materials = ["Οικολογικό δέρμα"];
+    expect([0, 1, 2].map((index) => composeImageAlt({ title, materials, index }))).toEqual([
+      "Πέδιλα χρυσά με στρας — Οικολογικό δέρμα",
+      "Πέδιλα χρυσά με στρας — Οικολογικό δέρμα (φωτογραφία 2)",
+      "Πέδιλα χρυσά με στρας — Οικολογικό δέρμα (φωτογραφία 3)",
+    ]);
   });
 });
 

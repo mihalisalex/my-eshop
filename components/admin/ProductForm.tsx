@@ -479,7 +479,7 @@ export function ProductForm({ defaultValues, collections, categories, seoDefault
         <p className="text-xs text-luxe-gray-dark">
           The first image is the one shown on every listing. Hover another to make it the main one.
         </p>
-        <ProductImageManager control={control} register={register} errors={errors.images} />
+        <ProductImageManager control={control} register={register} setValue={setValue} errors={errors.images} />
       </div>
 
       <div className={sectionClass}>
