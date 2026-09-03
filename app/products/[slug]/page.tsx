@@ -28,6 +28,7 @@ import {
   resolveRenamedProductSlug,
 } from "@/services";
 import { ROUTES } from "@/constants/routes";
+import { getShippingRates } from "@/services/shipping";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -61,7 +62,13 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const [t, tNav] = await Promise.all([getTranslations("Pdp"), getTranslations("Nav")]);
+  // Shipping rates come from the settings the admin edits, so the threshold and the
+  // delivery windows on this page are whatever was last saved rather than literals.
+  const [t, tNav, shippingRates] = await Promise.all([
+    getTranslations("Pdp"),
+    getTranslations("Nav"),
+    getShippingRates(),
+  ]);
   const { slug } = await params;
   const rawProduct = await getProductBySlug(slug);
 
@@ -123,7 +130,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <div>
             <div className="lg:sticky lg:top-[132px]">
-              <PurchasePanel product={product} />
+              <PurchasePanel product={product} rates={shippingRates} />
             </div>
           </div>
         </div>
@@ -131,7 +138,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <div className="container-luxe">
           <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-16">
             <div />
-            <ProductAccordion product={product} />
+            <ProductAccordion product={product} rates={shippingRates} />
           </div>
 
           <ReviewsSection summary={reviewSummary} reviews={reviews} />

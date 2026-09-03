@@ -32,7 +32,7 @@ export function VariantSelector({
           rendered the label as a dangling "COLOR —" above an empty row of swatches. */}
       {product.colors.length > 0 ? (
         <div>
-          <p className="text-eyebrow mb-2">Color — {selectedColor}</p>
+          <p className="text-eyebrow mb-2">{t("color")} — {selectedColor}</p>
           <div className="flex items-center gap-2">
             {product.colors.map((color) => (
               <button

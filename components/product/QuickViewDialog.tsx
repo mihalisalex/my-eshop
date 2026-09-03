@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { getEffectivePrice, isOnSale, isSizePurchasable } from "@/lib/product";
+import { getEffectivePrice, getListPrice, isOnSale, isSizePurchasable } from "@/lib/product";
 import { useCart } from "@/components/providers/CartProvider";
 import type { Product } from "@/types";
 
@@ -45,9 +45,9 @@ export function QuickViewDialog({ product, open, onOpenChange }: QuickViewDialog
             <h2 className="font-heading mt-2 text-2xl">{product.name}</h2>
             <p className="mt-2 text-lg">
               {formatMoney(getEffectivePrice(product))}
-              {isOnSale(product) && product.compareAtPrice ? (
+              {isOnSale(product) ? (
                 <span className="ml-2 text-sm text-luxe-gray-dark line-through">
-                  {formatMoney(product.compareAtPrice)}
+                  {formatMoney(getListPrice(product))}
                 </span>
               ) : null}
             </p>

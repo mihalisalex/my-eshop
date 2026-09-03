@@ -10,7 +10,7 @@ import { QuickViewDialog } from "@/components/product/QuickViewDialog";
 import { QuickAddSheet } from "@/components/product/QuickAddSheet";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { getEffectivePrice, getProductBadges, isOnSale } from "@/lib/product";
+import { getEffectivePrice, getProductBadges, getListPrice, isOnSale } from "@/lib/product";
 import { SHIMMER_BLUR_DATA_URL } from "@/lib/blur-placeholder";
 import { useWishlist } from "@/components/providers/WishlistProvider";
 import type { Product } from "@/types";
@@ -122,8 +122,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
         </Link>
         <div className="mt-1 flex items-center gap-2 text-sm">
           <span className={isOnSale(product) ? "text-destructive" : ""}>{formatMoney(effectivePrice)}</span>
-          {isOnSale(product) && product.compareAtPrice ? (
-            <span className="text-luxe-gray-dark line-through">{formatMoney(product.compareAtPrice)}</span>
+          {isOnSale(product) ? (
+            <span className="text-luxe-gray-dark line-through">{formatMoney(getListPrice(product))}</span>
           ) : null}
         </div>
         <ColorSwatches colors={product.colors} className="mt-2" />

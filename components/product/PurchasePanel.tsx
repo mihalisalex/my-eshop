@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import {
   findSizeVariant,
   getEffectivePrice,
+  getListPrice,
   getProductBadges,
   isOnSale,
 } from "@/lib/product";
-import { getDeliveryEstimate } from "@/lib/delivery";
+import { getDeliveryEstimate, parseDeliveryWindow } from "@/lib/delivery";
 import { suggestSize } from "@/lib/fit-recommendation";
 import { VariantSelector } from "@/components/product/VariantSelector";
 import { SizeGuideDialog } from "@/components/product/SizeGuideDialog";
@@ -21,9 +22,12 @@ import { useWishlist } from "@/components/providers/WishlistProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { getCommerceProvider } from "@/lib/commerce";
 import type { Product } from "@/types";
+import type { ShippingRate } from "@/lib/commerce/types";
 
 interface PurchasePanelProps {
   product: Product;
+  /** Only the rates a shopper can actually pick — see services/shipping.ts. */
+  rates: ShippingRate[];
 }
 
 const BADGE_STYLES: Record<string, string> = {
@@ -35,7 +39,7 @@ const BADGE_STYLES: Record<string, string> = {
   bestseller: "bg-luxe-gray-light text-luxe-black",
 };
 
-export function PurchasePanel({ product }: PurchasePanelProps) {
+export function PurchasePanel({ product, rates }: PurchasePanelProps) {
   const t = useTranslations("Pdp");
   const tBadge = useTranslations("ProductBadge");
   const { addItem, isMutating } = useCart();
@@ -69,10 +73,33 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
 
   const canAdd = product.availableForSale && Boolean(selectedSize) && !isMutating;
 
+  /**
+   * The threshold and the arrival window both come from the shipping settings now. This
+   * line used to read "Free standard shipping over €150" as literal text while the
+   * announcement bar directly above it, which does read the settings, said 100.
+   */
+  const defaultRate = rates[0];
+  // As Money, not a bare number: formatMoney renders the currency, and the threshold is
+  // denominated in whatever the rate it belongs to is priced in.
+  const freeShippingRate = rates.find((rate) => rate.freeOverAmount != null);
+  const freeOver = freeShippingRate?.freeOverAmount != null
+    ? { amount: freeShippingRate.freeOverAmount, currencyCode: freeShippingRate.price.currencyCode }
+    : null;
+  const window = defaultRate ? parseDeliveryWindow(defaultRate.estimatedDelivery) : null;
+  const arrival = window ? getDeliveryEstimate(window[0], window[1]) : defaultRate?.estimatedDelivery;
+
   return (
     <div className="flex flex-col">
       <p className="text-eyebrow">{product.category}</p>
       <h1 className="font-heading mt-2 text-3xl md:text-4xl">{product.name}</h1>
+
+      {/* Quoted in every phone call and every Instagram DM about a pair, and until now it
+          was visible only in the admin. */}
+      {product.sku ? (
+        <p className="mt-2 text-xs tracking-[0.05em] text-luxe-gray-dark">
+          {t("sku")}: <span className="text-luxe-black">{product.sku}</span>
+        </p>
+      ) : null}
 
       {badges.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -89,8 +116,8 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
 
       <p className="mt-4 text-xl">
         {formatMoney(effectivePrice)}
-        {isOnSale(product) && product.compareAtPrice ? (
-          <span className="ml-2 text-sm text-luxe-gray-dark line-through">{formatMoney(product.compareAtPrice)}</span>
+        {isOnSale(product) ? (
+          <span className="ml-2 text-sm text-luxe-gray-dark line-through">{formatMoney(getListPrice(product))}</span>
         ) : null}
       </p>
 
@@ -169,7 +196,13 @@ export function PurchasePanel({ product }: PurchasePanelProps) {
       <div className="mt-6 flex items-start gap-2 border-t border-border pt-4 text-sm text-luxe-gray-dark">
         <Truck className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
         <span>
-          Free standard shipping over €150 · Arrives <span className="text-luxe-black">{getDeliveryEstimate(3, 5)}</span>
+          {freeOver ? <>{t("freeShippingOver", { amount: formatMoney(freeOver) })} · </> : null}
+          {defaultRate
+            ? t.rich("arrives", {
+                range: arrival,
+                at: (chunks) => <span className="text-luxe-black">{chunks}</span>,
+              })
+            : null}
         </span>
       </div>
 

@@ -5,8 +5,33 @@ export function getEffectivePrice(product: Product): Money {
   return product.salePrice ?? product.price;
 }
 
+/**
+ * The price a discount is measured against — what gets struck through beside the sale price.
+ *
+ * `compareAtPrice` when the shop has set one, otherwise the list `price`. That fallback is
+ * the point: a product discounted by filling in `salePrice` alone is genuinely reduced from
+ * its list price, and there is no reason to make someone retype that same number into a
+ * second field before a shopper is told what they are saving.
+ */
+export function getListPrice(product: Product): Money {
+  return product.compareAtPrice ?? product.price;
+}
+
+/**
+ * On sale when the price actually charged is below the price it is measured against.
+ *
+ * This used to require `compareAtPrice` to be set, which meant a product priced at 65 and
+ * discounted to 45 showed a bare "45 €" — no strike-through, no sale styling, nothing to
+ * say it was reduced at all. 172 of the 173 discounted products carry a compareAtPrice
+ * equal to their list price, so the requirement held by luck; the one entered by hand
+ * without it was silently sold as though 45 were simply its price.
+ */
 export function isOnSale(product: Product): boolean {
-  return Boolean(product.salePrice || product.isSale) && Boolean(product.compareAtPrice);
+  // Tolerant of a missing price rather than throwing on one: this feeds getProductBadges,
+  // and a scarcity badge has no business failing because a price has not loaded.
+  const charged = getEffectivePrice(product)?.amount;
+  const list = getListPrice(product)?.amount;
+  return charged != null && list != null && charged < list;
 }
 
 export interface ProductMargin {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { formatMoney } from "@/lib/format";
-import { getEffectivePrice, isOnSale } from "@/lib/product";
+import { getEffectivePrice, getListPrice, isOnSale } from "@/lib/product";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types";
 
@@ -32,8 +32,8 @@ export function SearchProductResult({ product, active, onNavigate }: SearchProdu
         <p className="truncate text-sm">{product.name}</p>
         <div className="mt-0.5 flex items-center gap-2 text-xs">
           <span className={isOnSale(product) ? "text-destructive" : "text-luxe-gray-dark"}>{formatMoney(effectivePrice)}</span>
-          {isOnSale(product) && product.compareAtPrice ? (
-            <span className="text-luxe-gray-dark line-through">{formatMoney(product.compareAtPrice)}</span>
+          {isOnSale(product) ? (
+            <span className="text-luxe-gray-dark line-through">{formatMoney(getListPrice(product))}</span>
           ) : null}
         </div>
       </div>

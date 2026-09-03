@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getDeliveryEstimate, __testing } from "@/lib/delivery";
+import { getDeliveryEstimate, parseDeliveryWindow, __testing } from "@/lib/delivery";
 
 const { isNonWorkingDay, orthodoxEaster, addBusinessDays } = __testing;
 
@@ -61,6 +61,29 @@ describe("addBusinessDays", () => {
 describe("getDeliveryEstimate", () => {
   it("renders a readable range and never lands on a non-working day", () => {
     const estimate = getDeliveryEstimate(3, 5, day("2026-08-17"));
-    expect(estimate).toMatch(/^[A-Z][a-z]+, [A-Z][a-z]+ \d+ – [A-Z][a-z]+, [A-Z][a-z]+ \d+$/);
+    // Greek, because the storefront is. This asserted the en-US shape, which is how a Greek
+    // shopper came to be told "Arrives Tuesday, September 8" on an otherwise Greek page.
+    expect(estimate).toBe("Πέμπτη 20 Αυγούστου – Δευτέρα 24 Αυγούστου");
+  });
+});
+
+describe("parseDeliveryWindow", () => {
+  it("reads the day range out of a rate's own Greek wording", () => {
+    // These two strings are exactly what the shipping settings hold today.
+    expect(parseDeliveryWindow("3–5 εργάσιμες ημέρες")).toEqual([3, 5]);
+    expect(parseDeliveryWindow("1–2 εργάσιμες ημέρες")).toEqual([1, 2]);
+  });
+
+  it("accepts a plain hyphen as well as an en dash", () => {
+    expect(parseDeliveryWindow("3-5 working days")).toEqual([3, 5]);
+  });
+
+  it("treats a single number as a one-day window", () => {
+    expect(parseDeliveryWindow("2 εργάσιμες ημέρες")).toEqual([2, 2]);
+  });
+
+  it("returns null when there is no number to work from", () => {
+    // The caller then shows the rate's own words rather than inventing dates for it.
+    expect(parseDeliveryWindow("Παράδοση την επόμενη ημέρα")).toBeNull();
   });
 });

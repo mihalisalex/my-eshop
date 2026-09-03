@@ -153,7 +153,7 @@
     "itemsOther": "{count} items",
     "loadFailed": "We couldn't load these products.",
     "tryAgain": "Try again",
-    "noMatches":"No products match your filters.",
+    "noMatches": "No products match your filters.",
     "clearFilters": "Clear filters",
     "gender": "For",
     "allGenders": "All",
@@ -184,7 +184,12 @@
     "color": "Colour",
     "addToBagCta": "Add to bag",
     "selectASize": "Select a size",
-    "viewFullDetails": "View full details"
+    "viewFullDetails": "View full details",
+    "shipping": "Shipping & Delivery",
+    "freeShippingOver": "Free shipping on orders over {amount}",
+    "arrives": "Arrives <at>{range}</at>",
+    "sku": "SKU",
+    "returnsBody": "Free returns within 30 days of delivery. Items must be unworn, unwashed, and with tags attached."
   },
   "Account": {
     "overview": "Overview",

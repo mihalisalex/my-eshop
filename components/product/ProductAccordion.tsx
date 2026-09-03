@@ -4,12 +4,28 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getDeliveryEstimate } from "@/lib/delivery";
+import { getDeliveryEstimate, parseDeliveryWindow } from "@/lib/delivery";
+import { formatMoney } from "@/lib/format";
 import { useTranslations } from "next-intl";
 import type { Product } from "@/types";
+import type { ShippingRate } from "@/lib/commerce/types";
 
 interface ProductAccordionProps {
   product: Product;
+  /** Only the rates a shopper can actually pick — see services/shipping.ts. */
+  rates: ShippingRate[];
+}
+
+/**
+ * Concrete dates where the rate states a day range, its own words where it does not.
+ *
+ * "Παράδοση τη Δευτέρα 8 Σεπτεμβρίου" answers the question a shopper is really asking;
+ * "3–5 εργάσιμες ημέρες" makes them count. But a rate worded without numbers cannot be
+ * turned into dates, and guessing at one would be worse than repeating what it says.
+ */
+function describeArrival(estimate: string): string {
+  const window = parseDeliveryWindow(estimate);
+  return window ? getDeliveryEstimate(window[0], window[1]) : estimate;
 }
 
 const TRIGGER_CLASS =
@@ -30,10 +46,18 @@ const TRIGGER_CLASS =
  * present-and-empty. Shipping and Returns are always shown because they are real store
  * policy rather than per-product data.
  */
-export function ProductAccordion({ product }: ProductAccordionProps) {
+export function ProductAccordion({ product, rates }: ProductAccordionProps) {
   const t = useTranslations("Pdp");
   const hasMaterials = product.materials.length > 0;
   const hasCare = product.careInstructions.length > 0;
+  // The threshold lives on each rate (buildShippingRates folds it in), so it is whatever
+  // the admin last saved rather than a number written into this file.
+  // As Money, not a bare number: formatMoney renders the currency, and the threshold is
+  // denominated in whatever the rate it belongs to is priced in.
+  const freeShippingRate = rates.find((rate) => rate.freeOverAmount != null);
+  const freeOver = freeShippingRate?.freeOverAmount != null
+    ? { amount: freeShippingRate.freeOverAmount, currencyCode: freeShippingRate.price.currencyCode }
+    : null;
 
   return (
     <Accordion className="border-t border-border">
@@ -63,27 +87,33 @@ export function ProductAccordion({ product }: ProductAccordionProps) {
         </AccordionItem>
       ) : null}
 
+      {/*
+        One line per rate the shop actually offers, from the shipping settings.
+        Previously both a "Standard" and an "Express" line were hardcoded, with hardcoded
+        3–5 and 1–2 day windows and a hardcoded €150 threshold — so the page advertised
+        express delivery months after it had been switched off in the admin, and quoted a
+        threshold the announcement bar above it already contradicted.
+      */}
       <AccordionItem value="shipping">
-        <AccordionTrigger className={TRIGGER_CLASS}>Shipping &amp; Delivery</AccordionTrigger>
+        <AccordionTrigger className={TRIGGER_CLASS}>{t("shipping")}</AccordionTrigger>
         <AccordionContent>
-          <p className="text-sm text-luxe-gray-dark">
-            Standard delivery: <span className="text-luxe-black">{getDeliveryEstimate(3, 5)}</span>
-          </p>
-          <p className="mt-1 text-sm text-luxe-gray-dark">
-            Express delivery: <span className="text-luxe-black">{getDeliveryEstimate(1, 2)}</span>
-          </p>
-          <p className="mt-3 text-sm text-luxe-gray-dark">
-            Free standard shipping on orders over €150. Express shipping calculated at checkout.
-          </p>
+          {rates.map((rate) => (
+            <p key={rate.id} className="text-sm text-luxe-gray-dark first:mt-0 mt-1">
+              {rate.label}: <span className="text-luxe-black">{describeArrival(rate.estimatedDelivery)}</span>
+            </p>
+          ))}
+          {freeOver ? (
+            <p className="mt-3 text-sm text-luxe-gray-dark">
+              {t("freeShippingOver", { amount: formatMoney(freeOver) })}
+            </p>
+          ) : null}
         </AccordionContent>
       </AccordionItem>
 
       <AccordionItem value="returns">
         <AccordionTrigger className={TRIGGER_CLASS}>{t("returns")}</AccordionTrigger>
         <AccordionContent>
-          <p className="text-sm text-luxe-gray-dark">
-            Free returns within 30 days of delivery. Items must be unworn, unwashed, and with tags attached.
-          </p>
+          <p className="text-sm text-luxe-gray-dark">{t("returnsBody")}</p>
         </AccordionContent>
       </AccordionItem>
     </Accordion>

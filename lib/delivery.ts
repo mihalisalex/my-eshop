@@ -1,4 +1,30 @@
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" });
+/**
+ * Greek, because the storefront is. This read "en-US", so a Greek shopper was told their
+ * order arrives "Tuesday, September 8" in the middle of an otherwise Greek page.
+ */
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat("el-GR", { weekday: "long", month: "long", day: "numeric" });
+
+/**
+ * The business-day window inside a rate's own estimate text — "3–5 εργάσιμες ημέρες" gives
+ * [3, 5], "1-2 working days" gives [1, 2].
+ *
+ * The delivery window belongs to the shipping settings, where it is editable, rather than
+ * to whichever component happens to be rendering it. Two components had it hardcoded as
+ * `getDeliveryEstimate(3, 5)` and `(1, 2)`, so changing the rates in the admin changed
+ * nothing on the product page.
+ *
+ * Returns null when the text states no range — a rate labelled "Παράδοση την επόμενη
+ * ημέρα" is meaningful to a shopper but not to arithmetic, so the caller shows the text
+ * itself rather than inventing dates for it.
+ */
+export function parseDeliveryWindow(estimate: string): [number, number] | null {
+  const match = estimate.match(/(\d+)\s*[–—-]\s*(\d+)/);
+  if (match) return [Number(match[1]), Number(match[2])];
+
+  // A single number is a window of one day: "2 εργάσιμες ημέρες".
+  const single = estimate.match(/(\d+)/);
+  return single ? [Number(single[1]), Number(single[1])] : null;
+}
 
 /**
  * Greek public holidays, as MM-DD for the fixed ones plus the movable Orthodox Easter

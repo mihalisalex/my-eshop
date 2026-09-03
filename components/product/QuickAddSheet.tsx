@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { getEffectivePrice, isOnSale, isSizePurchasable } from "@/lib/product";
+import { getEffectivePrice, getListPrice, isOnSale, isSizePurchasable } from "@/lib/product";
 import { useCart } from "@/components/providers/CartProvider";
 import type { Product } from "@/types";
 
@@ -84,8 +84,8 @@ export function QuickAddSheet({ product, open, onOpenChange }: QuickAddSheetProp
             <p className="line-clamp-3 text-sm leading-snug">{product.name}</p>
             <div className="mt-2 flex items-center gap-2 text-sm">
               <span className={isOnSale(product) ? "text-destructive" : ""}>{formatMoney(price)}</span>
-              {isOnSale(product) && product.compareAtPrice ? (
-                <span className="text-luxe-gray-dark line-through">{formatMoney(product.compareAtPrice)}</span>
+              {isOnSale(product) ? (
+                <span className="text-luxe-gray-dark line-through">{formatMoney(getListPrice(product))}</span>
               ) : null}
             </div>
             {colorName ? (
