@@ -47,3 +47,6 @@ next-env.d.ts
 .vercel
 .env*
 .preview/
+
+# Temporary local scripts (leading ._) — never part of the app
+._*
