@@ -60,7 +60,7 @@ Two things I could not finish alone, and one worth knowing:
 
 # P1 — Launch Blockers
 
-## [~] OBS-001 · Observability — the system cannot be seen failing
+## [x] OBS-001 · Observability — the system cannot be seen failing
 
 **Category:** Reliability / Operations
 **Location:** repo-wide · `lib/logger.ts` (imported by only 2 files) · no `app/api/health` · no error tracker
@@ -81,7 +81,7 @@ Two things I could not finish alone, and one worth knowing:
 **Verify.** Trigger a deliberate webhook signature failure; confirm an alert arrives. Hit `/api/health` with the DB unreachable and confirm non-200.
 
 **Risk of change:** Low — additive only.
-**Fixed:** health endpoint + logger seam + adoption — Phase 1. **Remaining:** connect an error tracker (needs your account choice) and an alert on `PaymentWebhookEvent.processingStatus = 'failed'`.
+**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Remaining (yours):** create the Sentry project, set `SENTRY_DSN` in Vercel, and add an uptime monitor on `/api/health`.
 
 ---
 
@@ -456,7 +456,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **87** | **Ready to launch.** |
+| **Overall** | **74** | **89** | **Ready to launch.** |
 
 ---
 
@@ -505,4 +505,5 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 | `493ae9c` |
 | 2026-09-04 | Phase 3: SEC-001 — phase complete | `03ad4c4` |
 | 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | `4684a25` |
-| 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | _this commit_ |
+| 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | `817e50b` |
+| 2026-09-04 | OBS-001 completed: Sentry wired server-side, PII scrubbed | _this commit_ |

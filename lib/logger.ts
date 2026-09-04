@@ -9,11 +9,10 @@ type LogContext = Record<string, unknown>;
  * to this one file") was never actually available. The payment, checkout and webhook paths
  * route through it now, which are the ones whose silent failure costs money.
  *
- * TO CONNECT AN ERROR TRACKER (Sentry, Betterstack, Axiom): implement `reportError` below
- * and call it from the `error` branch. That is the whole integration — no call site
- * changes. It is deliberately left unimplemented rather than stubbed against a service
- * this shop has not chosen, because a fake integration reads as a real one.
+ * Sentry is connected here, server side only — see instrumentation.ts for why the client
+ * SDK is deliberately absent and how a missing DSN makes the whole thing a no-op.
  */
+import * as Sentry from "@sentry/nextjs";
 
 /** Errors do not survive JSON.stringify — message and stack both vanish silently. */
 function serializeError(error: unknown): Record<string, unknown> {
@@ -55,11 +54,43 @@ export const logger = {
   /**
    * Takes the caught value as its own argument rather than leaving each caller to remember
    * that `{ error }` serializes to `{}`. Everything a post-mortem needs — message, stack,
-   * and whatever identifiers the caller knows — lands in one structured record.
+   * and whatever identifiers the caller knows — lands in one structured record, and in
+   * Sentry.
    */
-  error: (message: string, error?: unknown, context?: LogContext) =>
+  error: (message: string, error?: unknown, context?: LogContext) => {
     log("error", message, {
       ...(context ?? {}),
       ...(error !== undefined ? { error: serializeError(error) } : {}),
-    }),
+    });
+    reportError(message, error, context);
+  },
 };
+
+/**
+ * Forwards to Sentry, and never lets doing so break the caller.
+ *
+ * Every call site is already inside a `catch` handling something that failed — a refund
+ * that went through but whose audit line did not, an order confirmation email that
+ * bounced. Throwing from the reporter would turn a logged problem into an unlogged crash,
+ * which is the exact inversion of what this is for.
+ *
+ * The original Error is passed when there is one, so Sentry groups by its real stack rather
+ * than by our message string; the message becomes the title either way.
+ */
+function reportError(message: string, error?: unknown, context?: LogContext): void {
+  try {
+    Sentry.withScope((scope) => {
+      scope.setContext("logger", { message, ...(context ?? {}) });
+      if (error instanceof Error) {
+        // Keeps our sentence as the title while Sentry still fingerprints on the stack.
+        scope.setTransactionName(message);
+        Sentry.captureException(error);
+      } else {
+        if (error !== undefined) scope.setContext("thrown", { value: String(error) });
+        Sentry.captureMessage(message, "error");
+      }
+    });
+  } catch {
+    // Sentry unconfigured, offline, or rate-limited. The console line above already ran.
+  }
+}

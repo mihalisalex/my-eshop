@@ -539,6 +539,10 @@ export async function sendOrderConfirmationEmail(
     // Release the claim so a later attempt (a webhook, an admin resend) can retry
     // rather than the order being permanently marked as notified.
     await prisma.order.update({ where: { id: order.id }, data: { confirmationEmailSentAt: null } }).catch(() => {});
-    logger.error("Order confirmation email failed — claim released for retry", emailError, { orderId: order.id, to: order.customerEmail });
+    // Deliberately NOT the customer's email address. The order id identifies the order
+    // completely, and this record now leaves the process for a third-party error tracker —
+    // shipping customer PII there would undo PRIV-001 on a different axis. instrumentation.ts
+    // scrubs email-shaped strings as a backstop; not sending them is the actual fix.
+    logger.error("Order confirmation email failed — claim released for retry", emailError, { orderId: order.id });
   }
 }
