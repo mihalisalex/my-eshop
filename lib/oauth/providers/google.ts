@@ -1,4 +1,5 @@
 import "server-only";
+import { oauthFetch } from "@/lib/oauth/fetch";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { OAuthError, type ExchangeCodeParams, type OAuthProfile, type OAuthProviderClient } from "@/lib/oauth/types";
 
@@ -26,7 +27,7 @@ export function createGoogleOAuthProvider(creds: GoogleCredentials): OAuthProvid
     },
 
     async exchangeCode({ code, redirectUri }: ExchangeCodeParams): Promise<OAuthProfile> {
-      const res = await fetch(TOKEN_URL, {
+      const res = await oauthFetch(TOKEN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -36,7 +37,7 @@ export function createGoogleOAuthProvider(creds: GoogleCredentials): OAuthProvid
           redirect_uri: redirectUri,
           grant_type: "authorization_code",
         }),
-      });
+      }, "Google token exchange");
       const text = await res.text();
       if (!res.ok) throw new OAuthError(`Google token exchange failed (${res.status}): ${text.slice(0, 500)}`);
 

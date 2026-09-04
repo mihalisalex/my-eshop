@@ -42,6 +42,14 @@ import { PaymentError, PaymentWebhookVerificationError } from "@/lib/payments/ty
 const STRIPE_API_BASE = "https://api.stripe.com/v1";
 const STRIPE_API_VERSION = "2024-06-20";
 
+/**
+ * REL-001. Generous on purpose: Stripe's own guidance is that card authorization can take
+ * several seconds under load, so a tight limit would abandon payments that were about to
+ * succeed. What this bounds is the pathological case — a stalled connection holding a
+ * serverless invocation open indefinitely — not slowness.
+ */
+const STRIPE_TIMEOUT_MS = 15_000;
+
 /** Stripe expects the smallest currency unit. These currencies have no minor unit at all. */
 const ZERO_DECIMAL_CURRENCIES = new Set(["BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF"]);
 
@@ -191,12 +199,40 @@ export async function stripeRequest<T = Record<string, unknown>>(
   // twice — this is the mechanism behind §15 for every write we make.
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
 
-  const response = await fetch(`${STRIPE_API_BASE}${path}`, {
-    method: options.method ?? (options.body ? "POST" : "GET"),
-    headers,
-    body,
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${STRIPE_API_BASE}${path}`, {
+      method: options.method ?? (options.body ? "POST" : "GET"),
+      headers,
+      body,
+      cache: "no-store",
+      signal: AbortSignal.timeout(STRIPE_TIMEOUT_MS),
+    });
+  } catch (error) {
+    /**
+     * REL-001. Without this the request has no ceiling: a Stripe outage that accepts the
+     * connection and then stalls holds a checkout invocation open until the platform kills
+     * it, and concurrent shoppers queue behind exhausted capacity. The shop appears down
+     * while every part of it is healthy.
+     *
+     * Aborting does NOT cancel the operation at Stripe. A timed-out POST may well have
+     * created the PaymentIntent, so this is only safe because every write carries an
+     * `Idempotency-Key` — a retry with the same key replays the original response rather
+     * than charging twice. Timing out a write without that key would risk a double charge.
+     */
+    if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new PaymentError(
+        "PROVIDER_ERROR",
+        `Stripe did not respond within ${STRIPE_TIMEOUT_MS}ms (${options.method ?? "GET"} ${path}).`,
+        "The payment provider is not responding. Please try again in a moment."
+      );
+    }
+    // DNS failure, TLS failure, connection refused — a real network fault, not a timeout.
+    throw new PaymentError(
+      "PROVIDER_ERROR",
+      `Stripe request failed (${options.method ?? "GET"} ${path}): ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   const text = await response.text();
   let parsed: unknown;

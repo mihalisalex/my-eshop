@@ -1,4 +1,5 @@
 import "server-only";
+import { oauthFetch } from "@/lib/oauth/fetch";
 import { SignJWT, createRemoteJWKSet, importPKCS8, jwtVerify } from "jose";
 import { OAuthError, type ExchangeCodeParams, type OAuthProfile, type OAuthProviderClient } from "@/lib/oauth/types";
 
@@ -55,7 +56,7 @@ export function createAppleOAuthProvider(creds: AppleCredentials): OAuthProvider
 
     async exchangeCode({ code, redirectUri, rawParams }: ExchangeCodeParams): Promise<OAuthProfile> {
       const clientSecret = await mintClientSecret(creds);
-      const res = await fetch(TOKEN_URL, {
+      const res = await oauthFetch(TOKEN_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -65,7 +66,7 @@ export function createAppleOAuthProvider(creds: AppleCredentials): OAuthProvider
           redirect_uri: redirectUri,
           grant_type: "authorization_code",
         }),
-      });
+      }, "Apple token exchange");
       const text = await res.text();
       if (!res.ok) throw new OAuthError(`Apple token exchange failed (${res.status}): ${text.slice(0, 500)}`);
 

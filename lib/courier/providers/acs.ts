@@ -4,6 +4,13 @@ import { ACS_CARRIER_NAME, buildTrackingUrl } from "@/lib/courier/tracking-url";
 
 const ACS_BASE_URL = "https://webservices.acscourier.net/ACSRestServices/api/ACSAutoRest";
 
+/**
+ * REL-001. Tighter than the Stripe ceiling because nothing a shopper is waiting on depends
+ * on it — a voucher is created after the order exists, so failing fast here delays a label,
+ * not a purchase.
+ */
+const ACS_TIMEOUT_MS = 10_000;
+
 export interface AcsCredentials {
   apiKey: string;
   companyId: string;
@@ -28,24 +35,44 @@ export interface AcsCredentials {
  */
 export function createAcsCourierProvider(creds: AcsCredentials): CourierProvider {
   async function call(alias: string, params: Record<string, unknown>): Promise<Record<string, unknown>> {
-    const res = await fetch(ACS_BASE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        AcsApiKey: creds.apiKey,
-      },
-      body: JSON.stringify({
-        ACSAlias: alias,
-        ACSInputParameters: {
-          Company_ID: creds.companyId,
-          Company_Password: creds.companyPassword,
-          User_ID: creds.userId,
-          User_Password: creds.userPassword,
-          Billing_Code: creds.billingCode,
-          ...params,
+    let res: Response;
+    try {
+      res = await fetch(ACS_BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          AcsApiKey: creds.apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          ACSAlias: alias,
+          ACSInputParameters: {
+            Company_ID: creds.companyId,
+            Company_Password: creds.companyPassword,
+            User_ID: creds.userId,
+            User_Password: creds.userPassword,
+            Billing_Code: creds.billingCode,
+            ...params,
+          },
+        }),
+        signal: AbortSignal.timeout(ACS_TIMEOUT_MS),
+      });
+    } catch (error) {
+      /**
+       * REL-001. Unlike the Stripe path there is no idempotency key here, so a timed-out
+       * `ACS_Create_Voucher` may have produced a voucher we never saw the number for. That
+       * is the safer direction to fail in — a duplicate voucher costs a courier label, a
+       * hung request costs the whole checkout invocation — but it does mean a timeout wants
+       * a human to check ACS before retrying, which is what the message says.
+       */
+      if (error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError")) {
+        throw new CourierError(
+          `ACS did not respond within ${ACS_TIMEOUT_MS}ms (${alias}). The request may still have been processed — check the ACS portal before retrying.`
+        );
+      }
+      throw new CourierError(
+        `ACS request failed (${alias}): ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
 
     const text = await res.text();
     if (!res.ok) {

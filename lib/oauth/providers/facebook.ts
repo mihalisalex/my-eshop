@@ -1,4 +1,5 @@
 import "server-only";
+import { oauthFetch } from "@/lib/oauth/fetch";
 import { OAuthError, type ExchangeCodeParams, type OAuthProfile, type OAuthProviderClient } from "@/lib/oauth/types";
 
 const GRAPH_VERSION = "v21.0";
@@ -35,7 +36,7 @@ export function createFacebookOAuthProvider(creds: FacebookCredentials): OAuthPr
       tokenUrl.searchParams.set("redirect_uri", redirectUri);
       tokenUrl.searchParams.set("code", code);
 
-      const tokenRes = await fetch(tokenUrl);
+      const tokenRes = await oauthFetch(tokenUrl, undefined, "Facebook token exchange");
       const tokenText = await tokenRes.text();
       if (!tokenRes.ok) throw new OAuthError(`Facebook token exchange failed (${tokenRes.status}): ${tokenText.slice(0, 500)}`);
 
@@ -46,7 +47,7 @@ export function createFacebookOAuthProvider(creds: FacebookCredentials): OAuthPr
       profileUrl.searchParams.set("fields", "id,email,first_name,last_name");
       profileUrl.searchParams.set("access_token", tokenBody.access_token);
 
-      const profileRes = await fetch(profileUrl);
+      const profileRes = await oauthFetch(profileUrl, undefined, "Facebook profile fetch");
       const profileText = await profileRes.text();
       if (!profileRes.ok) throw new OAuthError(`Facebook profile fetch failed (${profileRes.status}): ${profileText.slice(0, 500)}`);
 
