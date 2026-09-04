@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { capabilityDenied } from "@/lib/admin-session";
 import { logger } from "@/lib/logger";
 
@@ -12,6 +13,11 @@ import { logger } from "@/lib/logger";
  * variable is present and correct — and "wired but never seen an event arrive" is exactly
  * the state where a typo in the DSN is discovered six weeks later, during an incident.
  *
+ * That is not hypothetical here: the variable was first deployed as SENTRY_DNS, which
+ * `Sentry.init` accepts in silence because `dsn: undefined` simply disables the SDK.
+ * Hence the `configured` block below — it distinguishes "sent and did not arrive" from
+ * "never sent at all", which are different faults with different fixes.
+ *
  * Admin-gated, so it is not a public error generator. It touches no data: no order, no
  * payment, no customer record, no email. The only effect is one log line and one Sentry
  * event carrying a marker string.
@@ -19,6 +25,25 @@ import { logger } from "@/lib/logger";
 export async function GET(request: Request) {
   const denied = await capabilityDenied("admin:settings");
   if (denied) return NextResponse.json({ error: denied }, { status: 403 });
+
+  /**
+   * The authoritative answer, read from the initialised SDK rather than from the raw
+   * environment: if `Sentry.init` ran without a usable DSN there is no client at all, and
+   * nothing this route does afterwards can possibly arrive.
+   *
+   * The DSN itself is never returned. Its host is enough to confirm the right project
+   * region was pasted, and the public key stays out of the response.
+   */
+  const client = Sentry.getClient();
+  const dsn = client?.getOptions().dsn;
+  const configured = {
+    sdkActive: Boolean(client),
+    dsnPresent: Boolean(dsn),
+    dsnHost: typeof dsn === "string" ? safeHost(dsn) : null,
+    environment: client?.getOptions().environment ?? null,
+    // Names the env var actually found, so a misspelling shows up as a missing name.
+    envVarSeen: process.env.SENTRY_DSN ? "SENTRY_DSN" : null,
+  };
 
   // A marker so the event is unambiguous in Sentry — several may arrive if this is retried.
   const marker = `sentry-check-${Date.now().toString(36)}`;
@@ -40,10 +65,27 @@ export async function GET(request: Request) {
     { marker, source: "sentry-check", note: "safe to ignore and delete" }
   );
 
+  /**
+   * Waits for the event to leave the process. Serverless functions are frozen the moment
+   * the response is returned, so an event still sitting in the transport queue is simply
+   * lost — which would look exactly like a broken DSN.
+   */
+  const flushed = await Sentry.flush(4000).catch(() => false);
+
   return NextResponse.json({
+    configured,
     sent: true,
+    flushed,
     marker,
     via: "logger.error",
     next: "Find this marker in Sentry. Then hit ?mode=throw to test the uncaught-error path too.",
   });
+}
+
+function safeHost(dsn: string): string | null {
+  try {
+    return new URL(dsn).host;
+  } catch {
+    return "unparseable";
+  }
 }
