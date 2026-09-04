@@ -8,16 +8,17 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 88**.
+**READY TO LAUNCH.** Overall **74 → 90**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed.** Of 14 P2s, 10 are closed, 1 (SEC-003, the CSP nonce)
-is deliberately deferred — defence-in-depth against an injection sink that does not currently
-exist, and the single highest-blast-radius change in the plan — and **3 were opened on
-2026-09-04** by measuring production instead of re-reading code.
+**All 3 P1 launch blockers are closed. 12 of 14 P2s are closed.** The one still open
+(`OPS-001`) is a verification waiting on a cron cycle, not a defect. The one deferred
+(`SEC-003`, the CSP nonce) turned out to carry a cost nobody had priced — see its entry.
+
+**Every remaining item needs an account, a setting, or money. None of it is code.**
 
 **Three findings were discovered by running the system, not by auditing it** — `SEC-005`,
 `BUG-001`, and the `SENTRY_DNS` typo that had silently disabled all error reporting. That last
@@ -41,13 +42,15 @@ would have been caught by reading the code again more carefully.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 14 | 3 | **10** | 1 |
+| P2 — Medium | 14 | 1 | **12** | 1 |
 | P3 — Low | 6 | 1 | **5** | 0 |
 | INFO | 6 | — | — | — |
 
-The three open P2s (`OPS-001`, `OBS-003`, `REL-001`) were **added on 2026-09-04**, after the
-original audit, by checking the production database rather than re-reading the code. None is a
-launch blocker; `OPS-001` is verification rather than a defect.
+All three P2s opened on 2026-09-04 came from measuring production rather than re-reading code.
+`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`, which is verification
+rather than a defect** — it closes when one cron cycle has been observed, not when code changes.
+
+The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions.
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
@@ -60,20 +63,28 @@ launch blocker; `OPS-001` is verification rather than a defect.
 Ordered by what would hurt most if skipped. Nothing here is a P0, and the shop is already
 taking real orders (**6** in the database), so treat this as hardening rather than a gate.
 
-| # | Item | Needs code? | Why it matters |
-|---|---|---|---|
-| 1 | **Verify the retention cron actually runs** (`OPS-001`) | No — check | It has never executed. **1,639** rate-limit rows are already past their 2-day window. |
-| 2 | **Narrow the Sentry alert rule** | No — setting | Default is "email on every new issue". Noisy alerts get muted, and a muted alert is no alert. |
-| 3 | **Uptime monitor on `/api/health`** | No — account | Sentry reports what *throws*. It cannot report a site that is down, because nothing is running to throw. |
-| 4 | **Delete the 9 seeded fake reviews** | No — housekeeping | They are fabricated testimonials on a live shop. `/admin/reviews` deletes them. |
-| 5 | **Timeouts on payment/courier calls** (`REL-001`) | **Yes** | A hung provider holds a checkout request open until the platform kills it. |
-| 6 | **Widen the admin audit log** (`OBS-003`) | **Yes** | Only 2 of ~12 admin surfaces are audited. Review deletion and product edits are not. |
-| 7 | **Pin `sslmode=verify-full`** | No — config | `pg` warns the current value will silently weaken in v9. |
-| 8 | **Re-enable image optimization** (`PERF-001`) | No — billing | Biggest single score gain available (Performance 74 → ~85). |
-| 9 | **SEC-003, the CSP nonce** | **Yes** | Deferred on purpose — defence-in-depth, highest blast radius. See its entry. |
+**Every code item is now closed.** What remains needs an account, a setting, or a decision
+that costs money — none of it can be done from the repository.
 
-**The honest summary:** items 1–4 are half an hour of clicking and are worth more than any
-code left on this list. Items 5–6 are the only genuine code gaps remaining.
+| # | Item | Owner | Status |
+|---|---|---|---|
+| 1 | **Verify the retention cron actually runs** (`OPS-001`) | You — one query | ⏳ Cron first fires 03:30 UTC. Still **1,639** stale rows as of 22:19 UTC. |
+| 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
+| 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
+| 4 | ~~Delete the 9 seeded fake reviews~~ | — | ✅ **Done** 2026-09-04. All 9 removed, both product pages verified. |
+| 5 | ~~Timeouts on payment/courier calls~~ (`REL-001`) | — | ✅ **Done** `2f5f0b6`. Widened to OAuth too. |
+| 6 | ~~Widen the admin audit log~~ (`OBS-003`) | — | ✅ **Done** `12502bc`. 2 surfaces → 8. |
+| 7 | **Pin `sslmode=verify-full`** | You — Vercel env | ⏳ `pg` warns the current value will silently weaken in v9. |
+| 8 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ Biggest single score gain available (Performance 74 → ~85). |
+| 9 | **SEC-003, the CSP nonce** | You — **cost decision** | ⛔ Attempted and stopped. A nonce forces **every page to render dynamically**, disabling static generation and CDN caching — on an account already over its image quota. See the entry. |
+
+**The honest summary:** items 1, 2, 3 and 7 are about half an hour of clicking and are worth
+more than any code that was left. Items 8 and 9 are both spending decisions rather than
+engineering ones, and 9 is the one to *not* rush.
+
+**On the deletion in item 4:** it went through the database directly, before `OBS-003` shipped,
+so nothing recorded it. That is a small demonstration of the finding rather than an accident —
+the next review deletion will leave an entry naming the actor, the rating and the product.
 
 ---
 
@@ -100,9 +111,16 @@ of it has to be reconstructed later.
    route already returns 503 with no error detail when the database is unreachable, which is
    exactly the signal a prober needs.
 
-4. **The 9 seeded reviews.** Confirmed still live: **5 on SKU `9262`, 4 on `585-1`**. They
-   were generated to preview the layout and are fabricated testimonials on a shop taking real
-   orders. `/admin/reviews` deletes them.
+4. ~~**The 9 seeded reviews.**~~ **Done 2026-09-04** — all 9 deleted (5 on SKU `9262`, 4 on
+   `585-1`). Worth recording how it was confirmed they were all fabricated: every row had been
+   written to the database within **two seconds** of the others, with `createdAt` backdated
+   across August. That clustering is the seeding script own signature, and it also proved no
+   real customer review was mixed in — the table held only those nine.
+
+   Both product pages were checked afterwards, because the zero-review path had never run on
+   them: they return 200, and the JSON-LD now **omits `aggregateRating` entirely** rather than
+   emitting a zero. A `Product` carrying `"ratingValue": 0` is invalid schema.org and Search
+   Console would have begun reporting rich-result errors within days.
 
 7. **`sslmode`.** `pg` warns that `sslmode=require` currently behaves as `verify-full` but
    will adopt weaker libpq semantics in pg v9. Pin `sslmode=verify-full` in `DATABASE_URL`
@@ -266,6 +284,37 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 3. **The matcher makes it worse than it looks.** `next.config.ts` sets headers statically; a nonce must be minted per request in `proxy.ts`. But that matcher covers only `/admin`, `/account`, `/category` and `/products` — **not the homepage, cart or checkout**. Moving CSP there as-is would strip it from the most sensitive pages in the shop; widening the matcher runs middleware on every request, which is its own regression.
 
 **To do it properly** (a deliberate session, not an unattended one): widen the matcher to `/((?!_next/static|_next/image|favicon.ico).*)`, keep the early returns so no extra DB work runs, mint a nonce per request, pass it via a request header, read it in `app/layout.tsx`, and emit `script-src 'self' 'nonce-…'`. `style-src` keeps `unsafe-inline` — Framer Motion writes inline styles. Verify every page renders and the console is clean before merging.
+
+### A fourth reason, found on 2026-09-04 — and it is the decisive one
+
+Attempted during the autonomous session; **stopped before writing any code**, because Next's
+own bundled guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`)
+states a consequence none of the three reasons above accounted for:
+
+> When you use nonces in your CSP, **all pages must be dynamically rendered**. […] Static
+> optimization and Incremental Static Regeneration (ISR) are disabled. Pages cannot be cached
+> by CDNs without additional configuration.
+
+A nonce must be unique per request, so it can only be applied during server-side rendering.
+That converts **the entire storefront** — homepage, every category page, every product page —
+from statically generated and CDN-cached to dynamically rendered on every request.
+
+**Why that decides it for this shop specifically.** `PERF-001` exists because the Vercel
+image-transformation quota was exhausted and started returning 402s, breaking images
+site-wide. This is an account already sitting against its plan limits. Trading static
+generation for dynamic rendering on every page multiplies serverless invocations on exactly
+that account — to defend against an injection sink the audit verified does not exist.
+
+The cost is real and immediate; the benefit is hypothetical. **That is not a trade an
+unattended session should make**, so it was not made. It is a decision for the shop owner,
+alongside a Vercel plan decision.
+
+**The alternative worth evaluating first.** The same guide documents experimental
+hash-based CSP via Subresource Integrity (`experimental.sri`), which hashes scripts at build
+time and **keeps static generation and CDN caching**. It is App Router only and marked
+experimental, so it needs its own evaluation — but it is the path that removes
+`unsafe-inline` without paying for it in rendering, and it should be tried before the nonce
+route is considered.
 
 ---
 
@@ -473,7 +522,7 @@ Expect `0` after the first successful run. Today it returns `1639`.
 
 ---
 
-## [ ] OBS-003 · The admin audit log covers 2 of ~12 admin surfaces
+## [x] OBS-003 · The admin audit log covers 2 of ~12 admin surfaces
 
 **Category:** Observability / Operations
 **Location:** `recordAdminAction` called only from `app/admin/(dashboard)/users/actions.ts` and `app/admin/(dashboard)/payments/actions.ts`
@@ -499,11 +548,17 @@ line and cannot break the action it records.
 **Verify.** Delete a review; confirm the entry appears in `/admin/activity`.
 
 **Risk of change:** Low — additive, and the helper already swallows its own failures.
-**Fixed:** _pending_
+**Fixed:** `12502bc` — widened from 2 surfaces to 8: orders, returns, gift cards, discounts, products, reviews, settings, admin users.
+
+What earns an entry is deliberate rather than "every mutation": money, permissions, an order altered after payment, or **something destroyed that cannot be reconstructed from the row that remains**. That last clause decides the near misses — approving or rejecting a review is absent because the row carries its own status, while deleting one is present because nothing is left to read; `product.created` is absent because a product that exists is its own evidence, while `product.updated` is present because an overwritten price is not.
+
+Two things fell out of the work. **`order.status_changed` had been declared in the vocabulary since OBS-002 and was never written by anything** — the verb existed, the record did not. And `/admin/activity`'s filter listed only the three original prefixes, so entries under any new one would have been recorded and then unfindable; the filter now lists all nine.
+
+Every capture of prior state happens *before* the write, for one reason: afterwards there is nothing left to describe, and an entry reading "a review was deleted" answers none of the questions actually asked of it.
 
 ---
 
-## [ ] REL-001 · No timeouts on payment or courier provider calls
+## [x] REL-001 · No timeouts on payment or courier provider calls
 
 **Category:** Reliability
 **Location:** `lib/payments/providers/*`, courier integrations — only `services/instagram.ts` sets `AbortSignal.timeout`
@@ -527,7 +582,19 @@ fast with a handled error rather than hanging.
 
 **Risk of change:** Low — but it touches the payment path, so it wants its own commit and a
 careful read, not a drive-by.
-**Fixed:** _pending_
+**Fixed:** `2f5f0b6` — every outbound provider call is now bounded. The ceilings differ because the consequences do:
+
+| Provider | Limit | Why that number |
+|---|---:|---|
+| Stripe | 15s | Card authorization is genuinely slow under load; a tight limit would abandon payments about to succeed. What this bounds is the pathological case, not slowness. |
+| ACS courier | 10s | Nothing a shopper waits on — a voucher is created after the order exists, so failing fast delays a label, not a purchase. |
+| OAuth | 8s | A small token round trip with no money attached, and an unredeemed authorization code simply expires. |
+
+**The Stripe case has a precondition worth stating plainly:** aborting does *not* cancel the operation at Stripe, so a timed-out `POST` may well have created the PaymentIntent. This is only safe because every write carries an `Idempotency-Key` — a retry replays the original response rather than charging twice. **Timing out a write without that key would risk a double charge.** The ACS path has no equivalent, so its error tells the operator to check the portal before retrying rather than implying nothing happened.
+
+Scope was widened beyond the finding's title: the three OAuth providers have the identical defect, and leaving a known-identical hole open because the heading said "payment or courier" would be arbitrary. They share `lib/oauth/fetch.ts` rather than repeating the same try/catch four times.
+
+Every path distinguishes a timeout from a DNS/TLS fault, because they have different fixes and a log line that conflates them sends the reader to the wrong place. Pinned by `lib/oauth/fetch.test.ts` — a timeout's whole value lies on a path that never runs normally, so without a test its only evidence of working is that it compiles, which is the exact condition `OPS-001` was opened about.
 
 ---
 
@@ -634,15 +701,15 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
-| Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention. Marked **down 2** from the phase-4 estimate: the retention job has not yet run (`OPS-001`) and provider calls are still unbounded (`REL-001`). Returns to 88 the moment the first cron cycle is confirmed. |
+| Reliability | 78 | **90** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
-| **Observability** | 25 | **90** | Health check, adopted logger, an admin audit trail, and Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo. The last 10 points are correlation IDs, an uptime monitor, and widening the audit log past its 2 call sites (`OBS-003`). |
+| **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
 | Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **88** | **Ready to launch.** One point below the phase-4 figure, because two subsystems counted in that score have not yet been observed doing anything (`OPS-001`). Scoring implemented work as if it were working is the mistake the Sentry typo already punished once. |
+| **Overall** | **74** | **90** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -711,3 +778,7 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-04 | Audit reconciled: counts, scores, roadmap and owner tasks brought up to date | `2f0f362` |
 | 2026-09-04 | OBS-001 **verified in production** — forced test proved both the `logger.error` and uncaught (`onRequestError`) paths reach Sentry; found and fixed a `SENTRY_DNS` typo that had silently disabled the SDK; temporary check route removed | `efd30c0` |
 | 2026-09-04 | Re-checked against the **production database**: opened `OPS-001` (retention cron and audit log deployed but never observed running — 1,639 rate-limit rows past their window, 0 audit entries), `OBS-003` (audit log covers 2 of ~12 admin surfaces) and `REL-001` (no provider timeouts). Overall re-scored 89 → 88, Reliability 88 → 86 — implemented is not the same as running | _this commit_ |
+| 2026-09-04 | Deleted the 9 seeded reviews; verified both PDPs return 200 and omit `aggregateRating` rather than emitting a zero | _(data change)_ |
+| 2026-09-05 | `REL-001` closed — timeouts on Stripe, ACS and all three OAuth providers | `2f5f0b6` |
+| 2026-09-05 | `OBS-003` closed — audit log widened from 2 admin surfaces to 8; `order.status_changed` finally written; activity filter lists all nine prefixes | `12502bc` |
+| 2026-09-05 | `SEC-003` attempted and **stopped before any code**: Next's bundled guide states a nonce forces every page to render dynamically, disabling static generation and CDN caching — an unpriced cost on an account already over its image quota. Hash-based SRI recorded as the alternative to evaluate first. Re-scored 88 → 90 | _this commit_ |
