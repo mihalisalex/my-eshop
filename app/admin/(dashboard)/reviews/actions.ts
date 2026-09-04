@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCapability } from "@/lib/admin-session";
 import { prisma } from "@/lib/prisma";
 import { deleteReview, setReviewStatus } from "@/services/reviews";
+import { recordAdminAction } from "@/services/audit-log";
 
 export interface ReviewActionState {
   error?: string;
@@ -51,13 +52,37 @@ export async function rejectReview(id: string): Promise<ReviewActionState> {
 export async function deleteReviewAction(id: string): Promise<ReviewActionState> {
   await requireCapability("content:reviews");
 
+  /**
+   * OBS-003. The author, rating and text are captured BEFORE the delete, because after it
+   * there is nothing left to describe. An audit entry reading only "a review was deleted"
+   * answers none of the questions actually asked of it — which review, by whom, saying what.
+   */
   const review = await prisma.productReview.findUnique({
     where: { id },
-    select: { product: { select: { slug: true } } },
+    select: {
+      rating: true,
+      title: true,
+      authorName: true,
+      product: { select: { slug: true, sku: true } },
+    },
   });
   if (!review) return { error: "That review no longer exists." };
 
   await deleteReview(id);
+
+  await recordAdminAction({
+    action: "review.deleted",
+    targetType: "review",
+    targetId: id,
+    summary: `Deleted a ${review.rating}★ review by ${review.authorName} on ${review.product.sku}`,
+    metadata: {
+      rating: review.rating,
+      title: review.title,
+      authorName: review.authorName,
+      productSku: review.product.sku,
+    },
+  });
+
   revalidatePath(`/products/${review.product.slug}`);
   revalidatePath("/admin/reviews");
   return {};

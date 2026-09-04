@@ -48,9 +48,18 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
             name: "action",
             label: "All actions",
             value: action ?? "",
+            // OBS-003 widened the vocabulary, and a filter that does not list a prefix makes
+            // those entries effectively unfindable — they are recorded but nobody can reach
+            // them. Ordered by how often the answer is actually wanted, money first.
             options: [
               { value: "payment", label: "Payments" },
               { value: "order", label: "Orders" },
+              { value: "return", label: "Returns" },
+              { value: "giftCard", label: "Gift cards" },
+              { value: "discount", label: "Discounts" },
+              { value: "product", label: "Products" },
+              { value: "review", label: "Reviews" },
+              { value: "settings", label: "Settings" },
               { value: "adminUser", label: "Users & roles" },
             ],
           },

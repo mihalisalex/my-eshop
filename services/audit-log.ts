@@ -12,19 +12,55 @@ import { resolvePage, toPaged, type Paged } from "@/lib/pagination";
  * bury them.
  */
 
-/** Dotted verbs, so a filter on "payment." finds every money-moving action at once. */
+/**
+ * Dotted verbs, so a filter on "payment." finds every money-moving action at once.
+ *
+ * OBS-003 widened this from two surfaces to eight. What earns a place is deliberate, not
+ * "every mutation": an action is recorded when it moves money, changes who can do what,
+ * alters an order after a customer has paid, or **destroys something that cannot be
+ * reconstructed from the row that remains**.
+ *
+ * That last clause is what decides the near misses. A review being approved or rejected is
+ * not here, because the review row carries its own status and the change is legible from the
+ * data itself; a review being *deleted* is, because nothing is left to read. By the same
+ * logic `product.created` is absent — a product that exists is its own evidence — while
+ * `product.updated` is present, since an overwritten price leaves no trace of what it was.
+ */
 export type AuditAction =
   | "payment.refunded"
   | "payment.confirmed_manually"
   | "payment.cancelled"
   | "order.status_changed"
+  | "order.tracking_updated"
+  | "order.shipment_created"
   | "adminUser.created"
   | "adminUser.role_changed"
-  | "adminUser.deleted";
+  | "adminUser.deleted"
+  | "review.deleted"
+  | "giftCard.created"
+  | "giftCard.updated"
+  | "giftCard.deleted"
+  | "discount.created"
+  | "discount.updated"
+  | "discount.deleted"
+  | "return.status_changed"
+  | "settings.updated"
+  | "product.updated"
+  | "product.deleted"
+  | "product.bulk_updated";
 
 export interface AuditEntryInput {
   action: AuditAction;
-  targetType: "payment" | "order" | "adminUser";
+  targetType:
+    | "payment"
+    | "order"
+    | "adminUser"
+    | "review"
+    | "giftCard"
+    | "discount"
+    | "return"
+    | "settings"
+    | "product";
   targetId: string;
   summary: string;
   metadata?: Record<string, unknown>;

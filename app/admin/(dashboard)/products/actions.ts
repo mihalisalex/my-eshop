@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { capabilityDenied, requireCapability } from "@/lib/admin-session";
+import { recordAdminAction } from "@/services/audit-log";
 import { productFormSchema, type ProductFormValues } from "@/lib/validation/product";
 import { writeProductRow } from "@/lib/products-import/write";
 import { productIdsMatching, type AdminProductFilter } from "@/services/products";
@@ -44,7 +45,37 @@ export async function updateProduct(id: string, values: ProductFormValues): Prom
   const existing = await prisma.product.findUnique({ where: { slug: data.slug } });
   if (existing && existing.id !== id) return { error: "A product with this slug already exists." };
 
+  /**
+   * OBS-003. Read the price BEFORE the write. "A product's price is wrong and nobody knows
+   * what it used to be" is the exact question this finding was opened about, and an
+   * overwritten column cannot answer it — `updatedAt` says when, never what or who.
+   *
+   * `product.created` deliberately has no equivalent: a product that exists is its own
+   * evidence, so there is nothing lost to reconstruct.
+   */
+  const before = await prisma.product.findUnique({
+    where: { id },
+    select: { priceAmount: true, salePriceAmount: true, sku: true, name: true, status: true },
+  });
+
   await writeProductRow(data, id);
+
+  // Decimal, so compare numerically — the Prisma value and the form value are different
+  // representations of the same number and never string-equal.
+  const priceChanged = before != null && Number(before.priceAmount) !== Number(data.price);
+  await recordAdminAction({
+    action: "product.updated",
+    targetType: "product",
+    targetId: id,
+    summary: priceChanged
+      ? `Changed the price of ${before?.sku ?? id} from ${before?.priceAmount} to ${data.price}`
+      : `Edited ${before?.sku ?? id}`,
+    metadata: {
+      sku: before?.sku,
+      ...(priceChanged ? { priceBefore: String(before?.priceAmount), priceAfter: data.price } : {}),
+      ...(before && before.status !== data.status ? { statusBefore: before.status, statusAfter: data.status } : {}),
+    },
+  });
 
   revalidateStorefront();
   redirect(`/admin/products/${id}`);
@@ -59,7 +90,20 @@ export async function updateProduct(id: string, values: ProductFormValues): Prom
  */
 export async function deleteProduct(id: string): Promise<void> {
   await requireCapability("catalog:delete");
+  // The cascade this comment warns about is precisely why the entry is worth having: it is
+  // the one catalogue action that also reaches into customers' carts and wishlists.
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: { sku: true, name: true, slug: true },
+  });
   await prisma.product.delete({ where: { id } });
+  await recordAdminAction({
+    action: "product.deleted",
+    targetType: "product",
+    targetId: id,
+    summary: `Deleted product ${product?.sku ?? id}${product?.name ? ` (${product.name})` : ""}`,
+    metadata: { sku: product?.sku, name: product?.name, slug: product?.slug },
+  });
   revalidateStorefront();
   redirect("/admin/products");
 }
@@ -213,6 +257,17 @@ export async function bulkUpdateProducts(action: BulkProductAction, scope: BulkP
       data: { status, archivedAt: null },
     }));
   }
+
+  // One entry for the batch rather than one per product: the fact worth recording is that
+  // somebody deleted 40 products in a single call, and 40 separate rows would obscure that
+  // rather than sharpen it.
+  await recordAdminAction({
+    action: "product.bulk_updated",
+    targetType: "product",
+    targetId: `bulk:${action}`,
+    summary: `Bulk ${action} across ${updated} product${updated === 1 ? "" : "s"}`,
+    metadata: { action, requested: ids.length, updated, scope: scope.kind },
+  });
 
   revalidateStorefront();
   revalidatePath("/admin/products");
