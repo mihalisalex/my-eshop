@@ -1,29 +1,37 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 · Phases 1–4 complete · `782d243` → `c731ab0` → `493ae9c` → `03ad4c4` → `4684a25` → `817e50b` → `e7ae303`
+**Remediated:** 2026-09-04 · Phases 1–4 complete · `782d243` → `c731ab0` → `493ae9c` → `03ad4c4` → `4684a25` → `817e50b` → `e7ae303` → `efd30c0`
+**Re-checked against production:** 2026-09-04 — added `OPS-001`, `OBS-003`, `REL-001`
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 436/436 ✓ · `next build` ✓ · `npm audit` · live production DB queries · real-browser checks
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 436/436 ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · real-browser checks
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 89**.
+**READY TO LAUNCH.** Overall **74 → 88**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed. 10 of 11 P2s are closed.** The one remaining (SEC-003,
-the CSP nonce) is deliberately deferred with reasoning below — it is defence-in-depth against
-an injection sink that does not currently exist, and it is the single highest-blast-radius
-change in the plan.
+**All 3 P1 launch blockers are closed.** Of 14 P2s, 10 are closed, 1 (SEC-003, the CSP nonce)
+is deliberately deferred — defence-in-depth against an injection sink that does not currently
+exist, and the single highest-blast-radius change in the plan — and **3 were opened on
+2026-09-04** by measuring production instead of re-reading code.
+
+**Three findings were discovered by running the system, not by auditing it** — `SEC-005`,
+`BUG-001`, and the `SENTRY_DNS` typo that had silently disabled all error reporting. That last
+one is the reason `OPS-001` now exists: `Sentry.init` treats a missing DSN as *disabled* rather
+than an error, so the shop looked fully instrumented while reporting nothing, and only a forced
+test event exposed it. The same "wired, plausible, never actually observed" condition applies
+right now to the retention cron and the admin audit log.
 
 > With bank-transfer only + manual reconciliation: **ready.**
 > Before enabling card payments: PAY-001 is fixed, so that gate is open too.
 
-**Two findings were discovered while remediating, not while auditing** — `SEC-005` and
-`BUG-001`, both from *running* the app rather than reading it. That is the honest lesson of
-this exercise: a clean read is not the same as a clean run.
+The honest lesson of this exercise: **a clean read is not the same as a clean run.** Every
+finding added after the original audit came from running or measuring the system, and none
+would have been caught by reading the code again more carefully.
 
 ---
 
@@ -33,9 +41,13 @@ this exercise: a clean read is not the same as a clean run.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 11 | 0 | **10** | 1 |
+| P2 — Medium | 14 | 3 | **10** | 1 |
 | P3 — Low | 6 | 1 | **5** | 0 |
 | INFO | 6 | — | — | — |
+
+The three open P2s (`OPS-001`, `OBS-003`, `REL-001`) were **added on 2026-09-04**, after the
+original audit, by checking the production database rather than re-reading the code. None is a
+launch blocker; `OPS-001` is verification rather than a defect.
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
@@ -43,30 +55,62 @@ this exercise: a clean read is not the same as a clean run.
 
 ---
 
-## Over to you
+## Before going live — what is actually left
 
-Nothing here needs code. Everything below is an account, a setting, or a decision.
+Ordered by what would hurt most if skipped. Nothing here is a P0, and the shop is already
+taking real orders (**6** in the database), so treat this as hardening rather than a gate.
 
-1. ~~**Set `SENTRY_DSN` in Vercel.**~~ **Done, and verified with a forced event** — see
-   OBS-001. Both reporting paths were confirmed to arrive in the EU-region project. What
-   remains is **narrowing the alert rule**: Sentry's default emails on every new issue, and
-   an alert everyone learns to ignore is worse than no alert. The rule worth having is loud
-   on payment and webhook failures, digested for everything else.
-2. **Add an uptime monitor on `/api/health`.** Sentry reports what *throws*; it cannot report
-   a site that is down, because nothing is running to throw. UptimeRobot's free tier covers
-   it. This is the other half of OBS-001 and the reason the endpoint exists.
-3. **`CRON_SECRET` must be set in Vercel** for the new `/api/cron/data-retention` job
-   (03:30 daily). If it is already set for the two existing crons, this one works too — but
-   if it is missing, the route correctly refuses rather than running openly, and retention
-   silently never happens.
-4. **PERF-001 — image optimization** is off because the Vercel transform quota was exhausted
-   and returning 402s. Re-enable with `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan
-   allows. Purely a billing decision.
-5. **INFO — `sslmode`.** `pg` warns that `sslmode=require` currently behaves as
-   `verify-full` but will adopt weaker libpq semantics in pg v9. Pinning
-   `sslmode=verify-full` in `DATABASE_URL`/`DIRECT_URL` now avoids a silent downgrade later.
-6. **Housekeeping — the 9 seeded test reviews** are still live on two products. They are
-   fabricated. `/admin/reviews` can now delete them.
+| # | Item | Needs code? | Why it matters |
+|---|---|---|---|
+| 1 | **Verify the retention cron actually runs** (`OPS-001`) | No — check | It has never executed. **1,639** rate-limit rows are already past their 2-day window. |
+| 2 | **Narrow the Sentry alert rule** | No — setting | Default is "email on every new issue". Noisy alerts get muted, and a muted alert is no alert. |
+| 3 | **Uptime monitor on `/api/health`** | No — account | Sentry reports what *throws*. It cannot report a site that is down, because nothing is running to throw. |
+| 4 | **Delete the 9 seeded fake reviews** | No — housekeeping | They are fabricated testimonials on a live shop. `/admin/reviews` deletes them. |
+| 5 | **Timeouts on payment/courier calls** (`REL-001`) | **Yes** | A hung provider holds a checkout request open until the platform kills it. |
+| 6 | **Widen the admin audit log** (`OBS-003`) | **Yes** | Only 2 of ~12 admin surfaces are audited. Review deletion and product edits are not. |
+| 7 | **Pin `sslmode=verify-full`** | No — config | `pg` warns the current value will silently weaken in v9. |
+| 8 | **Re-enable image optimization** (`PERF-001`) | No — billing | Biggest single score gain available (Performance 74 → ~85). |
+| 9 | **SEC-003, the CSP nonce** | **Yes** | Deferred on purpose — defence-in-depth, highest blast radius. See its entry. |
+
+**The honest summary:** items 1–4 are half an hour of clicking and are worth more than any
+code left on this list. Items 5–6 are the only genuine code gaps remaining.
+
+---
+
+### The exact steps for the no-code items
+
+Detail for rows 1–4, 7 and 8 of the table above — the settings, values and commands, so none
+of it has to be reconstructed later.
+
+1. **Retention cron** (`OPS-001`). Confirm `CRON_SECRET` is set in Vercel. It is already
+   required by the two existing crons, so if `email-followups` and `instagram-token` run, this
+   one will too. After 03:30, run:
+   ```sql
+   SELECT COUNT(*) FROM rate_limit_attempts WHERE "createdAt" < now() - interval '2 days';
+   ```
+   `0` means it worked. Anything else means it did not run — check the Vercel cron logs before
+   assuming the code is wrong.
+
+2. **Sentry alert rule.** Replace the default. Notify immediately when the event message or
+   tags point at the payment or webhook paths; send everything else to a daily digest. The
+   principle: page on money, digest on everything else.
+
+3. **Uptime monitor.** Point UptimeRobot (free tier is enough) at
+   `https://shopalexandris.vercel.app/api/health`, 5-minute interval, alert on non-200. The
+   route already returns 503 with no error detail when the database is unreachable, which is
+   exactly the signal a prober needs.
+
+4. **The 9 seeded reviews.** Confirmed still live: **5 on SKU `9262`, 4 on `585-1`**. They
+   were generated to preview the layout and are fabricated testimonials on a shop taking real
+   orders. `/admin/reviews` deletes them.
+
+7. **`sslmode`.** `pg` warns that `sslmode=require` currently behaves as `verify-full` but
+   will adopt weaker libpq semantics in pg v9. Pin `sslmode=verify-full` in `DATABASE_URL`
+   and `DIRECT_URL` now to avoid a silent downgrade at some future upgrade.
+
+8. **Image optimization** (`PERF-001`) is off because the Vercel transform quota was exhausted
+   and returning 402s, which broke images shop-wide. Re-enable with
+   `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan allows. Purely a billing decision.
 
 ---
 
@@ -381,6 +425,112 @@ wishlist created, zero rejections, where before the fix nine would have failed. 
 
 ---
 
+## [ ] OPS-001 · Three subsystems are deployed but have never been observed running
+
+**Category:** Reliability / Operations
+**Location:** `app/api/cron/data-retention/route.ts` · `services/audit-log.ts` · no uptime monitor
+**Confidence:** Confirmed — measured against the production database, 2026-09-04
+
+**Problem.** Phases 1–4 added machinery that is wired, type-checked, built and deployed, and
+whose *only* evidence of working is that it compiles. That is precisely the state Sentry was
+in yesterday, when it turned out to be reporting nothing at all because of a one-letter typo.
+A clean build is not evidence of a running job.
+
+**Evidence.** Queried against production:
+
+| Subsystem | Expected | Actual |
+|---|---|---|
+| `data-retention` cron (03:30 daily) | rate-limit rows ≤ 2 days old | **1,639 rows older than 2 days**, oldest `2026-07-22` |
+| `admin_audit_logs` | an entry per audited admin action | **0 rows** |
+| uptime monitoring | an external prober | none exists |
+
+**Both zero results are currently explainable and neither is yet a bug.** The cron was
+deployed today and first fires at 03:30 tomorrow; the audit log has only two call sites
+(`users/actions.ts`, `payments/actions.ts`) and nobody has performed either action since
+deploy. That is exactly what makes this worth writing down rather than assuming — the benign
+explanation and the broken one look identical from here, and only the next run tells them
+apart.
+
+**Failure scenario.** `CRON_SECRET` is unset or differs from what Vercel sends. The route
+correctly answers 401 and retention silently never happens — the safe failure, and the
+invisible one. `rate_limit_attempts` and `payment_webhook_events` grow without bound, and the
+GDPR position the PRIV-001 entry claims is not actually being honoured.
+
+**Fix.**
+1. After 03:30, re-run the row-age query below. Non-zero means the job did not run.
+2. Confirm `CRON_SECRET` is set in Vercel (the other two crons already depend on it, so if
+   they work, this one will too).
+3. Perform one audited admin action and confirm a row lands in `/admin/activity`.
+
+**Verify.**
+```sql
+SELECT COUNT(*) FROM rate_limit_attempts WHERE "createdAt" < now() - interval '2 days';
+```
+Expect `0` after the first successful run. Today it returns `1639`.
+
+**Risk of change:** None — this is verification, not modification.
+**Fixed:** _pending — needs one cron cycle to elapse_
+
+---
+
+## [ ] OBS-003 · The admin audit log covers 2 of ~12 admin surfaces
+
+**Category:** Observability / Operations
+**Location:** `recordAdminAction` called only from `app/admin/(dashboard)/users/actions.ts` and `app/admin/(dashboard)/payments/actions.ts`
+**Confidence:** Confirmed
+
+**Problem.** OBS-002 delivered the audit-log mechanism and wired it to admin-user and payment
+actions — the two highest-risk surfaces, which was the right place to start. But the admin can
+also delete reviews, edit and delete products, change shipping and payment settings, issue
+discounts and gift cards, and none of those leave a trace.
+
+**Failure scenario.** A product's price is wrong, or a customer's genuine 1-star review has
+vanished. There is no way to establish who changed what or when — including for the merchant's
+own benefit, if a second person is ever given admin access.
+
+Review deletion is the sharpest case: it was added at the merchant's request and is
+irreversible, and unaudited deletion of customer-authored content is the kind of thing a
+consumer-protection complaint asks about directly.
+
+**Fix.** Add `recordAdminAction` to the remaining mutating admin actions. The function already
+resolves the actor from the session and is written never to throw, so each call site is one
+line and cannot break the action it records.
+
+**Verify.** Delete a review; confirm the entry appears in `/admin/activity`.
+
+**Risk of change:** Low — additive, and the helper already swallows its own failures.
+**Fixed:** _pending_
+
+---
+
+## [ ] REL-001 · No timeouts on payment or courier provider calls
+
+**Category:** Reliability
+**Location:** `lib/payments/providers/*`, courier integrations — only `services/instagram.ts` sets `AbortSignal.timeout`
+**Confidence:** Confirmed
+
+**Problem.** `services/instagram.ts` correctly bounds its outbound call. The payment and
+courier providers do not, so a provider that accepts a connection and then stalls holds the
+checkout request open until the platform kills it.
+
+**Failure scenario.** The provider has a bad day and responds in 45s instead of 300ms. Every
+checkout request occupies a serverless invocation for the full duration; concurrent shoppers
+queue behind exhausted capacity. The shop appears down while every component of it is healthy.
+This is the failure that turns a supplier's incident into your incident.
+
+**Fix.** `AbortSignal.timeout(8000)` on outbound provider `fetch` calls, following the pattern
+already in `services/instagram.ts`, and map the abort to the existing `PaymentError` handling
+so it surfaces as a clean failure rather than a crash.
+
+**Verify.** Point a provider at a deliberately stalling endpoint; confirm the request fails
+fast with a handled error rather than hanging.
+
+**Risk of change:** Low — but it touches the payment path, so it wants its own commit and a
+careful read, not a drive-by.
+**Fixed:** _pending_
+
+---
+
 # P3 — Low
 
 ## [x] A11Y-001 · No skip-to-content link
@@ -484,15 +634,15 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
-| Reliability | 78 | **88** | Health endpoint, structured logging in every money path, scheduled retention. No circuit breakers, which is the remaining gap. |
+| Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention. Marked **down 2** from the phase-4 estimate: the retention job has not yet run (`OPS-001`) and provider calls are still unbounded (`REL-001`). Returns to 88 the moment the first cron cycle is confirmed. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
-| **Observability** | 25 | **90** | Health check, adopted logger, a real admin audit trail, and Sentry wired server-side with PII kept out. The last 10 points are correlation IDs and an uptime monitor. |
+| **Observability** | 25 | **90** | Health check, adopted logger, an admin audit trail, and Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo. The last 10 points are correlation IDs, an uptime monitor, and widening the audit log past its 2 call sites (`OBS-003`). |
 | Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **89** | **Ready to launch.** |
+| **Overall** | **74** | **88** | **Ready to launch.** One point below the phase-4 figure, because two subsystems counted in that score have not yet been observed doing anything (`OPS-001`). Scoring implemented work as if it were working is the mistake the Sentry typo already punished once. |
 
 ---
 
@@ -500,17 +650,17 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 
 Ranked by points gained per unit of work. Nothing here is a launch blocker.
 
-Ranked by points gained per unit of work. Nothing here is a launch blocker.
-
 ### Yours — no code needed, biggest effect
 
-1. **Set `SENTRY_DSN` in Vercel.** The SDK is wired and inert until a DSN exists; the day it
-   appears, every error in the payment, checkout, order and webhook paths starts reporting.
-   This is already counted in the score above — but only becomes *true* when you set it.
+1. **Confirm the retention cron ran** (`OPS-001`) → Reliability, and it makes the PRIV-001
+   GDPR claim *true* rather than merely implemented. One SQL query after 03:30.
 2. **An uptime monitor on `/api/health`** → Reliability 88 → ~93.
    Sentry reports what throws; it cannot report a site that is down, because nothing is
    running to throw. UptimeRobot's free tier is enough.
-3. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
+3. **Narrow the Sentry alert rule** → no score change, but it decides whether the
+   Observability score means anything in practice. An alert that fires on everything is one
+   you will mute within a fortnight.
+4. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
 
 ### Highest value in code
 
@@ -521,22 +671,27 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
    Browse → cart → checkout → order, plus the failure branches. The one thing no current
    test touches is a browser — and note that **both** post-audit findings came from running
    the app rather than reading it.
-6. **Timeouts on provider calls** → Reliability → ~93.
+6. **Timeouts on provider calls** (`REL-001`) → Reliability 88 → ~93.
    `services/instagram.ts` sets `AbortSignal.timeout`; the payment and courier providers do
    not. A hung provider currently holds a checkout request open until the platform kills it.
+   Small, well-precedented, and the difference between a supplier's outage being their
+   incident or yours. **The best value-for-effort code change on this list.**
+
+7. **Widen the admin audit log** (`OBS-003`) → Observability 90 → ~94. One line per admin
+   action; the helper already resolves the actor and never throws.
 
 ### Medium
 
-7. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
-8. **Document the rollback procedure** → Deployment 82 → ~90.
+8. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
+9. **Document the rollback procedure** → Deployment 82 → ~90.
    Migrations are additive and safe today, but "what do we do at 3am" is unwritten.
-9. **Correlation IDs** through request → log → Sentry → audit entry → Observability 90 → ~97.
+10. **Correlation IDs** through request → log → Sentry → audit entry → Observability 90 → ~97.
 
 ### Lower
 
-10. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
+11. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
     live-region announcements on cart updates, contrast audit.
-11. **Integer cents instead of floats** → Correctness 96 → ~98. Large refactor, small gain
+12. **Integer cents instead of floats** → Correctness 96 → ~98. Large refactor, small gain
     now that `round2` is correct.
 
 ---
@@ -553,5 +708,6 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | `4684a25` |
 | 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | `817e50b` |
 | 2026-09-04 | OBS-001 completed: Sentry wired server-side, PII scrubbed | `e7ae303` |
-| 2026-09-04 | Audit reconciled: counts, scores, roadmap and owner tasks brought up to date | _this commit_ |
-| 2026-09-04 | OBS-001 **verified in production** — forced test proved both the `logger.error` and uncaught (`onRequestError`) paths reach Sentry; found and fixed a `SENTRY_DNS` typo that had silently disabled the SDK; temporary check route removed | _this commit_ |
+| 2026-09-04 | Audit reconciled: counts, scores, roadmap and owner tasks brought up to date | `2f0f362` |
+| 2026-09-04 | OBS-001 **verified in production** — forced test proved both the `logger.error` and uncaught (`onRequestError`) paths reach Sentry; found and fixed a `SENTRY_DNS` typo that had silently disabled the SDK; temporary check route removed | `efd30c0` |
+| 2026-09-04 | Re-checked against the **production database**: opened `OPS-001` (retention cron and audit log deployed but never observed running — 1,639 rate-limit rows past their window, 0 audit entries), `OBS-003` (audit log covers 2 of ~12 admin surfaces) and `REL-001` (no provider timeouts). Overall re-scored 89 → 88, Reliability 88 → 86 — implemented is not the same as running | _this commit_ |
