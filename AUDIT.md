@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 90**.
+**READY TO LAUNCH.** Overall **74 → 91**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
@@ -706,10 +706,10 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
-| Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
+| Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **90** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Overall** | **74** | **91** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -750,8 +750,7 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 ### Medium
 
 8. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
-9. **Document the rollback procedure** → Deployment 82 → ~90.
-   Migrations are additive and safe today, but "what do we do at 3am" is unwritten.
+9. ~~**Document the rollback procedure**~~ → **done**, `ROLLBACK.md`. Deployment 82 → 90.
 10. **Correlation IDs** through request → log → Sentry → audit entry → Observability 90 → ~97.
 
 ### Lower
@@ -782,3 +781,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `REL-001` closed — timeouts on Stripe, ACS and all three OAuth providers | `2f5f0b6` |
 | 2026-09-05 | `OBS-003` closed — audit log widened from 2 admin surfaces to 8; `order.status_changed` finally written; activity filter lists all nine prefixes | `12502bc` |
 | 2026-09-05 | `SEC-003` attempted and **stopped before any code**: Next's bundled guide states a nonce forces every page to render dynamically, disabling static generation and CDN caching — an unpriced cost on an account already over its image quota. Hash-based SRI recorded as the alternative to evaluate first. Re-scored 88 → 90 | _this commit_ |
+| 2026-09-05 | `ROLLBACK.md` written — the last documented gap in deployment practice. Deployment 82 → 90, overall 90 → 91 | _this commit_ |
