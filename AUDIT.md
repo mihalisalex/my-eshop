@@ -47,11 +47,11 @@ this exercise: a clean read is not the same as a clean run.
 
 Nothing here needs code. Everything below is an account, a setting, or a decision.
 
-1. **Set `SENTRY_DSN` in Vercel** → this is the one that matters. The SDK is wired,
-   server-side only, with PII scrubbed, and is **completely inert until a DSN exists** — so
-   right now nothing is being reported. Create a Sentry project (Next.js platform) and paste
-   the DSN into Vercel's environment variables. Worth adding an alert rule on
-   `PaymentWebhookEvent.processingStatus = 'failed'` while you are there.
+1. ~~**Set `SENTRY_DSN` in Vercel.**~~ **Done, and verified with a forced event** — see
+   OBS-001. Both reporting paths were confirmed to arrive in the EU-region project. What
+   remains is **narrowing the alert rule**: Sentry's default emails on every new issue, and
+   an alert everyone learns to ignore is worse than no alert. The rule worth having is loud
+   on payment and webhook failures, digested for everything else.
 2. **Add an uptime monitor on `/api/health`.** Sentry reports what *throws*; it cannot report
    a site that is down, because nothing is running to throw. UptimeRobot's free tier covers
    it. This is the other half of OBS-001 and the reason the endpoint exists.
@@ -93,7 +93,24 @@ Nothing here needs code. Everything below is an account, a setting, or a decisio
 **Verify.** Trigger a deliberate webhook signature failure; confirm an alert arrives. Hit `/api/health` with the DB unreachable and confirm non-200.
 
 **Risk of change:** Low — additive only.
-**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Remaining (yours):** create the Sentry project, set `SENTRY_DSN` in Vercel, and add an uptime monitor on `/api/health`.
+**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Remaining (yours):** an uptime monitor on `/api/health`, and an alert rule narrower than Sentry's default "email on every new issue".
+
+**Verified in production, 2026-09-04.** A temporary admin-gated route (`app/api/admin/sentry-check`, since deleted) exercised both halves and both were confirmed to arrive:
+
+| Path | Mechanism | Result |
+| --- | --- | --- |
+| `logger.error` | `captureException` | Arrived — `Error: This is a test. Nothing is broken.` |
+| uncaught throw | `onRequestError` | Arrived — tagged `Unhandled`, attributed to the route |
+
+Both were needed: they are independent mechanisms, and either could have failed alone. The uncaught half is what proves `onRequestError` is wired without `withSentryConfig` wrapping `next.config.ts`.
+
+The test earned its keep immediately — the DSN had been deployed as `SENTRY_DNS`. `Sentry.init` treats an absent DSN as *disabled*, not an error, so the app looked healthy and reported nothing. That is precisely the state this finding is about, and only a forced event could expose it.
+
+Two things learned that are worth not re-learning:
+- **`Sentry.flush()` returning `true` proves nothing about delivery.** It resolves when the send queue drains, and an empty queue drains instantly — so it cannot distinguish *sent* from *never queued*.
+- **The Issues list lagged the alert email.** The logger event was briefly judged missing on the strength of the list; the email carrying the same event proved otherwise. Confirm with the event, not the list view.
+
+DSN host is `ingest.**de**.sentry.io` — the EU region, so error data stays in the EU. That matters here: a US-region project would have undercut PRIV-001 on the same axis as the PII scrubbing.
 
 ---
 
@@ -537,3 +554,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | `817e50b` |
 | 2026-09-04 | OBS-001 completed: Sentry wired server-side, PII scrubbed | `e7ae303` |
 | 2026-09-04 | Audit reconciled: counts, scores, roadmap and owner tasks brought up to date | _this commit_ |
+| 2026-09-04 | OBS-001 **verified in production** — forced test proved both the `logger.error` and uncaught (`onRequestError`) paths reach Sentry; found and fixed a `SENTRY_DNS` typo that had silently disabled the SDK; temporary check route removed | _this commit_ |
