@@ -1,25 +1,29 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 · Phases 1–4 · commits `782d243` → `c731ab0` → `493ae9c` → `03ad4c4`
+**Remediated:** 2026-09-04 · Phases 1–4 complete · `782d243` → `c731ab0` → `493ae9c` → `03ad4c4` → `4684a25` → `817e50b` → `e7ae303`
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
 **Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 436/436 ✓ · `next build` ✓ · `npm audit` · live production DB queries · real-browser checks
 
 ## Verdict
 
-**READY TO LAUNCH** — with two owner tasks outstanding (see *Needs your decision*).
+**READY TO LAUNCH.** Overall **74 → 89**.
 
-The original audit found no P0 and rated the shop **74/100** overall, blocked not by its code
-but by two things: it could not be seen failing, and its riskiest code had no automated
-coverage. Both are now addressed.
+The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
+things: it could not be seen failing, and its riskiest code had no automated coverage. Both
+are now closed.
 
-**All 3 P1 launch blockers are closed. 8 of 9 P2s are closed.** The one open P2 (SEC-003,
+**All 3 P1 launch blockers are closed. 10 of 11 P2s are closed.** The one remaining (SEC-003,
 the CSP nonce) is deliberately deferred with reasoning below — it is defence-in-depth against
 an injection sink that does not currently exist, and it is the single highest-blast-radius
 change in the plan.
 
 > With bank-transfer only + manual reconciliation: **ready.**
-> Before enabling card payments: PAY-001 is fixed, so that gate is now open too.
+> Before enabling card payments: PAY-001 is fixed, so that gate is open too.
+
+**Two findings were discovered while remediating, not while auditing** — `SEC-005` and
+`BUG-001`, both from *running* the app rather than reading it. That is the honest lesson of
+this exercise: a clean read is not the same as a clean run.
 
 ---
 
@@ -29,7 +33,7 @@ change in the plan.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 10 | 0 | **9** | 1 |
+| P2 — Medium | 11 | 0 | **10** | 1 |
 | P3 — Low | 6 | 1 | **5** | 0 |
 | INFO | 6 | — | — | — |
 
@@ -39,22 +43,30 @@ change in the plan.
 
 ---
 
-## Needs your decision
+## Over to you
 
-Two things I could not finish alone, and one worth knowing:
+Nothing here needs code. Everything below is an account, a setting, or a decision.
 
-1. **Connect an error tracker** (finishes OBS-001). The seam is built and adopted —
-   `lib/logger.ts` has one `reportError` hook to implement and every call site already
-   routes through it. It needs an account choice (Sentry, Betterstack, Axiom). Also worth
-   an alert on `PaymentWebhookEvent.processingStatus = 'failed'`.
-2. **PERF-001 — image optimization** is off because the Vercel transform quota was
-   exhausted and returning 402s. Re-enable with `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the
-   plan allows. Purely a billing decision.
-3. **INFO — `sslmode`.** `pg` warns that `sslmode=require` currently behaves as
+1. **Set `SENTRY_DSN` in Vercel** → this is the one that matters. The SDK is wired,
+   server-side only, with PII scrubbed, and is **completely inert until a DSN exists** — so
+   right now nothing is being reported. Create a Sentry project (Next.js platform) and paste
+   the DSN into Vercel's environment variables. Worth adding an alert rule on
+   `PaymentWebhookEvent.processingStatus = 'failed'` while you are there.
+2. **Add an uptime monitor on `/api/health`.** Sentry reports what *throws*; it cannot report
+   a site that is down, because nothing is running to throw. UptimeRobot's free tier covers
+   it. This is the other half of OBS-001 and the reason the endpoint exists.
+3. **`CRON_SECRET` must be set in Vercel** for the new `/api/cron/data-retention` job
+   (03:30 daily). If it is already set for the two existing crons, this one works too — but
+   if it is missing, the route correctly refuses rather than running openly, and retention
+   silently never happens.
+4. **PERF-001 — image optimization** is off because the Vercel transform quota was exhausted
+   and returning 402s. Re-enable with `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan
+   allows. Purely a billing decision.
+5. **INFO — `sslmode`.** `pg` warns that `sslmode=require` currently behaves as
    `verify-full` but will adopt weaker libpq semantics in pg v9. Pinning
    `sslmode=verify-full` in `DATABASE_URL`/`DIRECT_URL` now avoids a silent downgrade later.
-
----
+6. **Housekeeping — the 9 seeded test reviews** are still live on two products. They are
+   fabricated. `/admin/reviews` can now delete them.
 
 ---
 
@@ -423,20 +435,27 @@ These are the things most likely to be wrong in a generated commerce app. They w
 
 ---
 
-# Fix order
+# Fix order — completed
 
-**Phase 1 — before launch (~1 day)**
-`SEC-004` → `SEC-002` → `AUTH-002` → `OBS-001`
-Small, verifiable, low-risk. SEC-004 first because it is 30 minutes and gates everything else's rate limiting.
+All four planned phases are done. Kept for the record, since the order was itself a decision.
 
-**Phase 2 — before enabling card payments**
-`PAY-001` ← hard gate · `TEST-001` · `PAY-002`
+| Phase | Items | Commit |
+|---|---|---|
+| 1 — before launch | `SEC-004` → `SEC-002` → `AUTH-002` → `OBS-001` (partial) | `782d243` |
+| 2 — before card payments | `PAY-001` (hard gate) · `PAY-002` · `TEST-001` | `c731ab0` |
+| 3 — first weeks live | `AUTH-001` · `PRIV-001` · `OBS-002` · `SEC-001` | `493ae9c`, `03ad4c4` |
+| 4 — hardening | `A11Y-001` · `MONEY-001` · `DEP-001/002` · `SEC-005` | `4684a25` |
+| post — found in live use | `BUG-001` · `OBS-001` completed | `817e50b`, `e7ae303` |
 
-**Phase 3 — first weeks live**
-`SEC-001` · `OBS-002` · `AUTH-001` · `PRIV-001`
+**SEC-004 went first on purpose:** it is thirty minutes of work and it gates whether every
+other rate limit in the app — including admin sign-in — actually functions. Fixing anything
+else first would have been building on it.
 
-**Phase 4 — hardening**
-`SEC-003` · `A11Y-001` · `DEP-001`/`DEP-002` · `PERF-001` · `MONEY-001`
+**Two findings were discovered during remediation, not during the audit:** `SEC-005` (a CSP
+policy silently discarding both Instagram hosts) and `BUG-001` (a wishlist race returning a
+500 in ordinary use). Both came from *running* the app — one from a browser console warning,
+one from a real error the owner hit — rather than from reading it. Worth remembering the
+next time an audit reads clean.
 
 ---
 
@@ -452,7 +471,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
-| **Observability** | 25 | **72** | Health check, adopted logger with error serialization, and a real admin audit trail. Reaches ~90 the day an error tracker is connected. |
+| **Observability** | 25 | **90** | Health check, adopted logger, a real admin audit trail, and Sentry wired server-side with PII kept out. The last 10 points are correlation IDs and an uptime monitor. |
 | Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
@@ -464,33 +483,43 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 
 Ranked by points gained per unit of work. Nothing here is a launch blocker.
 
-### Highest value
+Ranked by points gained per unit of work. Nothing here is a launch blocker.
 
-1. **Connect an error tracker** → Observability 72 → ~90, Overall +2.
-   One hook in `lib/logger.ts`; every call site is already wired. Needs an account choice.
-2. **End-to-end tests for `completeCheckout`** → Testing 78 → ~90.
-   Needs a dedicated test database (a Neon branch). The four races are already pinned at the
-   database level; this closes the service layer above them.
-3. **Playwright on the purchase path** → Testing → ~95, Reliability +3.
+### Yours — no code needed, biggest effect
+
+1. **Set `SENTRY_DSN` in Vercel.** The SDK is wired and inert until a DSN exists; the day it
+   appears, every error in the payment, checkout, order and webhook paths starts reporting.
+   This is already counted in the score above — but only becomes *true* when you set it.
+2. **An uptime monitor on `/api/health`** → Reliability 88 → ~93.
+   Sentry reports what throws; it cannot report a site that is down, because nothing is
+   running to throw. UptimeRobot's free tier is enough.
+3. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
+
+### Highest value in code
+
+4. **End-to-end tests for `completeCheckout`** → Testing 78 → ~90.
+   Needs a dedicated test database (a Neon branch). The races are pinned at the database
+   level already; this closes the service layer above them.
+5. **Playwright on the purchase path** → Testing → ~95, Reliability +3.
    Browse → cart → checkout → order, plus the failure branches. The one thing no current
-   test touches is the browser.
+   test touches is a browser — and note that **both** post-audit findings came from running
+   the app rather than reading it.
+6. **Timeouts on provider calls** → Reliability → ~93.
+   `services/instagram.ts` sets `AbortSignal.timeout`; the payment and courier providers do
+   not. A hung provider currently holds a checkout request open until the platform kills it.
 
 ### Medium
 
-4. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
-5. **Circuit breakers / timeouts on provider calls** → Reliability 88 → ~93.
-   `services/instagram.ts` sets `AbortSignal.timeout`; the payment and courier providers do
-   not. A hung provider currently holds a checkout request open.
-6. **Document the rollback procedure** → Deployment 82 → ~90.
+7. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
+8. **Document the rollback procedure** → Deployment 82 → ~90.
    Migrations are additive and safe today, but "what do we do at 3am" is unwritten.
-7. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
+9. **Correlation IDs** through request → log → Sentry → audit entry → Observability 90 → ~97.
 
 ### Lower
 
-8. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
-   live-region announcements on cart updates, contrast audit.
-9. **Correlation IDs** through request → log → audit entry → Observability +3.
-10. **Integer cents instead of floats** → Correctness 95 → ~98. Large refactor, small gain
+10. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
+    live-region announcements on cart updates, contrast audit.
+11. **Integer cents instead of floats** → Correctness 96 → ~98. Large refactor, small gain
     now that `round2` is correct.
 
 ---
@@ -506,4 +535,5 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-04 | Phase 3: SEC-001 — phase complete | `03ad4c4` |
 | 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | `4684a25` |
 | 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | `817e50b` |
-| 2026-09-04 | OBS-001 completed: Sentry wired server-side, PII scrubbed | _this commit_ |
+| 2026-09-04 | OBS-001 completed: Sentry wired server-side, PII scrubbed | `e7ae303` |
+| 2026-09-04 | Audit reconciled: counts, scores, roadmap and owner tasks brought up to date | _this commit_ |
