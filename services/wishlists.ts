@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { wishlistInclude, toWishlist, type WishlistRow } from "@/lib/commerce/postgres/mappers";
 import type { Wishlist } from "@/lib/commerce/types";
 
@@ -19,16 +20,40 @@ async function findWishlistRow(identity: WishlistIdentity): Promise<WishlistRow 
   return null;
 }
 
+/**
+ * Finds this owner's wishlist, creating one the first time.
+ *
+ * The find-then-create was a race, and one that fired in ordinary use rather than under
+ * load (BUG-001): two requests for the same owner arriving together both find nothing, both
+ * INSERT, and the loser hits the unique constraint on `customerId`/`anonymousId` and returns
+ * a 500. WishlistProvider loads on mount, so a double-invoked effect or two quick
+ * navigations is enough — it was observed as a real "Something went wrong" in the browser,
+ * with a P2002 in the server log between two successful requests for the same id.
+ *
+ * Recovered rather than prevented, because losing this race is harmless: the row the winner
+ * created is exactly the row this request wanted. Same shape as completeCheckout's duplicate
+ * -order recovery — let the unique constraint be the authority, then read back the winner.
+ */
 async function getOrCreateWishlistRow(identity: WishlistIdentity): Promise<WishlistRow> {
   const existing = await findWishlistRow(identity);
   if (existing) return existing;
-  if (identity.customerId) {
-    return prisma.wishlist.create({ data: { customerId: identity.customerId }, include: wishlistInclude });
+
+  const data = identity.customerId
+    ? { customerId: identity.customerId }
+    : identity.anonymousId
+      ? { anonymousId: identity.anonymousId }
+      : null;
+  if (!data) throw new Error("Wishlist identity required (customerId or anonymousId).");
+
+  try {
+    return await prisma.wishlist.create({ data, include: wishlistInclude });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const winner = await findWishlistRow(identity);
+      if (winner) return winner;
+    }
+    throw error;
   }
-  if (identity.anonymousId) {
-    return prisma.wishlist.create({ data: { anonymousId: identity.anonymousId }, include: wishlistInclude });
-  }
-  throw new Error("Wishlist identity required (customerId or anonymousId).");
 }
 
 export async function getWishlistByOwner(identity: WishlistIdentity): Promise<Wishlist> {

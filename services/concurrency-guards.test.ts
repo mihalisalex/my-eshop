@@ -133,3 +133,40 @@ describe.skipIf(!CONNECTION)("the conditional-UPDATE guard, against the real poo
     }
   }, 60_000);
 });
+
+/**
+ * BUG-001. Found in production use, not by reading code: the browser showed "Something went
+ * wrong" and the server log held a P2002 sandwiched between two successful requests for the
+ * same owner id.
+ *
+ * `getOrCreateWishlistRow` did find-then-create with no recovery, so two requests for the
+ * same owner arriving together both found nothing, both INSERTed, and the loser 500'd on the
+ * unique constraint. WishlistProvider loads on mount, which makes this an ordinary-use race
+ * rather than a load-related one.
+ *
+ * Unlike the guards above this exercises the real service against the real database, so it
+ * creates and removes exactly one row of its own.
+ */
+describe.skipIf(!CONNECTION)("the wishlist get-or-create race", () => {
+  it("serves one wishlist to ten simultaneous first-time loads", async () => {
+    const { getWishlistByOwner } = await import("@/services/wishlists");
+    const { prisma } = await import("@/lib/prisma");
+    const anonymousId = `anon_race_${Date.now()}`;
+
+    try {
+      const results = await Promise.allSettled(
+        Array.from({ length: 10 }, () => getWishlistByOwner({ anonymousId }))
+      );
+
+      const fulfilled = results.filter((r) => r.status === "fulfilled");
+
+      // Every caller gets a wishlist — the loser of the race recovers by reading the
+      // winner's row rather than surfacing a 500.
+      expect(fulfilled).toHaveLength(10);
+      // And they all get the SAME one; the unique constraint is what guarantees it.
+      expect(new Set(fulfilled.map((r) => r.value.id)).size).toBe(1);
+    } finally {
+      await prisma.wishlist.deleteMany({ where: { anonymousId } });
+    }
+  }, 60_000);
+});

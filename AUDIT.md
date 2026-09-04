@@ -3,7 +3,7 @@
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
 **Remediated:** 2026-09-04 · Phases 1–4 · commits `782d243` → `c731ab0` → `493ae9c` → `03ad4c4`
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 435/435 ✓ · `next build` ✓ · `npm audit` · live production DB queries · real-browser checks
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 436/436 ✓ · `next build` ✓ · `npm audit` · live production DB queries · real-browser checks
 
 ## Verdict
 
@@ -324,6 +324,34 @@ ever emit `**` again. Verified in the browser: the console errors are gone.
 
 ---
 
+## [x] BUG-001 · Wishlist get-or-create race returned a 500 in ordinary use
+
+**Category:** Correctness / Race condition
+**Location:** `services/wishlists.ts` — `getOrCreateWishlistRow`
+**Confidence:** Confirmed — reproduced against the real database
+**Found:** post-audit, from a real "Something went wrong" seen in the browser
+
+`getOrCreateWishlistRow` did find-then-create with no recovery. Two requests for the same
+owner arriving together both find nothing, both INSERT, and the loser hits the unique
+constraint on `anonymousId`/`customerId` and returns a 500.
+
+**Evidence.** The server log holds the whole story in three lines — a 200, then a P2002 on
+`wishlist.create()`, then another 200, all for the same `ownerId`. WishlistProvider loads on
+mount, so a double-invoked effect or two quick navigations is enough: an ordinary-use race,
+not a load-related one.
+
+Notably **the same class of bug the codebase had already solved everywhere else** — stock,
+gift cards and duplicate orders all recover correctly. The wishlist was simply missed.
+
+**Fixed:** Recovered rather than prevented, because losing this race is harmless: the row the
+winner created is exactly the row this request wanted. Catches P2002 and reads back the
+winner, the same shape as the duplicate-order recovery in `completeCheckout`. Verified by
+racing ten simultaneous first-time loads against the real database — 10 of 10 fulfilled, one
+wishlist created, zero rejections, where before the fix nine would have failed. Pinned in
+`services/concurrency-guards.test.ts`.
+
+---
+
 # P3 — Low
 
 ## [x] A11Y-001 · No skip-to-content link
@@ -419,7 +447,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Dimension | Before | Now | What moved it |
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
-| Correctness | 88 | **95** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
+| Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **88** | Health endpoint, structured logging in every money path, scheduled retention. No circuit breakers, which is the remaining gap. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
@@ -428,7 +456,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Deployment | 80 | **82** | Both migrations dry-run in rolled-back transactions before applying; a third cron added. Rollback procedure still undocumented. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **86** | **Ready to launch.** |
+| **Overall** | **74** | **87** | **Ready to launch.** |
 
 ---
 
@@ -476,4 +504,5 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-03 | Phase 2: PAY-001, PAY-002, TEST-001 | `c731ab0` |
 | 2026-09-04 | Phase 3: AUTH-001, PRIV-001, OBS-002 | `493ae9c` |
 | 2026-09-04 | Phase 3: SEC-001 — phase complete | `03ad4c4` |
-| 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | _this commit_ |
+| 2026-09-04 | Phase 4: A11Y-001, MONEY-001, DEP-001/002, SEC-005 (new); SEC-003 deferred; re-scored 74 → 86 | `4684a25` |
+| 2026-09-04 | BUG-001: wishlist get-or-create race, found in live use | _this commit_ |
