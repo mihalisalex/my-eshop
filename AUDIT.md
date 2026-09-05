@@ -977,7 +977,34 @@ rather than ~1s.
 low risk and can be done on its own. Tier 2 changes how every page is produced and deserves
 its own session, its own commit, and the browser suite run against it before and after — not
 a quick edit at the end of a long day.
-**Fixed:** _pending — tier 1 not started, tier 2 needs a decision_
+### Tier 1 done, and it did NOT help TTFB — 2026-09-05
+
+`92cf413` cached both root-layout queries with tag invalidation on write. Then measured, and
+the honest answer is that it changed nothing a visitor would feel:
+
+| Warm TTFB | Before | After |
+| --- | --- | --- |
+| Homepage | 0.89–1.05s | 0.93–1.13s |
+| Product page | — | ~1.02s |
+
+Identical within noise. Two database round trips were **not** the bottleneck; they were perhaps
+50–100ms of a second. What costs the second is the serverless invocation plus React rendering
+a large page plus the rest of the page's own data fetching — none of which caching two layout
+queries touches.
+
+**Keep it anyway**, for reasons that are real but invisible in this number: it removes two
+queries per page view from Neon on a free-tier database, and it is a prerequisite for tier 2
+rather than an alternative to it. But nobody should read tier 1 as having addressed
+`PERF-002`.
+
+**The value is all in tier 2.** Only a static shell served from the CDN turns ~1s into tens of
+milliseconds, because only that removes the render from the request path entirely.
+
+Recording this because the tempting version of this entry says "tier 1 complete" and moves on,
+and the next person would reasonably assume performance had been improved. It has not been.
+
+**Fixed:** _tier 1 done (`92cf413`) with no measurable effect; tier 2 open and is where the
+gain actually is_
 
 ---
 
@@ -1171,3 +1198,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Sentry alert rule throttled to once per issue per day (was *notify on every trigger*), done directly in the browser. Recorded where the setting actually lives in Sentry's newer UI, since issue alerts are absent from Create Alert entirely — that cost an hour of hunting | _this commit_ |
 | 2026-09-05 | Reliability re-scored 86 → 92. It had been marked down when the retention cron was unproven; since then `REL-001` bounded every provider call, uptime monitoring went live and was verified, and the restore path was drilled. Still short of the mid-90s for two honest reasons: no cron slot has been observed firing unaided, and there are no circuit breakers | _this commit_ |
 | 2026-09-05 | Asked why Performance was the lowest score and **measured instead of repeating the existing answer**. Opened `PERF-002`: **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale — so every page view is a serverless render with `no-store` and `X-Vercel-Cache: MISS`, TTFB ~1s warm and 4.2s cold. The rendering model of the whole site was a side effect of a localisation choice nobody weighed. This also **corrects `SEC-003`**, whose decisive argument was a cost that had already been paid months earlier | _this commit_ |
+| 2026-09-05 | `PERF-002` tier 1 done (`92cf413`) — both root-layout queries cached with `updateTag` invalidation on write. **Measured afterwards: no meaningful TTFB change** (0.89–1.05s before, 0.93–1.13s after). Two queries were not the bottleneck; the serverless render is. Kept because it removes real load from a free-tier database and is a prerequisite for tier 2 — but recorded plainly as not having fixed the finding | _this commit_ |
