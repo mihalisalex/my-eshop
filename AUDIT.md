@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 89**.
+**READY TO LAUNCH.** Overall **74 → 92**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
@@ -51,7 +51,7 @@ would have been caught by reading the code again more carefully.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 15 | 1 | **13** | 1 |
-| P3 — Low | 6 | 1 | **5** | 0 |
+| P3 — Low | 7 | 1 | **6** | 0 |
 | INFO | 6 | — | — | — |
 
 All three P2s opened on 2026-09-04 came from measuring production rather than re-reading code.
@@ -780,6 +780,34 @@ WCAG 2.4.1 (Bypass Blocks), Level A. Keyboard users must tab through the full he
 **Fix.** Visually-hidden anchor to `#main` as the first focusable element in `app/layout.tsx`.
 **Fixed:** Phase 4 — skip link in `app/layout.tsx` as the first focusable element, with `id="main"` added to all 33 `<main>` elements. Visually hidden until focused rather than hidden outright, so a sighted keyboard user can see where focus went. Verified in the browser: first focusable, visible on focus, target present.
 
+**Now pinned by a browser test**, because "in the DOM" and "actually reachable and visible on focus" are different claims and only one of them is what WCAG 2.4.1 asks for.
+
+## [x] A11Y-002 · Colour swatches were invisible to screen readers
+
+**Category:** Accessibility
+**Location:** `components/product/ColorSwatches.tsx`
+**Confidence:** Confirmed — `aria-prohibited-attr`, **serious**, on the homepage, every product page and every category listing
+**Found:** 2026-09-05, by the axe scan on its first run
+
+**Problem.** The swatch was a bare `<span>` carrying `aria-label={color.name}`. ARIA **prohibits**
+`aria-label` on a generic element, so assistive technology discards it outright — the swatch
+announced as nothing at all.
+
+On a product card the swatch is the *only* thing conveying colour: the name appears nowhere
+else. So a screen-reader user browsing the catalogue could not tell a black loafer from a brown
+one, on a shop that sells the same shoe in several colours.
+
+**Fix.** `role="img"` on the span, which is a role that accepts a name — and an honest
+description of what it is: a block of colour standing in for a word. The other two swatch call
+sites (`VariantSelector`, `QuickViewDialog`) were already on real `<button>` elements, which
+permit the attribute, so only this one was wrong.
+
+**Verify.** The axe scan over the homepage, a product page, a category listing, the empty and
+filled cart, and the checkout contact step. Zero violations at WCAG 2.1 A and AA.
+
+**Risk of change:** None — one attribute.
+**Fixed:** `role="img"`, verified by the scan that found it.
+
 ## [x] DEP-001 · `prisma` CLI ships in production dependencies
 `package.json` lists `prisma` under `dependencies` (needed for `postinstall: prisma generate`). Vercel installs devDependencies at build time, so it can move — this also removes the `mysql2` and `fast-uri` advisories from the deployed tree.
 **Fix.** Move to `devDependencies`; confirm the Vercel build still generates the client.
@@ -878,13 +906,13 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
-| **Testing** | 45 | **86** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP — and now **18 Playwright specs on desktop and mobile** covering the purchase funnel, which found `BUG-002` on their first real run. `completeCheckout` end-to-end still wants a dedicated test DB. |
+| **Testing** | 45 | **91** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. `completeCheckout` end-to-end is the last gap and still wants a dedicated test database. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
 | Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
-| Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
+| Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **89** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Overall** | **74** | **92** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -961,3 +989,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `OPS-001` half resolved — a manual `vercel crons run` cleared all 1,639 stale rows (2,019 → 317 total). Proves the code, the route and `CRON_SECRET` are all correct, so the remaining question is scheduling alone. `PRIV-001` is now genuinely enforced | _this commit_ |
 | 2026-09-05 | Playwright added — 18 specs across desktop and mobile covering the purchase funnel, plus browser-only regression guards for the skip link (`A11Y-001`), CSP violations (`SEC-005`) and uncaught page errors. **Found `BUG-002` on the first real run.** Testing 78 → 86 | _this commit_ |
 | 2026-09-05 | `BUG-002` fixed — cart mutations await the bootstrap rather than silently dropping an early click. Verified by the same Playwright spec with no settle: fails against production, passes against the fix. Correctness 96 → 97 | _this commit_ |
+| 2026-09-05 | Browser suite extended to the cart and checkout (8 specs) and an axe WCAG 2.1 A/AA scan over six pages (6 specs) — 32 in total across desktop and mobile. **The scan found `A11Y-002` on its first run**: colour swatches carried `aria-label` on a bare `<span>`, which ARIA prohibits, so they announced as nothing. Accessibility 80 → 89, Testing 86 → 91, overall 90 → 92 | _this commit_ |

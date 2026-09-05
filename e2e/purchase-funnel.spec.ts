@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import { BUY_NAME, PRODUCT, SIZE_NAME, cartBadge, dismissConsent } from "./helpers";
 
 /**
  * Browse → product → size → cart. The path every order travels, and the one nothing else
@@ -8,31 +9,6 @@ import { test, expect, type Page } from "@playwright/test";
  * move real stock. What it does cover is everything up to that point, which is where the
  * bugs the merchant actually reported lived.
  */
-
-const PRODUCT = "/products/mauro-loafer-me-aspres-leptomereies";
-
-/**
- * A shoe size button, matched by accessible name.
- *
- * The trailing `.*$` is load-bearing. A low-stock size carries a
- * `<span title="Λίγα κομμάτια">` badge, and a descendant `title` folds into the accessible
- * name — so "36" is really "36 Λίγα κομμάτια" the moment stock runs down. Playwright matches
- * a regex `name` against the WHOLE accessible name rather than as a prefix, so the obvious
- * `/^3[5-9]$/` matches a well-stocked size and silently misses every low-stock one.
- *
- * Found the hard way: the locator passed against a freshly-loaded page and failed in the
- * suite twenty minutes later, because stock had changed in between.
- */
-const SIZE_NAME = /^(3[5-9]|4[0-6])\b.*$/;
-
-/**
- * The consent banner overlays the page on a first visit. Declining is both the
- * privacy-preserving choice and the one that keeps analytics out of a test run.
- */
-async function dismissConsent(page: Page): Promise<void> {
-  const decline = page.getByRole("button", { name: "Απόρριψη προαιρετικών" });
-  if (await decline.isVisible().catch(() => false)) await decline.click();
-}
 
 test.describe("the purchase funnel", () => {
   test("a shopper can go from the homepage to a product page", async ({ page }) => {
@@ -65,16 +41,9 @@ test.describe("the purchase funnel", () => {
      */
     await expect(page.getByText(/\b\d{3,}(-\d+)?\b/).first()).toBeVisible();
 
-    /**
-     * Sizes render as buttons, and at least one must be selectable or nothing can be bought.
-     *
-     * The regex ends in  deliberately. A low-stock size carries a
-     * <span title="Λίγα κομμάτια"> badge, and a descendant title folds into the accessible
-     * name — so "36" is really "36 Λίγα κομμάτια" whenever stock is low. Playwright matches a
-     * regex  against the WHOLE accessible name rather than as a prefix, so a bare
-     *  matches a well-stocked size and silently misses every low-stock one. That is
-     * a locator that passes today and fails the week the shop sells down.
-     */
+    // Sizes render as buttons, and at least one must be selectable or nothing can be bought.
+    // See SIZE_NAME in ./helpers for why the locator is shaped the way it is — a low-stock
+    // badge folds into the accessible name and quietly breaks the obvious version.
     const sizes = page.getByRole("button", { name: SIZE_NAME });
     // toBeVisible auto-waits; count() does not, and the purchase panel hydrates client-side.
     await expect(sizes.first()).toBeVisible();
@@ -89,9 +58,7 @@ test.describe("the purchase funnel", () => {
      * The disabled state is the real assertion. An add-to-cart that accepts a null size is
      * how an unfulfillable order gets placed — the shop cannot ship "a loafer" without a size.
      */
-    // Sentence case, not the uppercase you see: the caps are a CSS text-transform, while the
-    // accessible name and textContent both keep the original "Επιλέξτε μέγεθος".
-    const cta = page.getByRole("button", { name: /^(επιλέξτε μέγεθος|προσθήκη στο καλάθι)$/i });
+    const cta = page.getByRole("button", { name: BUY_NAME });
     await expect(cta).toBeDisabled();
 
     const size = page.getByRole("button", { name: SIZE_NAME }).first();
@@ -123,8 +90,7 @@ test.describe("the purchase funnel", () => {
      * Generous timeout: the write is a round trip to a serverless function and Neon, and a
      * cold start is genuinely slow.
      */
-    const badge = page.locator('button[aria-label="Καλάθι"] span');
-    await expect(badge).toHaveText("1", { timeout: 20_000 });
+    await expect(cartBadge(page)).toHaveText("1", { timeout: 20_000 });
 
     // And the cart survives navigation — the id is persisted in localStorage, so a shopper
     // who browses on and comes back still has their bag.
