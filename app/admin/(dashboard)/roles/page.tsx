@@ -4,6 +4,10 @@ import { getAdminSession } from "@/lib/admin-session";
 import { capabilitiesByGroup, roleHasCapability } from "@/constants/permissions";
 import { ADMIN_ROLES } from "@/types/admin";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 /**
  * Rendered from the same `constants/permissions.ts` definitions the server guards read, so
  * this page can't drift from what's actually enforced. It previously displayed a hardcoded

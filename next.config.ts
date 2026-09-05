@@ -87,6 +87,16 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  /**
+   * PERF-002 tier 2, pre-step. Cache Components turns on Partial Prerendering: a static shell
+   * served from the CDN with request-dependent parts streaming behind Suspense.
+   *
+   * Nothing is faster yet. Every page and layout still carries `export const instant = false`,
+   * which opts it out of the new validation, and each of those TODOs is one route waiting to
+   * be adopted. The opt-outs are removed top-down, one feature at a time — the highest one
+   * wins, so removing a leaf does nothing while an ancestor still holds one.
+   */
+  cacheComponents: true,
   images: {
     // Single source of truth, shared with the runtime check in lib/image-hosts.ts — adding
     // a host in one place and forgetting the other is how you get a fatal next/image error.

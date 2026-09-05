@@ -25,6 +25,10 @@ import { Breadcrumbs } from "@/components/product/Breadcrumbs";
 import { ROUTES } from "@/constants/routes";
 import type { Locale } from "@/i18n/config";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
   /** Awaited in the page body so the product grid can be rendered server-side — see ProductListingSection. */

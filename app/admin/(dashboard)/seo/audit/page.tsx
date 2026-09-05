@@ -4,6 +4,10 @@ import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 import { runSeoAudit } from "@/services/seo-audit";
 import type { SeoIssue, SeoIssueSeverity } from "@/lib/seo/audit-rules";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 /**
  * The SEO audit, run against the catalogue on every page view.
  *

@@ -5,6 +5,10 @@ import { Footer } from "@/components/layout/Footer";
 import { SimplePageContent } from "@/components/shared/SimplePageContent";
 import { getLegalPages, getLegalPage, getNavigation, getSiteSettings } from "@/services";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface LegalPageProps {
   params: Promise<{ slug: string }>;
 }

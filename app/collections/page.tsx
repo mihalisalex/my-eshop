@@ -7,6 +7,10 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { localizeCollections } from "@/lib/localize";
 import type { Locale } from "@/i18n/config";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 // Async, unlike the static `metadata` it replaces: the title has to be read from the request
 // locale, and a module-level constant is evaluated once with no locale in scope.
 export async function generateMetadata(): Promise<Metadata> {

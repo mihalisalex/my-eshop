@@ -3,6 +3,10 @@ import { DataTable } from "@/components/admin/DataTable";
 import { formatDate } from "@/lib/format";
 import { getAllContactMessagesForAdmin, type ContactMessage } from "@/services/contact";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminMessagesPage() {
   const messages = await getAllContactMessagesForAdmin();
 

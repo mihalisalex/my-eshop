@@ -6,6 +6,10 @@ import { roleHasCapability } from "@/constants/permissions";
 import { DEFAULT_PAGE_SIZE, parsePage, parseSearch } from "@/lib/pagination";
 import { listMediaForAdmin, getMediaFolders, type MediaUsageFilter } from "@/services/media";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 const USAGE_FILTERS: MediaUsageFilter[] = ["all", "used", "unused"];
 
 interface AdminMediaPageProps {

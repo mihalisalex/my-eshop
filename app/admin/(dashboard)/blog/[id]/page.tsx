@@ -5,6 +5,10 @@ import { updateBlogPost, deleteBlogPost } from "@/app/admin/(dashboard)/blog/act
 import { blogPostToFormValues } from "@/lib/validation/blog";
 import { getPostById } from "@/services/blog";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface AdminBlogDetailPageProps {
   params: Promise<{ id: string }>;
 }

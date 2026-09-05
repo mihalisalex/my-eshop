@@ -11,6 +11,10 @@ import { PaymentStatusPill } from "@/components/admin/PaymentStatusPill";
 import { updateOrderStatusAction, updateOrderTrackingAction, createAcsShipmentAction } from "@/app/admin/(dashboard)/orders/actions";
 import { isAcsCourierConfigured } from "@/lib/courier";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface AdminOrderDetailPageProps {
   params: Promise<{ id: string }>;
 }

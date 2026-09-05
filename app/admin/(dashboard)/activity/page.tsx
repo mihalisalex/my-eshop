@@ -7,6 +7,10 @@ import { formatDate } from "@/lib/format";
 import { DEFAULT_PAGE_SIZE, parsePage } from "@/lib/pagination";
 import { listAuditLog, type AuditLogEntry } from "@/services/audit-log";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface AdminActivityPageProps {
   searchParams: Promise<{ action?: string; page?: string }>;
 }

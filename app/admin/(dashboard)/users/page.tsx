@@ -11,6 +11,10 @@ import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 import { getAdminUsers } from "@/services";
 import type { AdminUser } from "@/types";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminUsersPage() {
   // Reaching this page at all already requires admin:users, and every action re-checks
   // server-side regardless — hiding a control has never been the protection.

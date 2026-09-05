@@ -7,6 +7,10 @@ import { getDashboardStats } from "@/services";
 import { getAllOrdersForAdmin } from "@/services/orders";
 import type { Order } from "@/lib/commerce/types";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminDashboardPage() {
   const [stats, orders] = await Promise.all([getDashboardStats(), getAllOrdersForAdmin()]);
   const recentOrders = orders.slice(0, 5);

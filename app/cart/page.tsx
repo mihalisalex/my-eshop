@@ -5,6 +5,10 @@ import { CartPageContent } from "@/components/cart/CartPageContent";
 import { getNavigation, getSiteSettings } from "@/services";
 import { getTranslations } from "next-intl/server";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("Cart");
   return { title: t("yourBag"), robots: { index: false, follow: false } };

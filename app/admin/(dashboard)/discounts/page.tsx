@@ -9,6 +9,10 @@ import { toggleDiscountActive, deleteDiscount } from "@/app/admin/(dashboard)/di
 import type { Discount } from "@/types";
 import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminDiscountsPage() {
   await requireCapabilityOrRedirect("catalog:discounts");
   const discounts = await getAllDiscounts();

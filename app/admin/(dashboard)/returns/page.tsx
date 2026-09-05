@@ -7,6 +7,10 @@ import { updateReturnStatusAction } from "@/app/admin/(dashboard)/returns/action
 import type { Return } from "@/lib/commerce/types";
 import { requireCapabilityOrRedirect } from "@/lib/admin-session";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminReturnsPage() {
   await requireCapabilityOrRedirect("orders:returns");
   const returns = await getAllReturnsForAdmin();

@@ -8,6 +8,10 @@ import { categoryToFormValues } from "@/lib/validation/category";
 import { getCategoryById, getCategoryOptions, getChildCategories } from "@/services/categories";
 import { getSeoDefaults } from "@/services/seo";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 interface AdminCategoryDetailPageProps {
   params: Promise<{ id: string }>;
 }

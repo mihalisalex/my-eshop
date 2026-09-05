@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 import type { NavigationConfig, SiteSettings } from "@/types";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
@@ -21,8 +22,26 @@ interface FooterProps {
  * Resolved here rather than passed in as a prop: the Footer already has ~30 call sites,
  * all of which would otherwise need threading a value none of them care about.
  */
+/**
+ * The copyright year, cached (PERF-002 tier 2 pre-step).
+ *
+ * `new Date()` at render time is unstable data: it can differ between the prerender and the
+ * request, so Cache Components refuses to prerender any route containing it. The Footer is
+ * rendered by the root layout, which meant this one call blocked **every route in the app** —
+ * and unlike the other blockers, an `instant = false` opt-out does not suppress it.
+ *
+ * Cached rather than made dynamic because that is what this value actually is: the same number
+ * for every visitor, changing once a year. A day of staleness on 1 January is the entire
+ * downside, against keeping the footer inside the static shell.
+ */
+async function copyrightYear(): Promise<number> {
+  "use cache";
+  cacheLife("days");
+  return new Date().getFullYear();
+}
+
 export async function Footer({ navigation, settings }: FooterProps) {
-  const year = new Date().getFullYear();
+  const year = await copyrightYear();
   const paymentMethods = await getAcceptedPaymentMethodNames();
 
   return (

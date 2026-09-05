@@ -5,6 +5,10 @@ import { formatDate } from "@/lib/format";
 import { getAllConciergeRequestsForAdmin, type ConciergeRequest } from "@/services/concierge";
 import { updateConciergeStatusAction } from "@/app/admin/(dashboard)/concierge/actions";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 export default async function AdminConciergePage() {
   const requests = await getAllConciergeRequestsForAdmin();
 

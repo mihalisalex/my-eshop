@@ -10,6 +10,10 @@ import { PAYMENT_STATUS_LABEL } from "@/lib/payments/status";
 import { formatMoney } from "@/lib/format";
 import type { PaymentStatus } from "@/lib/payments/types";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 /** The full payment transaction table (§24). */
 export const metadata = { title: "Payments" };
 

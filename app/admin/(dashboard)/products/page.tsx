@@ -6,6 +6,10 @@ import { listProductsForAdmin, PRODUCT_SORT_KEYS, type ProductSortKey } from "@/
 import { getAllCategories } from "@/services/categories";
 import type { ProductStatus } from "@/types";
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 const STATUSES: ProductStatus[] = ["active", "draft", "archived"];
 
 interface AdminProductsPageProps {
