@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 92**.
+**READY TO LAUNCH.** Overall **74 → 93**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
@@ -226,7 +226,23 @@ The most valuable engineering in this repo — the conditional-`UPDATE` oversell
 **Verify.** Each test must fail if its guard is removed. Confirm by temporarily reverting the guard.
 
 **Risk of change:** None to production code.
-**Fixed:** Phase 2 — `services/concurrency-guards.test.ts` pins the DB semantics all three guards rest on, running against the real **pooled** connection. Verified the guard survives PgBouncer transaction mode, which was an open question. Full end-to-end `completeCheckout` coverage still wants a dedicated test database (see Deferred).
+**Fixed:** Phase 2 — `services/concurrency-guards.test.ts` pins the DB semantics all three guards rest on, running against the real **pooled** connection. Verified the guard survives PgBouncer transaction mode, which was an open question.
+
+**Closed completely on 2026-09-05**, once a Neon test branch existed. `services/checkout.integration.test.ts` now drives the **real service**, not the SQL underneath it:
+
+| Scenario | Assertion |
+| --- | --- |
+| Ten simultaneous buyers, one unit | Exactly **1** order placed, stock floors at **0**, the other nine rejected *for stock* rather than crashing |
+| An ordinary purchase | Stock moves by exactly what was bought |
+| The same checkout completed twice | Same order returned, **one** order row, stock decremented **once** |
+| No payment method | Refused — no order, stock untouched |
+| No address | Refused — no order, stock untouched |
+
+The distinction matters more than it looks. The Phase 2 tests prove *Postgres* behaves; they say nothing about whether `completeCheckout` still uses Postgres that way. **A refactor back to read-check-write would leave every Phase 2 test green while the shop began overselling.** These are the ones that would fail.
+
+**How this is kept safe.** `vitest.setup.ts` redirects the whole test process onto the branch and **refuses to start** if `TEST_DATABASE_URL` resolves to the production endpoint — verified by deliberately pointing it at production and confirming it aborts. It also forces `EMAIL_PROVIDER=dev`, because completing a checkout sends a real confirmation otherwise; a test that mails a customer is not a test.
+
+A side effect worth naming: the concurrency and audit-log tests **used to run against production**, creating and deleting rows in the live shop. They cleaned up after themselves, but "careful about it" and "cannot reach it" are different properties, and only one holds at 2am. They now run on the branch too. Production verified untouched afterwards: 6 orders, zero test artefacts.
 
 ---
 
@@ -914,13 +930,13 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
-| **Testing** | 45 | **91** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. `completeCheckout` end-to-end is the last gap and still wants a dedicated test database. |
+| **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
 | Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **92** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Overall** | **74** | **93** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -998,3 +1014,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | Playwright added — 18 specs across desktop and mobile covering the purchase funnel, plus browser-only regression guards for the skip link (`A11Y-001`), CSP violations (`SEC-005`) and uncaught page errors. **Found `BUG-002` on the first real run.** Testing 78 → 86 | _this commit_ |
 | 2026-09-05 | `BUG-002` fixed — cart mutations await the bootstrap rather than silently dropping an early click. Verified by the same Playwright spec with no settle: fails against production, passes against the fix. Correctness 96 → 97 | _this commit_ |
 | 2026-09-05 | Browser suite extended to the cart and checkout (8 specs) and an axe WCAG 2.1 A/AA scan over six pages (6 specs) — 32 in total across desktop and mobile. **The scan found `A11Y-002` on its first run**: colour swatches carried `aria-label` on a bare `<span>`, which ARIA prohibits, so they announced as nothing. Accessibility 80 → 89, Testing 86 → 91, overall 90 → 92 | _this commit_ |
+| 2026-09-05 | Neon **test branch** wired in. All database tests moved off production onto it, guarded by a check that refuses to run if the URL resolves to the production endpoint (verified by pointing it at production and confirming the abort), and with email forced to the non-sending provider. `completeCheckout` covered end to end at last — ten concurrent buyers on one unit, duplicate submits, and the two incomplete-checkout refusals. TEST-001 fully closed. Testing 91 → 96, overall 92 → 93 | _this commit_ |
