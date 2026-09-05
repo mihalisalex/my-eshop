@@ -569,10 +569,18 @@ Deliberately not fixed by disabling the button until `isLoading` clears: that tr
 click for a dead-looking button, and the shopper still cannot buy. Waiting is what they
 actually want.
 
-**Observed working:** the same Playwright spec, with **no settle**, run twice —
-**fails against production** (old code, cart empty) and **passes against the fixed build**.
-That A/B is the evidence, and the spec now carries a comment saying that a reappearing
-`waitForTimeout` means the bug is back.
+**Observed working in production, 2026-09-05** — the standard this audit now holds itself to.
+The same Playwright spec with **no settle**, run three times:
+
+| Target | Result |
+| --- | --- |
+| Production, before deploy | ❌ cart empty |
+| Local build with the fix | ✅ item added |
+| Production, after deploy | ✅ item added |
+
+The middle row proves the fix; the third proves it actually shipped. All 18 specs pass against
+live production on desktop and mobile. The spec carries a comment saying that a reappearing
+`waitForTimeout` above the click means the bug is back.
 
 ---
 
