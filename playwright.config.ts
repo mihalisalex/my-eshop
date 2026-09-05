@@ -37,10 +37,38 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     /**
-     * Mobile is not a nice-to-have here. The carousel padding bug and the PDP layout
-     * problems the merchant reported were both viewport-dependent, and a desktop-only
-     * suite would have been blind to them.
+     * Mobile is not a nice-to-have here. The carousel padding bug and the PDP layout problems
+     * the merchant reported were both viewport-dependent, and a desktop-only suite would have
+     * been blind to them.
+     *
+     * Scoped to the funnel and the cart rather than everything. The accessibility scan is
+     * viewport-independent for the rules it checks, and running it twice doubled the cart
+     * churn described below for no extra signal.
      */
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    {
+      name: "mobile",
+      use: { ...devices["Pixel 7"] },
+      testMatch: /(purchase-funnel|cart-and-checkout)\.spec\.ts/,
+    },
   ],
 });
+
+/**
+ * ONE THING TO KNOW BEFORE RUNNING THIS REPEATEDLY AGAINST PRODUCTION.
+ *
+ * `CartProvider` creates a cart on first page load, so **every fresh browser context creates a
+ * row** whether or not the test adds anything. `POST /api/cart` is rate limited to 60 per 10
+ * minutes per IP (`app/api/cart/route.ts`), and a full run opens enough contexts to spend a
+ * large part of that budget in one go.
+ *
+ * Two runs back to back will exhaust it, and the symptom is misleading: the cart bootstrap
+ * silently never resolves, so tests fail on a missing cart badge and look like a product bug.
+ * That is exactly how an hour went the first time — chased as a mobile-only defect, because
+ * the mobile project runs second and inherits the empty budget.
+ *
+ * If a run fails on the badge, check `rate_limit_attempts` for `cart-create:ip:<yours>` before
+ * suspecting the app, and wait out the ten-minute window.
+ *
+ * The limit is correct and should not be raised to suit the tests. It is worth knowing that
+ * real shoppers behind one shared NAT share that budget too.
+ */

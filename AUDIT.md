@@ -836,6 +836,14 @@ Folded into OBS-001 — listed separately so the cleanup is not forgotten once e
 
 # INFO — no action required
 
+- **Cart creation is rate limited to 60 per 10 minutes per IP**, and a cart row is created on
+  *first page load*, not on first add — so the budget is spent by browsing, not by buying.
+  Correct as a protection and **not to be raised**, but worth knowing it is shared: everyone
+  behind one NAT — a mobile carrier, an office, a school — draws on the same 60. Discovered by
+  running the browser suite against production twice in quick succession, which exhausted it
+  and produced a convincing impersonation of a mobile-only add-to-cart bug. An hour went into
+  chasing that before the rate-limit table gave it away; `playwright.config.ts` now says so at
+  the top so nobody repeats it.
 - **Rate-limit pruning is opportunistic** (1% of calls, >24h old). Unreliable at low traffic; harmless.
 - **No E2E or component tests** — covered by TEST-001.
 - **Email silently fails for real customers until the Resend sending domain is verified.** Operational and known. Correctly non-fatal in code: `sendOrderConfirmationEmail` claims-then-releases so a later retry can send.

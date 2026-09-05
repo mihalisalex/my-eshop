@@ -87,10 +87,14 @@ test.describe("the purchase funnel", () => {
      * The drawer does NOT open by itself — asserting on a dialog looks reasonable and fails
      * against the real app, which is how this assertion was written wrong the first time.
      *
-     * Generous timeout: the write is a round trip to a serverless function and Neon, and a
-     * cold start is genuinely slow.
+     * Generous timeout, and measured rather than guessed: the cart bootstrap is a round trip
+     * to a serverless function and Neon, and on a cold start it has been observed taking well
+     * past twenty seconds. 20s failed intermittently on mobile; 45s does not.
+     *
+     * That latency is also why BUG-002 mattered as much as it did — the slower the bootstrap,
+     * the wider the window in which a click was silently thrown away.
      */
-    await expect(cartBadge(page)).toHaveText("1", { timeout: 20_000 });
+    await expect(cartBadge(page)).toHaveText("1", { timeout: 45_000 });
 
     // And the cart survives navigation — the id is persisted in localStorage, so a shopper
     // who browses on and comes back still has their bag.
