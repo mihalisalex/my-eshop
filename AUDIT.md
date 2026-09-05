@@ -8,7 +8,7 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 94**.
+**READY TO LAUNCH.** Overall **74 → 95**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
@@ -48,7 +48,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
 | P3 — Low | 7 | 1 | **6** | 0 |
-| INFO | 6 | — | — | — |
+| INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
 `SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002` and `PRIV-002`. Not one would have been
@@ -138,7 +138,11 @@ of it has to be reconstructed later.
    tags point at the payment or webhook paths; send everything else to a daily digest. The
    principle: page on money, digest on everything else.
 
-3. **Uptime monitor.** Point UptimeRobot (free tier is enough) at
+3. ~~**Uptime monitor.**~~ **Done 2026-09-05 — in Sentry, not UptimeRobot**, which saved an
+   account. Verified from the runtime logs: 9 probes in 45 minutes, all 200, one every 5
+   minutes, arriving as `HEAD` requests. The old instructions are kept below for reference.
+
+   Point UptimeRobot (free tier is enough) at
    `https://shopalexandris.vercel.app/api/health`, 5-minute interval, alert on non-200. The
    route already returns 503 with no error detail when the database is unreachable, which is
    exactly the signal a prober needs.
@@ -154,7 +158,9 @@ of it has to be reconstructed later.
    emitting a zero. A `Product` carrying `"ratingValue": 0` is invalid schema.org and Search
    Console would have begun reporting rich-result errors within days.
 
-7. **`sslmode`.** `pg` warns that `sslmode=require` currently behaves as `verify-full` but
+7. ~~**`sslmode`.**~~ **Done 2026-09-05** across production, `.env` and `.env.test`. Verified in the
+   runtime logs: the same product page that logged an `[error]` warning now logs `[info]` with
+   none. Original note: `pg` warns that `sslmode=require` currently behaves as `verify-full` but
    will adopt weaker libpq semantics in pg v9. Pin `sslmode=verify-full` in `DATABASE_URL`
    and `DIRECT_URL` now to avoid a silent downgrade at some future upgrade.
 
@@ -187,7 +193,7 @@ of it has to be reconstructed later.
 **Verify.** Trigger a deliberate webhook signature failure; confirm an alert arrives. Hit `/api/health` with the DB unreachable and confirm non-200.
 
 **Risk of change:** Low — additive only.
-**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Remaining (yours):** an uptime monitor on `/api/health`, and an alert rule narrower than Sentry's default "email on every new issue".
+**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Completed 2026-09-05:** the uptime monitor is live — in Sentry rather than a separate service — probing `/api/health` every 5 minutes and confirmed arriving in the runtime logs. **Remaining (yours):** an alert rule narrower than Sentry's default "email on every new issue"; note that Sentry's Create Alert chooser offers no "Issues" type, so this means editing the existing rule's action interval rather than creating a new rule.
 
 **Verified in production, 2026-09-04.** A temporary admin-gated route (`app/api/admin/sentry-check`, since deleted) exercised both halves and both were confirmed to arrive:
 
@@ -618,7 +624,7 @@ A clean build is not evidence of a running job.
 |---|---|---|
 | `data-retention` cron (03:30 daily) | rate-limit rows ≤ 2 days old | **1,639 rows older than 2 days**, oldest `2026-07-22` |
 | `admin_audit_logs` | an entry per audited admin action | **0 rows** |
-| uptime monitoring | an external prober | none exists |
+| uptime monitoring | an external prober | ~~none exists~~ → **live since 2026-09-05**, 5-minute interval, verified in the logs |
 
 **Both zero results are currently explainable and neither is yet a bug.** The cron was
 deployed today and first fires at 03:30 tomorrow; the audit log has only two call sites
@@ -916,6 +922,12 @@ Folded into OBS-001 — listed separately so the cleanup is not forgotten once e
   and produced a convincing impersonation of a mobile-only add-to-cart bug. An hour went into
   chasing that before the rate-limit table gave it away; `playwright.config.ts` now says so at
   the top so nobody repeats it.
+- **Neon hands out `sslmode=require` on every new branch.** The connection string its API and
+  console generate defaults to `require`, so any branch created from now on arrives carrying the
+  setting that was just pinned away everywhere else. Noticed because the `pg` warning reappeared
+  during the restore drill from a temporary branch's own URI, minutes after production had been
+  fixed. Not a defect — just a default that will keep re-introducing itself, worth knowing
+  before it looks like a regression.
 - **Rate-limit pruning is opportunistic** (1% of calls, >24h old). Unreliable at low traffic; harmless.
 - **No E2E or component tests** — covered by TEST-001.
 - **Email silently fails for real customers until the Resend sending domain is verified.** Operational and known. Correctly non-fatal in code: `sendOrderConfirmationEmail` claims-then-releases so a later retry can send.
@@ -988,12 +1000,12 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
-| **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
+| **Observability** | 25 | **96** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — an audit trail covering 8 admin surfaces instead of 2 (`OBS-003`), and **uptime monitoring live and verified**. The last points are correlation IDs, and cron check-ins so a job that never runs announces itself instead of being found by a query. |
 | Deployment | 80 | **94** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
 | **Compliance** (new) | — | **88** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. Held below 90 because retention is still not proven to run on a schedule. |
-| **Overall** | **74** | **94** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Overall** | **74** | **95** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds it below the high 90s is no longer engineering at all: one unobserved cron slot, and three decisions about what to spend — the 6-hour restore window, image optimization, and the CSP nonce. |
 
 ---
 
@@ -1006,14 +1018,14 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 1. **Confirm the retention cron fired on its own** (`OPS-001`) — one SQL query after
    03:30 UTC. It closes the last open P2 either way: zero means the schedule works, non-zero
    means the three cron jobs need folding into two, which is then a small code change.
-2. **Pin `sslmode=verify-full`** in `DATABASE_URL` and `DIRECT_URL`. Not
-   future-tense: the warning is being written at **error level on live product-page requests
-   right now**, and now that Sentry works it will mail you about it.
-3. **An uptime monitor on `/api/health`** → Reliability +4. Sentry reports what throws;
-   it cannot report a site that is down, because nothing is running to throw.
-4. **Narrow the Sentry alert rule.** No score change, but it decides whether the Observability
+2. **Decide on the 6-hour restore window.** Found by drilling the restore: a problem noticed
+   the next morning **cannot be restored away**. Either accept that and keep destructive work
+   early in the day, or pay for longer history retention. See `ROLLBACK.md`.
+3. **Narrow the Sentry alert rule.** No score change, but it decides whether the Observability
    score means anything. An alert that fires on everything is one you mute within a fortnight.
-5. **Re-enable image optimization** (`PERF-001`) → Performance 74 → ~85. Purely a
+   Sentry's Create Alert chooser offers no "Issues" type — edit the existing rule's action
+   interval instead of creating a new one.
+4. **Re-enable image optimization** (`PERF-001`) → Performance 74 → ~85. Purely a
    billing decision, and the largest single number left on the board.
 
 ### Code — ranked by value per unit of work
@@ -1070,3 +1082,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | **Audit reconciled end to end.** Header, verdict, progress table, the "before going live" split into open/closed, and the roadmap all brought back in line — four roadmap items had been completed and were still listed as pending. Opened `PRIV-002` (GDPR access and erasure have no tooling), found by hunting for what the audit's own dimensions could not see: all ten scoring axes are engineering, so a compliance gap with no code behind it could not lower any number | _this commit_ |
 | 2026-09-05 | `PRIV-002` built and closed — GDPR access and erasure as admin actions, erasure implemented as anonymisation where tax law requires the record kept. 7 tests on the Neon branch, including the assertion that the order survives intact with the identity gone. Added a **Compliance** scoring dimension, because this finding existed only because none of the ten engineering axes could express it. Overall 93 → 94 | _this commit_ |
 | 2026-09-05 | Three owner items closed and **verified**, not reported: `sslmode=verify-full` pinned (the `[error]` warning on live product pages is gone), uptime monitoring live in Sentry (9 probes, all 200), and the **backup restore drilled end to end** — branch from a past point queryable in 2.5s with data genuinely rewound. The drill surfaced a finding of its own: **point-in-time retention is only 6 hours**, so a problem noticed the next morning cannot be restored away. Deployment 90 → 94 | _this commit_ |
+| 2026-09-05 | Audit reconciled after the owner items landed: the step-by-step list, `OBS-001`'s remaining work, `OPS-001`'s evidence table and the roadmap all still described `sslmode` and the uptime monitor as pending. Observability 94 → 96 now that uptime is live and verified; overall 94 → 95. Recorded as INFO that **Neon generates every new branch's connection string with `sslmode=require`**, so the setting just pinned everywhere will keep re-appearing on new branches | _this commit_ |
