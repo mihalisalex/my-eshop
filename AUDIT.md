@@ -18,11 +18,14 @@ are now closed.
 (`SEC-003`, the CSP nonce) turned out to carry a cost nobody had priced — see its entry.
 
 **The one still open, `OPS-001`, was confirmed as a real defect at 03:40 UTC on 5 September**:
-the data-retention cron has never executed. It was opened as a *suspicion* the day before, on
-the grounds that a subsystem nobody has watched run is not a subsystem known to work. It ran
-down to a live bug. The code is correct, the route is deployed, the schedule did not fire.
+the data-retention cron had never executed. It was opened as a *suspicion* the day before, on
+the grounds that a subsystem nobody has watched run is not a subsystem known to work — and it
+ran down to a live bug. A manual trigger has since cleared ~1,700 rows and proved the code, the
+route and `CRON_SECRET` all correct, so what remains is the schedule alone.
 
-**Every remaining item needs an account, a setting, or money. None of it is code.**
+**Every remaining item needs an account, a setting, a decision, or one more cron slot to
+elapse. None of it is code — unless the schedule turns out to need the three cron jobs folded
+into two, which is the one code fix still on the table.**
 
 **Three findings were discovered by running the system, not by auditing it** — `SEC-005`,
 `BUG-001`, and the `SENTRY_DNS` typo that had silently disabled all error reporting. That last
@@ -52,8 +55,9 @@ would have been caught by reading the code again more carefully.
 | INFO | 6 | — | — | — |
 
 All three P2s opened on 2026-09-04 came from measuring production rather than re-reading code.
-`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`, and as of 2026-09-05 it
-is confirmed broken rather than merely unverified** — the cron slot passed and cleared nothing.
+`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`**, which as of 2026-09-05
+is half resolved: confirmed broken when the slot passed and cleared nothing, then proven
+working by a manual trigger. Only automatic scheduling is still unverified.
 
 The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions.
 
@@ -102,14 +106,15 @@ the next review deletion will leave an entry naming the actor, the rating and th
 Detail for rows 1–4, 7 and 8 of the table above — the settings, values and commands, so none
 of it has to be reconstructed later.
 
-1. **Retention cron** (`OPS-001`). Confirm `CRON_SECRET` is set in Vercel. It is already
-   required by the two existing crons, so if `email-followups` and `instagram-token` run, this
-   one will too. After 03:30, run:
+1. **Retention cron** (`OPS-001`). `CRON_SECRET` is confirmed correct — a manual
+   `npx vercel crons run /api/cron/data-retention` returned 200 and did the work. The only
+   open question is whether the 03:30 UTC slot fires unaided. After the next one, run:
    ```sql
    SELECT COUNT(*) FROM rate_limit_attempts WHERE "createdAt" < now() - interval '2 days';
    ```
-   `0` means it worked. Anything else means it did not run — check the Vercel cron logs before
-   assuming the code is wrong.
+   `0` means the schedule works and this closes. A non-zero number means the third cron is not
+   being scheduled, and the fix is to fold the retention pass into one of the two existing cron
+   routes so the project declares two jobs rather than three.
 
 2. **Sentry alert rule.** Replace the default. Notify immediately when the event message or
    tags point at the payment or webhook paths; send everything else to a daily digest. The
