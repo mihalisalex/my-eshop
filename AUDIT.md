@@ -50,7 +50,7 @@ would have been caught by reading the code again more carefully.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 14 | 1 | **12** | 1 |
+| P2 — Medium | 15 | 2 | **12** | 1 |
 | P3 — Low | 6 | 1 | **5** | 0 |
 | INFO | 6 | — | — | — |
 
@@ -72,11 +72,9 @@ The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending d
 Ordered by what would hurt most if skipped. Nothing here is a P0, and the shop is already
 taking real orders (**6** in the database), so treat this as hardening rather than a gate.
 
-**Every code item is now closed.** What remains needs an account, a setting, or a decision
-that costs money — none of it can be done from the repository.
-
 | # | Item | Owner | Status |
 |---|---|---|---|
+| 0 | **The buy button swallows an early click** (`BUG-002`) | **Code — me** | 🔴 **New, 2026-09-05.** Found by the Playwright suite on its first run. For ~1.5s after a size is picked the button looks enabled but its handler is not live, and the click is lost in silence. Costs conversions on the shop's single most important interaction. |
 | 1 | **Retention cron: runs manually, has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 **Half resolved.** A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are all correct. The 03:30 trigger still did not fire on its own. Next slot is the test. |
 | 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
@@ -490,6 +488,55 @@ wishlist created, zero rejections, where before the fix nine would have failed. 
 
 ---
 
+## [ ] BUG-002 · "Add to bag" is clickable ~1.5s before it works, and swallows the click
+
+**Category:** Correctness / Conversion
+**Location:** `components/product/PurchasePanel.tsx` — the add-to-cart control
+**Confidence:** Confirmed — reproduced in three ways against production
+**Found:** 2026-09-05, by the new Playwright suite, on its first real run
+
+**Problem.** After a shopper picks a size, the button reports itself **enabled** and its label
+has already flipped from *Επιλέξτε μέγεθος* to *Προσθήκη στο καλάθι* — but its click handler
+is not yet live. A click inside that window does **nothing at all**: no request, no error, no
+line item, no message. The button simply appears not to have worked.
+
+**Evidence.** Identical sequence, three click strategies, same page, production:
+
+| Attempt | Result |
+| --- | --- |
+| Select size → click immediately | ❌ cart empty |
+| Select size → **wait 1.5s** → click | ✅ item added |
+| Select size → dispatch a DOM `click()` immediately | ❌ cart empty |
+
+A cart row *is* created (`alexandris_cart_id` appears in `localStorage`), so the failure is
+specifically the line item, not the cart. Reproduced headless and headed, so it is not a
+harness artefact — and hand-driving a real browser slowly always succeeds, which is exactly
+why nobody had noticed.
+
+**Failure scenario.** A decisive shopper who knows their size taps size then buy in one motion
+— the single most common interaction on the page — and nothing happens. There is no error to
+report, so the likeliest outcomes are a second tap, or leaving. On mobile, where taps land
+faster than mouse travel, the window is easiest to hit.
+
+**Why every existing test missed it.** 443 Vitest specs, none of which opens a browser. This
+is not a logic bug; it is a timing bug between hydration and user input, and it is invisible
+to anything that does not actually click.
+
+**Fix.** Keep the control disabled until its handler is genuinely attached, rather than
+enabling it on state alone — the label may flip on selection, but `disabled` should lift only
+when the click will be honoured. Alternatively, queue a click that arrives early and replay it
+once ready. The first is simpler and more honest to the shopper.
+
+**Verify.** Delete the `waitForTimeout(1500)` in
+`e2e/purchase-funnel.spec.ts` and the suite must still pass. That line is currently the only
+thing making the test green, and it is commented as such.
+
+**Risk of change:** Low, but it is the buy button — it wants its own commit and a real
+click-through afterwards.
+**Fixed:** _pending_
+
+---
+
 ## [ ] OPS-001 · Three subsystems are deployed but have never been observed running
 
 **Category:** Reliability / Operations
@@ -784,7 +831,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
-| **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
+| **Testing** | 45 | **86** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP — and now **18 Playwright specs on desktop and mobile** covering the purchase funnel, which found `BUG-002` on their first real run. `completeCheckout` end-to-end still wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
 | Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
@@ -865,3 +912,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `ROLLBACK.md` written — the last documented gap in deployment practice. Deployment 82 → 90, overall 90 → 91 | _this commit_ |
 | 2026-09-05 | **`OPS-001` confirmed broken.** The 03:30 UTC slot passed and cleared nothing — still 1,639 stale rows, oldest 22 July. Established that the retention code is correct, all three cron routes are deployed and return 401 unauthenticated, and the Vercel team is on the `hobby` plan. Cause is Vercel-side: either `CRON_SECRET` mismatches or the third cron was never scheduled. **`PRIV-001`'s GDPR position is therefore not currently being honoured** | _this commit_ |
 | 2026-09-05 | `OPS-001` half resolved — a manual `vercel crons run` cleared all 1,639 stale rows (2,019 → 317 total). Proves the code, the route and `CRON_SECRET` are all correct, so the remaining question is scheduling alone. `PRIV-001` is now genuinely enforced | _this commit_ |
+| 2026-09-05 | Playwright added — 18 specs across desktop and mobile covering the purchase funnel, plus browser-only regression guards for the skip link (`A11Y-001`), CSP violations (`SEC-005`) and uncaught page errors. **Found `BUG-002` on the first real run.** Testing 78 → 86 | _this commit_ |

@@ -21,7 +21,9 @@ export default defineConfig({
      */
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.test.ts"],
-    exclude: ["**/node_modules/**"],
+    // e2e/ holds Playwright specs. Vitest would collect them and fail on the missing
+    // Playwright runner, so the two suites are kept strictly apart.
+    exclude: ["**/node_modules/**", "e2e/**"],
   },
   resolve: {
     alias: {
