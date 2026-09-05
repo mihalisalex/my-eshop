@@ -47,7 +47,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
 | P2 — Medium | 16 | 1 | **14** | 1 |
-| P3 — Low | 7 | 1 | **6** | 0 |
+| P3 — Low | 8 | 2 | **6** | 0 |
 | INFO | 7 | — | — | — |
 
 **Every finding opened after the original audit came from running or measuring the system** —
@@ -343,7 +343,18 @@ Dev-only `unsafe-eval` was correctly removed, but `unsafe-inline` remains in bot
 
 **To do it properly** (a deliberate session, not an unattended one): widen the matcher to `/((?!_next/static|_next/image|favicon.ico).*)`, keep the early returns so no extra DB work runs, mint a nonce per request, pass it via a request header, read it in `app/layout.tsx`, and emit `script-src 'self' 'nonce-…'`. `style-src` keeps `unsafe-inline` — Framer Motion writes inline styles. Verify every page renders and the console is clean before merging.
 
-### A fourth reason, found on 2026-09-04 — and it is the decisive one
+### ⚠️ Correction, 2026-09-05: the fourth reason below is wrong for THIS shop
+
+`PERF-002` measured what the argument below assumed. **Every page already renders
+dynamically** — the root layout reads a cookie for the locale, and has done for months. There
+is no static generation left for a nonce to cost. The reasoning was sound in general and
+untrue here, and it was asserted without checking.
+
+The first three reasons still stand on their own: no injection sink exists, the blast radius is
+the highest in the plan, and the proxy matcher does not cover checkout. The nonce remains
+deferred — but on those grounds, not on a cost that had already been paid.
+
+### The fourth reason, recorded 2026-09-04 — since disproved for this shop
 
 Attempted during the autonomous session; **stopped before writing any code**, because Next's
 own bundled guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`)
@@ -900,6 +911,76 @@ filled cart, and the checkout contact step. Zero violations at WCAG 2.1 A and AA
 `mysql2` (high), `fast-uri` (high), `qs` (moderate), `prisma` (moderate). **Traced: all reachable only via the `prisma` CLI and `shadcn`.** The app uses `@prisma/client` + `@prisma/adapter-pg` at runtime and never loads these. **Not a launch blocker.** Largely resolved by DEP-001.
 **Fixed (assessed, no action needed):** Phase 4 — re-confirmed all four advisories are reachable only through the `prisma` CLI and `shadcn`, neither of which is loaded by the deployed serverless runtime (the app uses `@prisma/client` + `@prisma/adapter-pg`). `npm audit fix --force` would DOWNGRADE Prisma to 6.x, a breaking change and a worse outcome than the advisories. Left as-is, deliberately.
 
+## [ ] PERF-002 · Nothing is statically rendered, so every page is a server render
+
+**Category:** Performance / Architecture
+**Location:** `app/layout.tsx` → `getLocale()` → `i18n/request.ts` → `cookies()`
+**Confidence:** Confirmed — measured against production and against the build output
+**Found:** 2026-09-05, by asking why Performance was the lowest score and measuring instead of repeating the existing answer
+
+**Problem.** The audit has carried Performance at 72–74 since the start and attributed it
+entirely to `PERF-001`, image optimization being off. That is real but second. The larger
+cost had never been measured:
+
+| Measured on production | |
+| --- | --- |
+| TTFB, cold | **4.2s** |
+| TTFB, warm | ~1.0s |
+| Homepage HTML | 277 KB |
+| Images on the homepage | 30, from 24 KB to 234 KB (~3 MB) |
+| `Cache-Control` | `private, no-cache, no-store, must-revalidate` |
+| `X-Vercel-Cache` | **MISS** |
+| **Pages prerendered at build** | **zero of 148 routes** |
+
+The only static entries in the build are `robots.txt`, `sitemap.xml`, `icon.svg`, the
+manifest and the OG image. **Not one page.** Every visit to every product page is a serverless
+invocation running database queries, with nothing cached at the edge.
+
+**Cause.** `app/layout.tsx` calls `getLocale()`, which reads `cookies()` inside
+`i18n/request.ts`. Reading a request cookie in the **root layout** opts the entire
+application out of static rendering — Next cannot prerender a page whose output depends on a
+request header.
+
+The i18n decision itself is sound and well argued in `i18n/config.ts`: cookie-based locale,
+no `/el/` prefix, because every product, category and legal page exists only in Greek and
+English is ~90 chrome strings. What is nowhere written down is its cost. **The rendering model
+of the whole site is a side effect of a localisation choice**, and nobody chose it.
+
+**Consequences beyond speed.** Every page view is a function invocation on an account already
+brushing its limits — the same account whose image-transform quota ran out and caused
+`PERF-001`. Those are separate quotas, so this is not the direct cause, but both are
+pressured by the same thing: nothing is cached, so everything is computed.
+
+**This also corrects `SEC-003`.** The decisive argument for deferring the CSP nonce was that
+it "forces every page to render dynamically, disabling static generation and CDN caching."
+That consequence had **already happened**, months earlier, for an unrelated reason. The
+argument was sound in general and wrong about this shop, and it was asserted without checking.
+See the correction in that entry.
+
+**Fix — two tiers.**
+
+1. **Cheap and safe.** The root layout runs `getSeoDefaults()` and `getAllCategories()` on
+   every render of every page. Both change rarely. Caching them cuts real database time off
+   every request without touching the rendering model.
+2. **The real fix: Cache Components.** Next 16 ships `cacheComponents: true` with the
+   `use cache` directive, whose default behaviour is Partial Prerendering — a static shell
+   served from the CDN, with genuinely request-dependent parts streaming behind `<Suspense>`.
+   That keeps the cookie-based locale exactly as it is while returning most of every page to
+   the edge. Next validates this explicitly: it names any component that cannot prerender and
+   points at the fix.
+
+**Verify.** `next build` should report pages as prerendered rather than 148 dynamic routes,
+and production should answer with `X-Vercel-Cache: HIT` and a TTFB in tens of milliseconds
+rather than ~1s.
+
+**Risk of change:** **Medium-high, and it is the rendering model of a live shop.** Tier 1 is
+low risk and can be done on its own. Tier 2 changes how every page is produced and deserves
+its own session, its own commit, and the browser suite run against it before and after — not
+a quick edit at the end of a long day.
+**Fixed:** _pending — tier 1 not started, tier 2 needs a decision_
+
+---
+
 ## [ ] PERF-001 · Image optimization disabled globally
 `next.config.ts` → `images.unoptimized: true`. Deliberate and documented — the Vercel transform quota was exhausted and returning 402s, breaking images across the shop. Real bandwidth/LCP cost (~100KB JPEGs served raw).
 **Fix.** Re-enable via `NEXT_PUBLIC_OPTIMIZE_IMAGES=true` once the plan allows.
@@ -1001,7 +1082,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **92** | Health endpoint plus **live uptime monitoring**, structured logging in every money path, scheduled retention, and **every outbound provider call bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. Held below the mid-90s by two things: the retention cron has still not been seen to fire on schedule (`OPS-001`), and there are no circuit breakers. |
-| Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
+| Performance | 72 | **74** | The lowest score, and until 2026-09-05 the least investigated: it was attributed entirely to `PERF-001`. Measuring found `PERF-002` — **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale, so every page view is a serverless render with nothing cached at the edge. Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **96** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — an audit trail covering 8 admin surfaces instead of 2 (`OBS-003`), and **uptime monitoring live and verified**. The last points are correlation IDs, and cron check-ins so a job that never runs announces itself instead of being found by a query. |
@@ -1089,3 +1170,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Audit reconciled after the owner items landed: the step-by-step list, `OBS-001`'s remaining work, `OPS-001`'s evidence table and the roadmap all still described `sslmode` and the uptime monitor as pending. Observability 94 → 96 now that uptime is live and verified; overall 94 → 95. Recorded as INFO that **Neon generates every new branch's connection string with `sslmode=require`**, so the setting just pinned everywhere will keep re-appearing on new branches | _this commit_ |
 | 2026-09-05 | Sentry alert rule throttled to once per issue per day (was *notify on every trigger*), done directly in the browser. Recorded where the setting actually lives in Sentry's newer UI, since issue alerts are absent from Create Alert entirely — that cost an hour of hunting | _this commit_ |
 | 2026-09-05 | Reliability re-scored 86 → 92. It had been marked down when the retention cron was unproven; since then `REL-001` bounded every provider call, uptime monitoring went live and was verified, and the restore path was drilled. Still short of the mid-90s for two honest reasons: no cron slot has been observed firing unaided, and there are no circuit breakers | _this commit_ |
+| 2026-09-05 | Asked why Performance was the lowest score and **measured instead of repeating the existing answer**. Opened `PERF-002`: **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale — so every page view is a serverless render with `no-store` and `X-Vercel-Cache: MISS`, TTFB ~1s warm and 4.2s cold. The rendering model of the whole site was a side effect of a localisation choice nobody weighed. This also **corrects `SEC-003`**, whose decisive argument was a cost that had already been paid months earlier | _this commit_ |
