@@ -96,11 +96,10 @@ treat this as hardening rather than a gate.
 |---|---|---|---|
 | 1 | **Retention cron has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are correct. The 03:30 trigger still has not fired unaided. One query settles it. |
 | 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
-| 3 | **Narrow the Sentry alert rule** | You — setting | ⏳ Set the existing rule's action interval to 24h. Sentry's alert chooser offers no "Issues" type, so edit the existing rule rather than creating one. |
-| 4 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
-| 5 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
+| 3 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
+| 4 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
 
-**Nothing on this list is code.** Items 1 and 3 are minutes; items 2, 4 and 5 are decisions about what to spend.
+**Nothing on this list is code.** Item 1 is one query tomorrow morning; items 2, 3 and 4 are decisions about what to spend.
 
 ### Closed on 4–5 September
 
@@ -108,6 +107,7 @@ treat this as hardening rather than a gate.
 |---|---|
 | `sslmode=verify-full` pinned | Verified in the runtime logs: the same product page that logged an `[error]` warning now logs `[info]` with none |
 | Uptime monitoring live | 9 probes in 45 minutes, all 200, every 5 minutes |
+| Sentry alert throttled | `Send a notification for high priority issues` changed from *notify on every trigger* to **1 day**; sidebar confirms "Throttling: 1 day" |
 | **Backup restore drilled** | Branch from a past point ready in **2.5s**; data genuinely rewound (789 rate-limit rows vs 1,080 live); branch deleted |
 | `PRIV-002` — no way to answer a GDPR access or erasure request | Export and erasure as admin actions; orders kept and anonymised rather than deleted, per Art. 17(3)(b). 7 tests on the branch |
 | `BUG-002` — the buy button swallowed early clicks | Same spec with no settle: fails on production, passes on the fix, passes on production after deploy |
@@ -193,7 +193,11 @@ of it has to be reconstructed later.
 **Verify.** Trigger a deliberate webhook signature failure; confirm an alert arrives. Hit `/api/health` with the DB unreachable and confirm non-200.
 
 **Risk of change:** Low — additive only.
-**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Completed 2026-09-05:** the uptime monitor is live — in Sentry rather than a separate service — probing `/api/health` every 5 minutes and confirmed arriving in the runtime logs. **Remaining (yours):** an alert rule narrower than Sentry's default "email on every new issue"; note that Sentry's Create Alert chooser offers no "Issues" type, so this means editing the existing rule's action interval rather than creating a new rule.
+**Fixed:** Phase 1 (health endpoint, logger seam, adoption) + Sentry wired. Server-side only — the client SDK is deliberately absent, since every costly failure here is server-side and the browser bundle already carries unoptimized images. Verified the SDK is NOT in the client bundle. A missing DSN is a full no-op, so the app is unchanged until you paste one in. `sendDefaultPii: false`, tracing off, and a `beforeSend` email scrubber, because shipping customer PII to a US processor would undo PRIV-001 on a different axis — the `to: customerEmail` field was also removed at its call site, which is the actual fix. **Completed 2026-09-05.** The uptime monitor is live — in Sentry rather than a separate service — probing `/api/health` every 5 minutes, confirmed arriving in the runtime logs. And the alert rule is throttled: `Send a notification for high priority issues` went from *notify on every trigger* to **once per day per issue**.
+
+Two things learned about Sentry's newer UI, since neither matched the older docs. Issue alerts are not in **Create Alert** at all — that chooser offers only Metric, Cron, Uptime and Mobile Build. They live under **Monitors → Error → the monitor → Project Alerts**. And the throttle is a field called **Action Throttle** in a **Throttling** section at the bottom of the rule editor, not a condition inside the rule.
+
+The default was better than feared, incidentally: it fired on *high priority* issues rather than every new one. The throttle is what stops one recurring failure mailing repeatedly.
 
 **Verified in production, 2026-09-04.** A temporary admin-gated route (`app/api/admin/sentry-check`, since deleted) exercised both halves and both were confirmed to arrive:
 
@@ -1083,3 +1087,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | `PRIV-002` built and closed — GDPR access and erasure as admin actions, erasure implemented as anonymisation where tax law requires the record kept. 7 tests on the Neon branch, including the assertion that the order survives intact with the identity gone. Added a **Compliance** scoring dimension, because this finding existed only because none of the ten engineering axes could express it. Overall 93 → 94 | _this commit_ |
 | 2026-09-05 | Three owner items closed and **verified**, not reported: `sslmode=verify-full` pinned (the `[error]` warning on live product pages is gone), uptime monitoring live in Sentry (9 probes, all 200), and the **backup restore drilled end to end** — branch from a past point queryable in 2.5s with data genuinely rewound. The drill surfaced a finding of its own: **point-in-time retention is only 6 hours**, so a problem noticed the next morning cannot be restored away. Deployment 90 → 94 | _this commit_ |
 | 2026-09-05 | Audit reconciled after the owner items landed: the step-by-step list, `OBS-001`'s remaining work, `OPS-001`'s evidence table and the roadmap all still described `sslmode` and the uptime monitor as pending. Observability 94 → 96 now that uptime is live and verified; overall 94 → 95. Recorded as INFO that **Neon generates every new branch's connection string with `sslmode=require`**, so the setting just pinned everywhere will keep re-appearing on new branches | _this commit_ |
+| 2026-09-05 | Sentry alert rule throttled to once per issue per day (was *notify on every trigger*), done directly in the browser. Recorded where the setting actually lives in Sentry's newer UI, since issue alerts are absent from Create Alert entirely — that cost an hour of hunting | _this commit_ |
