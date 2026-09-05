@@ -73,7 +73,7 @@ that costs money — none of it can be done from the repository.
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | **The retention cron is not running** (`OPS-001`) | You — Vercel | 🔴 **Confirmed broken.** The 03:30 UTC slot passed with nothing cleared. Code verified correct, routes deployed and returning 401 to unauthenticated calls, account on the **hobby** plan. Either `CRON_SECRET` mismatches or the third cron was never scheduled. |
+| 1 | **Retention cron: runs manually, has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 **Half resolved.** A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are all correct. The 03:30 trigger still did not fire on its own. Next slot is the test. |
 | 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
 | 4 | ~~Delete the 9 seeded fake reviews~~ | — | ✅ **Done** 2026-09-04. All 9 removed, both product pages verified. |
@@ -83,10 +83,10 @@ that costs money — none of it can be done from the repository.
 | 8 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ Biggest single score gain available (Performance 74 → ~85). |
 | 9 | **SEC-003, the CSP nonce** | You — **cost decision** | ⛔ Attempted and stopped. A nonce forces **every page to render dynamically**, disabling static generation and CDN caching — on an account already over its image quota. See the entry. |
 
-**Item 1 is now the most important line in this table.** It stopped being a verification and
-became a live defect at 03:40 UTC: the retention job has never executed, so the GDPR position
-`PRIV-001` describes is not actually being honoured — webhook payloads are not being blanked
-and IP addresses are not being purged. The code for both is correct and has simply never run.
+**Item 1 is half resolved.** It became a live defect at 03:40 UTC — the retention job had never
+executed, so `PRIV-001`'s GDPR position was not being honoured. A manual trigger has now run
+it: ~1,700 rows of IP addresses cleared, and the policy is in effect. What remains unproven is
+whether the schedule fires unaided, which one more slot will settle.
 
 Items 2, 3 and 7 are about half an hour of clicking. Items 8 and 9 are spending decisions
 rather than engineering ones, and 9 is the one to *not* rush.
@@ -578,7 +578,23 @@ actually being honoured**. Webhook payloads are not being blanked at 90 days and
 are not being purged at 2 days — the code to do both exists and has never executed. That is
 the distinction this finding is about, and it is worth re-reading `PRIV-001` with that in mind.
 
-**Fixed:** _no — confirmed broken 2026-09-05. Needs a Vercel-side answer._
+### Half resolved, 2026-09-05 ~12:40 UTC
+
+A manual trigger (`npx vercel crons run /api/cron/data-retention`) **worked**:
+
+| | Before | After |
+| --- | ---: | ---: |
+| Rows older than 2 days | 1,639 | **0** |
+| Total rate-limit rows | 2,019 | 317 |
+| Oldest row | 2026-07-22 | 2026-09-03 |
+
+Roughly 1,700 rows of IP addresses cleared. **`PRIV-001` is enforced as of now** rather than merely implemented.
+
+It also eliminates one of the two hypotheses. `vercel crons run` invokes the route the way the scheduler does, with the `Authorization: Bearer` header, and it returned 200 and did the work — so **`CRON_SECRET` is set and correct**. The code is correct, the secret is correct, the route is deployed. What did not happen is the 03:30 trigger.
+
+**Still open: whether the schedule fires on its own.** The next slot is the test. If it fires, this closes. If it does not, the cause is that the third cron is not being scheduled, and the fix is a code change rather than a setting — fold the retention work into one of the two existing cron routes so the project declares two jobs instead of three.
+
+**Fixed:** _partially — the data is cleared and the job is proven to work; automatic scheduling is unproven until a slot fires unaided._
 
 ---
 
@@ -843,3 +859,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `SEC-003` attempted and **stopped before any code**: Next's bundled guide states a nonce forces every page to render dynamically, disabling static generation and CDN caching — an unpriced cost on an account already over its image quota. Hash-based SRI recorded as the alternative to evaluate first. Re-scored 88 → 90 | _this commit_ |
 | 2026-09-05 | `ROLLBACK.md` written — the last documented gap in deployment practice. Deployment 82 → 90, overall 90 → 91 | _this commit_ |
 | 2026-09-05 | **`OPS-001` confirmed broken.** The 03:30 UTC slot passed and cleared nothing — still 1,639 stale rows, oldest 22 July. Established that the retention code is correct, all three cron routes are deployed and return 401 unauthenticated, and the Vercel team is on the `hobby` plan. Cause is Vercel-side: either `CRON_SECRET` mismatches or the third cron was never scheduled. **`PRIV-001`'s GDPR position is therefore not currently being honoured** | _this commit_ |
+| 2026-09-05 | `OPS-001` half resolved — a manual `vercel crons run` cleared all 1,639 stale rows (2,019 → 317 total). Proves the code, the route and `CRON_SECRET` are all correct, so the remaining question is scheduling alone. `PRIV-001` is now genuinely enforced | _this commit_ |
