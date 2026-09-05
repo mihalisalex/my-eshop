@@ -21,7 +21,16 @@ import { prisma } from "@/lib/prisma";
  * database is unreachable, never why, since the reason routinely names the host and user.
  * The real diagnosis goes to the server log where an operator can read it.
  */
-export const dynamic = "force-dynamic";
+/**
+ * No route segment config. Cache Components rejects `dynamic = "force-dynamic"` outright, and
+ * does not need it: a GET handler prerenders only when it accesses no uncached data, and the
+ * `SELECT 1` below is exactly that. The route therefore runs on every request, which is the
+ * behaviour the old export was asking for.
+ *
+ * Verify after any change here that `next build` still lists `/api/health` as dynamic. A
+ * prerendered health check would answer "healthy" forever — including while the database is
+ * unreachable, which is the one failure this endpoint exists to report.
+ */
 
 export async function GET() {
   const startedAt = Date.now();
