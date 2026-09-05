@@ -95,19 +95,20 @@ treat this as hardening rather than a gate.
 | # | Item | Owner | Where it stands |
 |---|---|---|---|
 | 1 | **Retention cron has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are correct. The 03:30 trigger still has not fired unaided. One query settles it. |
-| 2 | **Pin `sslmode=verify-full`** | You — Vercel env | 🔴 Already writing **error-level** lines on live product-page requests, and Sentry will now mail you about them. |
-| 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
-| 4 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
-| 6 | **Backup-restore drill** | Code — me | ⏳ The only disaster path never exercised. Now safe to run, thanks to the test branch. |
-| 7 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
-| 8 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
+| 2 | **Restore window is only 6 hours** | You — **plan decision** | 🔴 Discovered by the restore drill. A problem noticed the next morning **cannot be restored away**. See `ROLLBACK.md`. |
+| 3 | **Narrow the Sentry alert rule** | You — setting | ⏳ Set the existing rule's action interval to 24h. Sentry's alert chooser offers no "Issues" type, so edit the existing rule rather than creating one. |
+| 4 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
+| 5 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
 
-**Items 1–4 are minutes each and worth more than anything on the code half of that list.**
+**Nothing on this list is code.** Items 1 and 3 are minutes; items 2, 4 and 5 are decisions about what to spend.
 
 ### Closed on 4–5 September
 
 | Item | Evidence |
 |---|---|
+| `sslmode=verify-full` pinned | Verified in the runtime logs: the same product page that logged an `[error]` warning now logs `[info]` with none |
+| Uptime monitoring live | 9 probes in 45 minutes, all 200, every 5 minutes |
+| **Backup restore drilled** | Branch from a past point ready in **2.5s**; data genuinely rewound (789 rate-limit rows vs 1,080 live); branch deleted |
 | `PRIV-002` — no way to answer a GDPR access or erasure request | Export and erasure as admin actions; orders kept and anonymised rather than deleted, per Art. 17(3)(b). 7 tests on the branch |
 | `BUG-002` — the buy button swallowed early clicks | Same spec with no settle: fails on production, passes on the fix, passes on production after deploy |
 | `A11Y-002` — colour swatches announced as nothing | Found by the axe scan on its first run; zero WCAG 2.1 A/AA violations across six pages now |
@@ -988,7 +989,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | **Testing** | 45 | **96** | The three concurrency guards are pinned against the **real pooled database**, plus 29 unit tests across auth, email, money and CSP — and **32 Playwright specs on desktop and mobile** covering the purchase funnel, the cart, the first checkout step and a WCAG scan. They have now found two real bugs on first run, `BUG-002` and `A11Y-002`. And `completeCheckout` is now covered **end to end against the real service** on a Neon test branch, closing the last gap — including ten simultaneous buyers racing for one unit. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
 | **Observability** | 25 | **94** | Health check, adopted logger, Sentry **proven by a forced event** rather than assumed — which is what caught the DSN typo — and an audit trail now covering 8 admin surfaces instead of 2 (`OBS-003`). The last points are correlation IDs and an uptime monitor. |
-| Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
+| Deployment | 80 | **94** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
 | **Compliance** (new) | — | **88** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. Held below 90 because retention is still not proven to run on a schedule. |
@@ -1068,3 +1069,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Neon **test branch** wired in. All database tests moved off production onto it, guarded by a check that refuses to run if the URL resolves to the production endpoint (verified by pointing it at production and confirming the abort), and with email forced to the non-sending provider. `completeCheckout` covered end to end at last — ten concurrent buyers on one unit, duplicate submits, and the two incomplete-checkout refusals. TEST-001 fully closed. Testing 91 → 96, overall 92 → 93 | _this commit_ |
 | 2026-09-05 | **Audit reconciled end to end.** Header, verdict, progress table, the "before going live" split into open/closed, and the roadmap all brought back in line — four roadmap items had been completed and were still listed as pending. Opened `PRIV-002` (GDPR access and erasure have no tooling), found by hunting for what the audit's own dimensions could not see: all ten scoring axes are engineering, so a compliance gap with no code behind it could not lower any number | _this commit_ |
 | 2026-09-05 | `PRIV-002` built and closed — GDPR access and erasure as admin actions, erasure implemented as anonymisation where tax law requires the record kept. 7 tests on the Neon branch, including the assertion that the order survives intact with the identity gone. Added a **Compliance** scoring dimension, because this finding existed only because none of the ten engineering axes could express it. Overall 93 → 94 | _this commit_ |
+| 2026-09-05 | Three owner items closed and **verified**, not reported: `sslmode=verify-full` pinned (the `[error]` warning on live product pages is gone), uptime monitoring live in Sentry (9 probes, all 200), and the **backup restore drilled end to end** — branch from a past point queryable in 2.5s with data genuinely rewound. The drill surfaced a finding of its own: **point-in-time retention is only 6 hours**, so a problem noticed the next morning cannot be restored away. Deployment 90 → 94 | _this commit_ |

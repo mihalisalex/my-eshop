@@ -133,6 +133,59 @@ to throw — which is exactly what the uptime monitor on `/api/health` is for.
 
 ---
 
+## 3b. Restoring the database — TESTED 2026-09-05
+
+Not theory. This was rehearsed end to end against the live project, and the numbers below are
+measured rather than estimated.
+
+| Step | Measured |
+| --- | --- |
+| Branch created from a past point | **0.7s** |
+| Queryable | **2.5s** |
+| Data genuinely rewound | Confirmed — 789 rate-limit rows at the restore point vs 1,080 live, 33 checkouts vs 23 |
+| Branch deleted afterwards | Clean |
+
+### ⚠️ The restore window is SIX HOURS
+
+The free plan retains **6 hours** of point-in-time history. This is the single most important
+fact in this document.
+
+**A problem discovered the next morning cannot be restored away.** A bad migration at 22:00
+noticed at 09:00 is past the window — the data is gone, not recoverable-with-effort. Anything
+older than six hours has no restore point at all.
+
+Two consequences worth acting on:
+- **Destructive changes belong early in the day**, while there is still a working day of window
+  left to notice them in.
+- If the shop's data ever matters more than the plan costs, **history retention is the setting
+  to pay for**, ahead of anything else on the Neon plan.
+
+### The procedure
+
+1. **Neon Console → the project → Branches → New Branch.**
+2. Parent: the **production** branch. Under *Include data up to*, choose **a specific date and
+   time** and pick a moment **before** the damage.
+3. Name it `restore-<date>`. Create.
+4. **Connect to the branch and look before you touch anything.** Query the rows you expect to
+   have been damaged and confirm they are intact at that point.
+5. **Copy across only what is needed.** Do **not** promote the branch or repoint the app at it:
+   a full swap rolls back every order placed since the restore point, turning a data problem
+   into a customer problem.
+6. Delete the branch when finished — a diverged branch bills for its own storage.
+
+### Two traps found while rehearsing this
+
+- **Use the database's clock, not your machine's.** The first attempt was rejected with
+  `timestamp is before retention window` because this machine's clock differs from the
+  database's by several hours. Take the restore point from `SELECT now()`, not from a
+  laptop.
+- **A restore that matches the present proves nothing.** The first successful drill returned
+  data identical to live, because nothing had changed in the window — mechanically fine,
+  evidentially worthless. Verify against a moment where something demonstrably differs, or the
+  drill only proves a copy was made.
+
+---
+
 ## 4. Data problems
 
 Wrong values, not wrong code. Rolling back a deployment does not un-write a row.
