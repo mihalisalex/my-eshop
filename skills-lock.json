@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "next-cache-components-adoption": {
+      "source": "vercel/next.js",
+      "sourceType": "github",
+      "skillPath": "skills/next-cache-components-adoption/SKILL.md",
+      "computedHash": "5d7a281ee275b8a570f9857da42b66343aceb17b008408ac054f9a9447094f0f"
+    }
+  }
+}
