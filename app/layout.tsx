@@ -5,14 +5,14 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { JsonLd } from "@/components/shared/JsonLd";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
-import { getSeoDefaults } from "@/services";
+import { getSeoDefaultsCached } from "@/services";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { CartProvider } from "@/components/providers/CartProvider";
 import { WishlistProvider } from "@/components/providers/WishlistProvider";
 import { CategoryNamesProvider } from "@/components/providers/CategoryNamesProvider";
 import { localizeCategory } from "@/lib/localize";
-import { getAllCategories } from "@/services";
+import { getAllCategoriesCached } from "@/services";
 import type { Locale } from "@/i18n/config";
 import { ToastViewport } from "@/components/shared/ToastViewport";
 import { CookieConsentBanner } from "@/components/shared/CookieConsentBanner";
@@ -34,7 +34,7 @@ const playfairDisplay = Playfair_Display({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const seo = await getSeoDefaults();
+  const seo = await getSeoDefaultsCached();
 
   return {
     metadataBase: new URL(seo.siteUrl),
@@ -68,7 +68,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const seo = await getSeoDefaults();
+  const seo = await getSeoDefaultsCached();
   const locale = await getLocale();
   const messages = await getMessages();
 
@@ -77,7 +77,7 @@ export default async function RootLayout({
    * category slug (see CategoryNamesProvider). One query per page render, the same cost
    * `getSeoDefaults` above already pays every time — the categories table is small.
    */
-  const categories = await getAllCategories();
+  const categories = await getAllCategoriesCached();
   const categoryNames = Object.fromEntries(
     categories.map((category) => [category.slug, localizeCategory(category, locale as Locale).name])
   );

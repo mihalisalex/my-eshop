@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { categoryInclude, toCategory } from "@/lib/commerce/postgres/mappers";
 import type { Category, CategoryOption, CategoryWithChildren } from "@/types";
@@ -21,6 +22,31 @@ export async function getAllCategories(): Promise<Category[]> {
   const rows = await prisma.category.findMany({ include: categoryInclude, orderBy: CATEGORY_ORDER });
   return rows.map(toCategory);
 }
+
+/** Cache tag for the whole taxonomy. Exported so the admin actions can invalidate it. */
+export const CATEGORIES_CACHE_TAG = "categories";
+
+/**
+ * The same query, cached (PERF-002 tier 1).
+ *
+ * `app/layout.tsx` calls this on **every render of every page** to build the slug → localised
+ * name map, and the root layout renders for every request because nothing in this app is
+ * statically prerendered. So this was one database round trip per page view, forever, for a
+ * table that changes when the merchant edits their taxonomy — which is to say, rarely.
+ *
+ * An hour's TTL is the backstop, not the mechanism: every admin write calls `revalidateTag`,
+ * so an edit is visible immediately. The TTL only matters if a write path is ever added that
+ * forgets to invalidate, and an hour of staleness on category names is a survivable failure
+ * where an unbounded cache would not be.
+ *
+ * Deliberately a separate export rather than caching `getAllCategories` in place: the admin
+ * dashboard reads the same function and must always see its own writes, so the uncached path
+ * has to stay available.
+ */
+export const getAllCategoriesCached = unstable_cache(getAllCategories, ["all-categories"], {
+  tags: [CATEGORIES_CACHE_TAG],
+  revalidate: 3600,
+});
 
 export async function getCategoryById(id: string): Promise<Category | undefined> {
   const row = await prisma.category.findUnique({ where: { id }, include: categoryInclude });

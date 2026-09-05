@@ -1,11 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { capabilityDenied } from "@/lib/admin-session";
-import { isSameOrDescendant } from "@/services/categories";
+import { CATEGORIES_CACHE_TAG, isSameOrDescendant } from "@/services/categories";
 import { categoryFormSchema, type CategoryFormValues } from "@/lib/validation/category";
 import { normalizeSeoOverride } from "@/lib/validation/product";
 
@@ -16,6 +16,19 @@ export interface CategoryActionState {
 /** Same rationale as products/actions.ts and collections/actions.ts — nothing in this phase can compute the precise set of affected storefront pages (nav, PLPs, the category's own page, its ancestors' pages). */
 function revalidateStorefront() {
   revalidatePath("/", "layout");
+  /**
+   * The cached taxonomy the root layout reads on every page (PERF-002 tier 1).
+   *
+   * `updateTag`, deliberately, not `revalidateTag`. The latter marks the entry stale and
+   * serves the OLD value once more while refreshing behind it — so the merchant would rename
+   * a category, land back on the storefront, and still see the old name. `updateTag` expires
+   * immediately and exists for exactly this case: read-your-own-writes. It costs one uncached
+   * render, which is the right price for somebody looking at the change they just made.
+   *
+   * Without either, an edit would stay invisible for up to an hour, which is a worse bug than
+   * the query this caching removes.
+   */
+  updateTag(CATEGORIES_CACHE_TAG);
 }
 
 function normalizeParentId(parentId: string | undefined): string | null {
