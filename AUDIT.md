@@ -8,14 +8,14 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 93**.
+**READY TO LAUNCH.** Overall **74 → 94**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed. 13 of 16 P2s are closed**, with one deferred
-(`SEC-003`, the CSP nonce) and two open.
+**All 3 P1 launch blockers are closed. 14 of 16 P2s are closed**, with one deferred
+(`SEC-003`, the CSP nonce) and one open.
 
 **`OPS-001` — the retention cron.** Opened as a *suspicion* on 4 September, on the grounds that a
 subsystem nobody has watched run is not a subsystem known to work. It ran down to a live bug:
@@ -23,8 +23,9 @@ the job had never executed, so the GDPR retention `PRIV-001` describes was not a
 honoured. A manual trigger has since cleared ~1,700 rows and proved the code, the route and
 `CRON_SECRET` all correct. What remains unverified is the schedule alone.
 
-**`PRIV-002` — GDPR access and erasure** have no tooling behind them. Lawful as it stands, since
-the privacy policy directs people to email, but there is no way to actually carry a request out.
+**`PRIV-002` — GDPR access and erasure — is now built.** Export and erasure as admin actions,
+with erasure implemented as anonymisation where tax law requires the record kept: the order
+survives with its accounting facts, stripped of every identifying field.
 
 **The habit that produced most of this file.** Eight findings were opened *after* the original
 audit, and every one came from running or measuring the system rather than reading it again:
@@ -45,7 +46,7 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 16 | 2 | **13** | 1 |
+| P2 — Medium | 16 | 1 | **14** | 1 |
 | P3 — Low | 7 | 1 | **6** | 0 |
 | INFO | 6 | — | — | — |
 
@@ -53,9 +54,8 @@ now carries a standing rule to that effect: `Fixed` means shipped, not working.
 `SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002` and `PRIV-002`. Not one would have been
 found by reading the code again more carefully.
 
-**Two P2s are open.** `OPS-001` is half resolved — the retention job is proven to work by a
-manual trigger, and only its schedule is still unverified. `PRIV-002` is new: GDPR
-data-subject rights have no tooling behind them.
+**One P2 is open.** `OPS-001` is half resolved — the retention job is proven to work by a manual
+trigger, and only its schedule is still unverified, which one cron slot settles.
 
 The open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions rather
 than engineering ones.
@@ -98,7 +98,6 @@ treat this as hardening rather than a gate.
 | 2 | **Pin `sslmode=verify-full`** | You — Vercel env | 🔴 Already writing **error-level** lines on live product-page requests, and Sentry will now mail you about them. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
 | 4 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
-| 5 | **GDPR access and erasure tooling** (`PRIV-002`) | Code — me | 🟡 Lawful today, but fulfilling a request means hand-editing six tables while preserving what tax law requires kept. |
 | 6 | **Backup-restore drill** | Code — me | ⏳ The only disaster path never exercised. Now safe to run, thanks to the test branch. |
 | 7 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
 | 8 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
@@ -109,6 +108,7 @@ treat this as hardening rather than a gate.
 
 | Item | Evidence |
 |---|---|
+| `PRIV-002` — no way to answer a GDPR access or erasure request | Export and erasure as admin actions; orders kept and anonymised rather than deleted, per Art. 17(3)(b). 7 tests on the branch |
 | `BUG-002` — the buy button swallowed early clicks | Same spec with no settle: fails on production, passes on the fix, passes on production after deploy |
 | `A11Y-002` — colour swatches announced as nothing | Found by the axe scan on its first run; zero WCAG 2.1 A/AA violations across six pages now |
 | `TEST-001` — `completeCheckout` had no end-to-end test | Ten concurrent buyers, one unit → one order, stock floors at zero, against the real service |
@@ -749,7 +749,7 @@ Every capture of prior state happens *before* the write, for one reason: afterwa
 
 ---
 
-## [ ] PRIV-002 · No way to answer a GDPR access or erasure request
+## [x] PRIV-002 · No way to answer a GDPR access or erasure request
 
 **Category:** Privacy / Compliance
 **Location:** repo-wide — no account deletion, no data export, no admin tooling
@@ -791,7 +791,16 @@ and confirm the orders survive with the identity removed.
 
 **Risk of change:** Medium — it deletes customer data by design, so it wants the test branch
 and a careful read before it ever runs against production.
-**Fixed:** _pending_
+
+**Fixed:** `services/data-subject.ts` plus two admin actions behind `admin:settings`, both recorded to the audit log under the new `dataSubject.*` verbs.
+
+**Erasure is anonymisation where the law requires the record kept.** Orders are *not* deleted: Greek tax law requires transaction records be retained, and GDPR Art. 17(3)(b) exempts processing required by a legal obligation. So the order survives with its line items, totals, dates and status intact — the accounting facts — while every identifying field is overwritten, including the address inside the JSON snapshot, which is replaced wholesale rather than patched so no street name survives. Everything with no such obligation behind it (addresses, carts, wishlists, reviews, newsletter, contact and concierge messages, OAuth links, the customer row itself) is deleted outright. One transaction: a half-erased customer is worse than a failed request, because nobody can tell by looking which half succeeded.
+
+**Guest data is followed by email, not just by foreign key.** Reviews, newsletter subscriptions and contact messages are keyed by email alone — written by people who never made an account. An erasure that followed only `customerId` would tell someone "we hold nothing about you" while their name sat on a product page.
+
+**Two deliberate refusals.** The action requires the email typed a second time before it will run, the same protection a repository host asks for before deleting a repo and for the same reason. And the audit entry masks the address to `m***@gmail.com`: a log that records it in full is a second copy of the thing the person just asked you to delete.
+
+**Verified** by 7 tests on the Neon branch — including the assertion that matters most, which is not "did it delete" but that the order is still there afterwards, still `confirmed`, still carrying its totals and line items, and containing neither the name nor the street.
 
 ---
 
@@ -982,7 +991,8 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **93** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Compliance** (new) | — | **88** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. Held below 90 because retention is still not proven to run on a schedule. |
+| **Overall** | **74** | **94** | **Ready to launch.** Every code finding is closed, and the browser suite has now caught two real bugs the unit tests could not see. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, no end-to-end `completeCheckout` test, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -1057,3 +1067,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Browser suite extended to the cart and checkout (8 specs) and an axe WCAG 2.1 A/AA scan over six pages (6 specs) — 32 in total across desktop and mobile. **The scan found `A11Y-002` on its first run**: colour swatches carried `aria-label` on a bare `<span>`, which ARIA prohibits, so they announced as nothing. Accessibility 80 → 89, Testing 86 → 91, overall 90 → 92 | _this commit_ |
 | 2026-09-05 | Neon **test branch** wired in. All database tests moved off production onto it, guarded by a check that refuses to run if the URL resolves to the production endpoint (verified by pointing it at production and confirming the abort), and with email forced to the non-sending provider. `completeCheckout` covered end to end at last — ten concurrent buyers on one unit, duplicate submits, and the two incomplete-checkout refusals. TEST-001 fully closed. Testing 91 → 96, overall 92 → 93 | _this commit_ |
 | 2026-09-05 | **Audit reconciled end to end.** Header, verdict, progress table, the "before going live" split into open/closed, and the roadmap all brought back in line — four roadmap items had been completed and were still listed as pending. Opened `PRIV-002` (GDPR access and erasure have no tooling), found by hunting for what the audit's own dimensions could not see: all ten scoring axes are engineering, so a compliance gap with no code behind it could not lower any number | _this commit_ |
+| 2026-09-05 | `PRIV-002` built and closed — GDPR access and erasure as admin actions, erasure implemented as anonymisation where tax law requires the record kept. 7 tests on the Neon branch, including the assertion that the order survives intact with the identity gone. Added a **Compliance** scoring dimension, because this finding existed only because none of the ten engineering axes could express it. Overall 93 → 94 | _this commit_ |

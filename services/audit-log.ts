@@ -47,7 +47,9 @@ export type AuditAction =
   | "settings.updated"
   | "product.updated"
   | "product.deleted"
-  | "product.bulk_updated";
+  | "product.bulk_updated"
+  | "dataSubject.exported"
+  | "dataSubject.erased";
 
 export interface AuditEntryInput {
   action: AuditAction;
@@ -60,7 +62,8 @@ export interface AuditEntryInput {
     | "discount"
     | "return"
     | "settings"
-    | "product";
+    | "product"
+    | "customer";
   targetId: string;
   summary: string;
   metadata?: Record<string, unknown>;

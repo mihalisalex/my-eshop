@@ -62,6 +62,8 @@ const EVERY_ACTION = [
   "product.updated",
   "product.deleted",
   "product.bulk_updated",
+  "dataSubject.exported",
+  "dataSubject.erased",
 ] as const;
 
 describe.skipIf(!CONNECTION)("the admin audit log, against the real database", () => {
@@ -87,7 +89,7 @@ describe.skipIf(!CONNECTION)("the admin audit log, against the real database", (
     // The /admin/activity filter is a `startsWith` on the dotted verb. A verb whose prefix
     // no filter option matches is recorded and then unreachable, which is worse than useless.
     const c = await db();
-    const prefixes = ["payment", "order", "adminUser", "review", "giftCard", "discount", "return", "settings", "product"];
+    const prefixes = ["payment", "order", "adminUser", "review", "giftCard", "discount", "return", "settings", "product", "dataSubject"];
 
     for (const prefix of prefixes) {
       const { rows } = await c.query(

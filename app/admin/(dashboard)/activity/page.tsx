@@ -60,6 +60,7 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
               { value: "product", label: "Products" },
               { value: "review", label: "Reviews" },
               { value: "settings", label: "Settings" },
+              { value: "dataSubject", label: "GDPR requests" },
               { value: "adminUser", label: "Users & roles" },
             ],
           },
