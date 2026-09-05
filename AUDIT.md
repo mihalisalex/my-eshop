@@ -1047,8 +1047,53 @@ validation in one mechanical change, then convert one feature at a time:
 npx skills add vercel/next.js --skill next-cache-components-adoption
 ```
 
-**Fixed:** _tier 1 done (`92cf413`) with no measurable effect. Tier 2 attempted, scoped and
-reverted: it is a localisation decision before it is a caching change._
+### Tier 2 pre-step landed — 2026-09-05, `34629b3`
+
+The earlier attempt was reverted because enabling Cache Components appeared to demand fixing
+all 148 routes at once. It does not. Next ships an opt-out, `export const instant = false`,
+which lets the flag go on while every route stays exactly as it was — so the foundation can
+land in one reviewable change and the actual adoption can proceed feature by feature.
+
+**Nothing is faster yet, and that is deliberate.** No page changed how it renders.
+
+| What landed | |
+| --- | --- |
+| `cacheComponents: true` | Partial Prerendering becomes the default |
+| 82 pages and layouts | `export const instant = false` + a `TODO: Cache Components adoption` marker |
+| Two sync-IO blockers | Fixed — see below |
+| Build · tests · lint | Passing · 455 · clean |
+
+**The TODO markers are the work queue.** Opt-outs resolve top-down and the highest one wins, so
+they come off root-first: removing a leaf's opt-out does nothing while an ancestor still holds
+one.
+
+**The two blockers an opt-out cannot suppress**, both sync-IO at render time, fixed differently
+because they are different problems:
+
+- **`Footer`'s copyright year** — now cached with a days-long life. It is the same number for
+  every visitor, changing once a year, and the Footer is rendered by the root layout, so this
+  single `new Date()` was blocking **every route in the app**. A day of staleness on
+  1 January is the entire downside.
+- **The new-blog-post page** — now `await connection()` instead. Its date field is "today",
+  prefilled for a post being written now. Caching it would quietly hand the editor yesterday's
+  date, which is the kind of wrong nobody notices until something is published under it.
+
+**Already visible:** eight admin detail routes report as `◐ Partial Prerender` — the mechanism
+working before a single route has been adopted.
+
+**Checked every build from here on:** `/api/health` must stay `ƒ` dynamic. A prerendered
+health check answers "healthy" forever, including while the database is unreachable, which is
+the one failure it exists to report.
+
+**What remains, and it is still a product decision first.** The first real adoption is the root
+layout, and it runs straight into the locale: `getLocale()` feeds `<html lang>` and the
+i18n provider, neither of which can sit behind `<Suspense>`. Either the shell renders Greek
+always with English chrome swapped client-side, or the app moves to locale-prefixed routing.
+No tool decides that.
+
+**Fixed:** _tier 1 done (`92cf413`, no measurable effect). Tier 2 pre-step done (`34629b3`).
+Per-route adoption open — 82 TODO markers, root layout first, blocked on the localisation
+decision._
 
 ---
 
@@ -1244,3 +1289,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Asked why Performance was the lowest score and **measured instead of repeating the existing answer**. Opened `PERF-002`: **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale — so every page view is a serverless render with `no-store` and `X-Vercel-Cache: MISS`, TTFB ~1s warm and 4.2s cold. The rendering model of the whole site was a side effect of a localisation choice nobody weighed. This also **corrects `SEC-003`**, whose decisive argument was a cost that had already been paid months earlier | _this commit_ |
 | 2026-09-05 | `PERF-002` tier 1 done (`92cf413`) — both root-layout queries cached with `updateTag` invalidation on write. **Measured afterwards: no meaningful TTFB change** (0.89–1.05s before, 0.93–1.13s after). Two queries were not the bottleneck; the serverless render is. Kept because it removes real load from a free-tier database and is a prerequisite for tier 2 — but recorded plainly as not having fixed the finding | _this commit_ |
 | 2026-09-05 | `PERF-002` tier 2 **attempted and reverted**. Enabling `cacheComponents` surfaced the real scope: one trivial fix (`force-dynamic` in the health route) and one structural obstacle — `getLocale()` feeds `<html lang>` and the i18n provider, neither of which can sit behind `<Suspense>`, so **a static shell cannot know its language while the locale comes from a cookie**. Tier 2 is a localisation decision before it is a caching change. Build green, tree clean; the sanctioned adoption skill recorded for when it is taken | _this commit_ |
+| 2026-09-05 | `PERF-002` **tier 2 pre-step landed** (`34629b3`). The earlier revert was based on a wrong assumption: Cache Components ships `instant = false`, so the flag can go on with every route untouched. 82 pages and layouts opted out with TODO markers as the work queue; two sync-IO blockers fixed (the Footer's copyright year cached, the blog-post date made dynamic — the Footer one was blocking every route in the app). Nothing is faster yet, by design. Eight admin routes already report Partial Prerender | _this commit_ |
