@@ -2,11 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "luxe-dev",
-      "runtimeExecutable": "C:\\Users\\Michael Alexandris\\Desktop\\Claude Works 1.0\\.claude\\dev.cmd",
-      "runtimeArgs": [],
-      "port": 3000,
-      "autoPort": true
+      "name": "alexandris-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
     }
   ]
 }

@@ -50,7 +50,7 @@ would have been caught by reading the code again more carefully.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 15 | 2 | **12** | 1 |
+| P2 — Medium | 15 | 1 | **13** | 1 |
 | P3 — Low | 6 | 1 | **5** | 0 |
 | INFO | 6 | — | — | — |
 
@@ -93,7 +93,7 @@ taking real orders (**6** in the database), so treat this as hardening rather th
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 0 | **The buy button swallows an early click** (`BUG-002`) | **Code — me** | 🔴 **New, 2026-09-05.** Found by the Playwright suite on its first run. For ~1.5s after a size is picked the button looks enabled but its handler is not live, and the click is lost in silence. Costs conversions on the shop's single most important interaction. |
+| 0 | ~~The buy button swallows an early click~~ (`BUG-002`) | — | ✅ **Fixed 2026-09-05.** Cart mutations now await the bootstrap instead of bailing on `if (!cart) return`. Proven by the same spec with no settle: fails on production, passes on the fix. |
 | 1 | **Retention cron: runs manually, has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 **Half resolved.** A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are all correct. The 03:30 trigger still did not fire on its own. Next slot is the test. |
 | 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
@@ -507,7 +507,7 @@ wishlist created, zero rejections, where before the fix nine would have failed. 
 
 ---
 
-## [ ] BUG-002 · "Add to bag" is clickable ~1.5s before it works, and swallows the click
+## [x] BUG-002 · "Add to bag" is clickable ~1.5s before it works, and swallows the click
 
 **Category:** Correctness / Conversion
 **Location:** `components/product/PurchasePanel.tsx` — the add-to-cart control
@@ -552,7 +552,27 @@ thing making the test green, and it is commented as such.
 
 **Risk of change:** Low, but it is the buy button — it wants its own commit and a real
 click-through afterwards.
-**Fixed:** _pending_
+
+**Root cause.** `components/providers/CartProvider.tsx` opened every mutation with
+`if (!cart) return`, and `cart` is `null` until `getOrCreateCart` resolves. Not just
+add-to-cart: quantity changes, discount codes, gift cards and clear-cart shared the same
+guard, so any of them fired early was dropped in the same silence. `canAdd` in
+`PurchasePanel.tsx` never consulted `isLoading`, so the button was enabled the instant a size
+was picked — before the cart it needed existed.
+
+**Fixed:** The bootstrap promise is now held in a ref, and mutations **await** it instead of
+bailing. An early click is honoured a moment late rather than lost. A cart that genuinely
+cannot be created now throws, so the caller's existing `reportError` tells the shopper instead
+of the failure vanishing.
+
+Deliberately not fixed by disabling the button until `isLoading` clears: that trades a lost
+click for a dead-looking button, and the shopper still cannot buy. Waiting is what they
+actually want.
+
+**Observed working:** the same Playwright spec, with **no settle**, run twice —
+**fails against production** (old code, cart empty) and **passes against the fixed build**.
+That A/B is the evidence, and the spec now carries a comment saying that a reappearing
+`waitForTimeout` means the bug is back.
 
 ---
 
@@ -847,7 +867,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Dimension | Before | Now | What moved it |
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
-| Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
+| Correctness | 88 | **97** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
 | Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **86** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP — and now **18 Playwright specs on desktop and mobile** covering the purchase funnel, which found `BUG-002` on their first real run. `completeCheckout` end-to-end still wants a dedicated test DB. |
@@ -932,3 +952,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | **`OPS-001` confirmed broken.** The 03:30 UTC slot passed and cleared nothing — still 1,639 stale rows, oldest 22 July. Established that the retention code is correct, all three cron routes are deployed and return 401 unauthenticated, and the Vercel team is on the `hobby` plan. Cause is Vercel-side: either `CRON_SECRET` mismatches or the third cron was never scheduled. **`PRIV-001`'s GDPR position is therefore not currently being honoured** | _this commit_ |
 | 2026-09-05 | `OPS-001` half resolved — a manual `vercel crons run` cleared all 1,639 stale rows (2,019 → 317 total). Proves the code, the route and `CRON_SECRET` are all correct, so the remaining question is scheduling alone. `PRIV-001` is now genuinely enforced | _this commit_ |
 | 2026-09-05 | Playwright added — 18 specs across desktop and mobile covering the purchase funnel, plus browser-only regression guards for the skip link (`A11Y-001`), CSP violations (`SEC-005`) and uncaught page errors. **Found `BUG-002` on the first real run.** Testing 78 → 86 | _this commit_ |
+| 2026-09-05 | `BUG-002` fixed — cart mutations await the bootstrap rather than silently dropping an early click. Verified by the same Playwright spec with no settle: fails against production, passes against the fix. Correctness 96 → 97 | _this commit_ |

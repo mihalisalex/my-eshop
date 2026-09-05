@@ -103,20 +103,16 @@ test.describe("the purchase funnel", () => {
     await expect(cta).toHaveText(/προσθήκη στο καλάθι/i);
 
     /**
-     * This settle is NOT test flake padding — it is working around a real defect, recorded as
-     * BUG-002.
+     * Clicked immediately, with NO settle — this is the regression test for BUG-002.
      *
-     * The button reports itself enabled, and its label has already flipped to "Προσθήκη στο
-     * καλάθι", before the click handler is actually live. A click inside that window is
-     * swallowed in silence: no request, no error, no cart line. Measured three ways — a plain
-     * Playwright click and a dispatched DOM click both lose the item, while the identical
-     * sequence with a 1.5s pause succeeds every time.
+     * Before the fix, a click landing before the cart bootstrap resolved was silently
+     * discarded: `CartProvider` opened every mutation with `if (!cart) return`, and `cart` is
+     * null until `getOrCreateCart` comes back. No request, no error, no toast — the button
+     * simply appeared not to work. Mutations now await the bootstrap instead of bailing.
      *
-     * Remove this line once BUG-002 is fixed; it should then pass without it, and that is the
-     * test for the fix.
+     * If a `waitForTimeout` ever reappears above this line, the bug is back and someone has
+     * papered over it.
      */
-    await page.waitForTimeout(1500);
-
     await cta.click();
 
     /**

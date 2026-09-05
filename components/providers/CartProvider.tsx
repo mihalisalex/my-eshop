@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -53,6 +54,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isMutating, setIsMutating] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  /**
+   * The in-flight cart bootstrap, so a mutation that arrives before it finishes can WAIT for
+   * it instead of being dropped (BUG-002).
+   *
+   * A ref rather than state on purpose: `withMutation` needs to read the newest cart at the
+   * moment it runs, and a value captured in a closure is whatever it was when that callback
+   * was last created. The ref is the escape hatch from that staleness.
+   */
+  const readyRef = useRef<Promise<Cart | null> | null>(null);
+  const cartRef = useRef<Cart | null>(null);
+
+  /** Keeps the ref and the rendered state in step; every write goes through here. */
+  const applyCart = useCallback((next: Cart) => {
+    cartRef.current = next;
+    setCart(next);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     // A `?cart=` link (e.g. an abandoned-cart recovery email) takes priority over
@@ -63,31 +81,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // Postgres needs an id to look up a cart — the mock's "whole cart object lives in
     // localStorage" shortcut is gone, so only the id itself is persisted client-side now.
     const storedCartId = readStorage<string | null>(CART_ID_KEY, null);
-    commerce.cart
+
+    const bootstrap = commerce.cart
       .getOrCreateCart(linkedCartId ?? storedCartId)
       .then((initial) => {
-        if (cancelled) return;
+        if (cancelled) return null;
         writeStorage(CART_ID_KEY, initial.id);
-        setCart(initial);
+        applyCart(initial);
         if (linkedCartId) {
           const url = new URL(window.location.href);
           url.searchParams.delete("cart");
           window.history.replaceState({}, "", url);
         }
+        return initial;
       })
       // Cart creation failing must not pin the header/drawer in a permanent loading
       // state — consumers already treat a null cart as "empty" via optional chaining.
       .catch((error) => {
-        if (cancelled) return;
-        console.error("Failed to load cart", error);
+        if (!cancelled) console.error("Failed to load cart", error);
+        return null;
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
       });
+
+    readyRef.current = bootstrap;
     return () => {
       cancelled = true;
     };
-  }, [commerce]);
+  }, [commerce, applyCart]);
+
+  /**
+   * The cart, waiting for the bootstrap if it has not landed yet.
+   *
+   * This is the whole of BUG-002. Every mutation used to open with `if (!cart) return`, and
+   * `cart` is null until `getOrCreateCart` resolves — so a shopper who picked a size and hit
+   * "Add to bag" inside that window had the click **silently discarded**. No request, no
+   * error, no toast: the button simply appeared not to work. It was reproducible with a
+   * click ~1.5s earlier than a human normally manages, and invisible to every unit test
+   * because nothing but a real browser can click too soon.
+   *
+   * Returning null here now means the cart genuinely could not be created, which is a real
+   * failure worth telling the shopper about rather than swallowing.
+   */
+  /**
+   * Other paths (the optimistic remove, the sign-in merge) still call setCart directly, and a
+   * ref that only tracked applyCart would drift from them. Only `.id` is ever read off it, and
+   * that never changes for the life of a cart — but drift is the kind of thing that is fine
+   * until it silently is not, so it is kept honest here.
+   */
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
+
+  const resolveCart = useCallback(async (): Promise<Cart | null> => {
+    if (cartRef.current) return cartRef.current;
+    return (await readyRef.current) ?? cartRef.current;
+  }, []);
 
   /**
    * Translates by ERROR CODE, not by the server's message.
@@ -113,21 +163,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const withMutation = useCallback(
     async (run: (cartId: string) => Promise<Cart>) => {
-      if (!cart) return;
+      // Waits for the bootstrap rather than bailing, so an early click is honoured late
+      // instead of lost (BUG-002). Throws only when there is genuinely no cart to act on,
+      // which every caller already reports to the shopper.
+      const current = await resolveCart();
+      if (!current) throw new Error("The cart could not be created.");
       setIsMutating(true);
       try {
-        const updated = await run(cart.id);
-        setCart(updated);
+        const updated = await run(current.id);
+        applyCart(updated);
       } finally {
         setIsMutating(false);
       }
     },
-    [cart]
+    [resolveCart, applyCart]
   );
 
   const addItem = useCallback(
     async (input: AddLineItemInput) => {
-      if (!cart) return;
       try {
         await withMutation((cartId) => commerce.cart.addLineItem(cartId, input));
         commerce.analytics.track({ name: "add_to_cart", properties: { productId: input.productId, quantity: input.quantity } });
@@ -137,7 +190,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         reportError(error, t("couldNotAdd"));
       }
     },
-    [cart, commerce, withMutation, reportError, toast, t]
+    [commerce, withMutation, reportError, toast, t]
   );
 
   const updateQuantity = useCallback(
