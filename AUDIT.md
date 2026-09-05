@@ -8,15 +8,19 @@
 
 ## Verdict
 
-**READY TO LAUNCH.** Overall **74 → 91**.
+**READY TO LAUNCH.** Overall **74 → 89**.
 
 The original audit found no P0 and rated the shop 74/100, blocked not by its code but by two
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed. 12 of 14 P2s are closed.** The one still open
-(`OPS-001`) is a verification waiting on a cron cycle, not a defect. The one deferred
+**All 3 P1 launch blockers are closed. 12 of 14 P2s are closed.** The one deferred
 (`SEC-003`, the CSP nonce) turned out to carry a cost nobody had priced — see its entry.
+
+**The one still open, `OPS-001`, was confirmed as a real defect at 03:40 UTC on 5 September**:
+the data-retention cron has never executed. It was opened as a *suspicion* the day before, on
+the grounds that a subsystem nobody has watched run is not a subsystem known to work. It ran
+down to a live bug. The code is correct, the route is deployed, the schedule did not fire.
 
 **Every remaining item needs an account, a setting, or money. None of it is code.**
 
@@ -24,8 +28,9 @@ are now closed.
 `BUG-001`, and the `SENTRY_DNS` typo that had silently disabled all error reporting. That last
 one is the reason `OPS-001` now exists: `Sentry.init` treats a missing DSN as *disabled* rather
 than an error, so the shop looked fully instrumented while reporting nothing, and only a forced
-test event exposed it. The same "wired, plausible, never actually observed" condition applies
-right now to the retention cron and the admin audit log.
+test event exposed it. That same "wired, plausible, never actually observed" condition was then found to apply to the
+retention cron — which turned out to be genuinely broken. Twice now, the thing that looked
+instrumented was not running.
 
 > With bank-transfer only + manual reconciliation: **ready.**
 > Before enabling card payments: PAY-001 is fixed, so that gate is open too.
@@ -47,8 +52,8 @@ would have been caught by reading the code again more carefully.
 | INFO | 6 | — | — | — |
 
 All three P2s opened on 2026-09-04 came from measuring production rather than re-reading code.
-`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`, which is verification
-rather than a defect** — it closes when one cron cycle has been observed, not when code changes.
+`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`, and as of 2026-09-05 it
+is confirmed broken rather than merely unverified** — the cron slot passed and cleared nothing.
 
 The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions.
 
@@ -68,7 +73,7 @@ that costs money — none of it can be done from the repository.
 
 | # | Item | Owner | Status |
 |---|---|---|---|
-| 1 | **Verify the retention cron actually runs** (`OPS-001`) | You — one query | ⏳ Cron first fires 03:30 UTC. Still **1,639** stale rows as of 22:19 UTC. |
+| 1 | **The retention cron is not running** (`OPS-001`) | You — Vercel | 🔴 **Confirmed broken.** The 03:30 UTC slot passed with nothing cleared. Code verified correct, routes deployed and returning 401 to unauthenticated calls, account on the **hobby** plan. Either `CRON_SECRET` mismatches or the third cron was never scheduled. |
 | 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
 | 4 | ~~Delete the 9 seeded fake reviews~~ | — | ✅ **Done** 2026-09-04. All 9 removed, both product pages verified. |
@@ -78,9 +83,13 @@ that costs money — none of it can be done from the repository.
 | 8 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ Biggest single score gain available (Performance 74 → ~85). |
 | 9 | **SEC-003, the CSP nonce** | You — **cost decision** | ⛔ Attempted and stopped. A nonce forces **every page to render dynamically**, disabling static generation and CDN caching — on an account already over its image quota. See the entry. |
 
-**The honest summary:** items 1, 2, 3 and 7 are about half an hour of clicking and are worth
-more than any code that was left. Items 8 and 9 are both spending decisions rather than
-engineering ones, and 9 is the one to *not* rush.
+**Item 1 is now the most important line in this table.** It stopped being a verification and
+became a live defect at 03:40 UTC: the retention job has never executed, so the GDPR position
+`PRIV-001` describes is not actually being honoured — webhook payloads are not being blanked
+and IP addresses are not being purged. The code for both is correct and has simply never run.
+
+Items 2, 3 and 7 are about half an hour of clicking. Items 8 and 9 are spending decisions
+rather than engineering ones, and 9 is the one to *not* rush.
 
 **On the deletion in item 4:** it went through the database directly, before `OBS-003` shipped,
 so nothing recorded it. That is a small demonstration of the finding rather than an accident —
@@ -361,6 +370,8 @@ Verbatim webhook bodies (100KB cap) are stored forever. For card providers these
 **Fix.** Retention job purging `rawPayload` (or the row) older than 90 days. A Vercel cron already exists as a pattern in `vercel.json`.
 
 **Verify.** Seed a row dated 100 days ago; confirm the job clears it and leaves a 10-day-old row intact.
+**⚠️ The code is correct and has never executed — see `OPS-001`, confirmed 2026-09-05.** Nothing below is currently being enforced in production. Read this entry as "implemented", not "in effect".
+
 **Fixed:** Phase 3 — `services/data-retention.ts` + a nightly cron. Webhook payloads are BLANKED at 90 days rather than deleted: the row is the audit trail, and dropping it would free the `(provider, eventId)` unique constraint that makes replay suppression work. Rate-limit rows (IP addresses) now purge on a schedule at 2 days instead of opportunistically on 1% of calls.
 
 ---
@@ -518,7 +529,56 @@ SELECT COUNT(*) FROM rate_limit_attempts WHERE "createdAt" < now() - interval '2
 Expect `0` after the first successful run. Today it returns `1639`.
 
 **Risk of change:** None — this is verification, not modification.
-**Fixed:** _pending — needs one cron cycle to elapse_
+
+### CONFIRMED 2026-09-05 03:40 UTC — the cron did not run
+
+The slot passed and **nothing changed**: still `1639` stale rows, still `2019` total, oldest
+still `2026-07-22`. This is no longer "wired but unobserved". It is a live defect, and the
+finding has done exactly the job it was opened to do.
+
+What was established while diagnosing it, in order:
+
+1. **The code is correct.** `runDataRetention` issues
+   `deleteMany({ where: { createdAt: { lt: now - 2 days } } })`, which would have cleared all
+   1,639 rows. Re-read rather than assumed, because "my own code is wrong" had to be excluded
+   before blaming the platform.
+2. **All three cron routes are deployed and correctly authorized.** Unauthenticated GETs to
+   `/api/cron/data-retention`, `/api/cron/email-followups` and `/api/cron/instagram-token` all
+   return **401**, not 404. The route exists and refuses properly.
+3. **The Vercel team is on the `hobby` plan** — read from the Vercel API, not inferred. This
+   is the same account whose image-transformation quota is already exhausted (`PERF-001`).
+
+**Two candidate causes remain, and they produce identical evidence from the database side:**
+
+| Cause | What you would see in Vercel |
+|---|---|
+| `CRON_SECRET` unset or mismatched | The cron **is listed** and its last run shows **401** |
+| The job was never scheduled (plan cron limit — `vercel.json` declares **three** crons) | The cron is **not listed at all** |
+
+*(The plan-limit possibility is recalled, not verified — it could not be confirmed from
+Vercel's documentation search. Treat it as the hypothesis to test, not a finding.)*
+
+Note also that Hobby-plan crons are triggered *approximately* rather than to the minute, so
+being ten minutes past the slot is suggestive rather than conclusive on its own. What makes it
+conclusive is the oldest row: **45 days old**. If this job had ever run successfully, it would
+be gone.
+
+**How to settle it in two minutes:**
+
+```bash
+vercel crons ls                              # is data-retention registered at all?
+vercel crons run /api/cron/data-retention    # trigger it by hand
+```
+
+If the manual run clears the rows, the code and the secret are both fine and the problem is
+purely scheduling. If it returns 401, it is `CRON_SECRET`.
+
+**Consequence while this is unfixed:** the GDPR position `PRIV-001` describes **is not
+actually being honoured**. Webhook payloads are not being blanked at 90 days and IP addresses
+are not being purged at 2 days — the code to do both exists and has never executed. That is
+the distinction this finding is about, and it is worth re-reading `PRIV-001` with that in mind.
+
+**Fixed:** _no — confirmed broken 2026-09-05. Needs a Vercel-side answer._
 
 ---
 
@@ -701,7 +761,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 |---|---:|---:|---|
 | Security | 82 | **93** | Rate limiting no longer keyed on a spoofable header; checkout bound to its browser; sessions revocable; login timing oracle closed; email escaping consistent. Held back only by `unsafe-inline` (SEC-003). |
 | Correctness | 88 | **96** | Webhook amounts verified; refund race closed; money rounding fixed at the half-cent; a real CSP bug found and fixed. |
-| Reliability | 78 | **90** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
+| Reliability | 78 | **86** | Health endpoint, structured logging in every money path, scheduled retention, and **every outbound provider call now bounded** (`REL-001`) — no supplier can hold a checkout invocation open indefinitely. The remaining points are the unobserved retention cron (`OPS-001`) and circuit breakers. |
 | Performance | 72 | **74** | Unchanged by design — PERF-001 is a billing decision. The +2 is the retention job bounding two tables that grew without limit. |
 | **Testing** | 45 | **78** | The three concurrency guards are pinned against the **real pooled database**, plus 29 new tests across auth, email, money and CSP. Still no E2E, and `completeCheckout` end-to-end wants a dedicated test DB. |
 | Maintainability | 95 | **95** | Already exceptional; held there deliberately — every fix followed the existing patterns rather than inventing new ones. |
@@ -709,7 +769,7 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 | Deployment | 80 | **90** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **80** | Skip link (WCAG 2.4.1 Level A). Next gains need a real audit pass with a screen reader. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Overall** | **74** | **91** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
+| **Overall** | **74** | **89** | **Ready to launch.** Every code finding is closed. What holds the number below the mid-90s is no longer engineering: an unobserved cron, a missing uptime monitor, and two spending decisions (`PERF-001`, `SEC-003`). |
 
 ---
 
@@ -782,3 +842,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `OBS-003` closed — audit log widened from 2 admin surfaces to 8; `order.status_changed` finally written; activity filter lists all nine prefixes | `12502bc` |
 | 2026-09-05 | `SEC-003` attempted and **stopped before any code**: Next's bundled guide states a nonce forces every page to render dynamically, disabling static generation and CDN caching — an unpriced cost on an account already over its image quota. Hash-based SRI recorded as the alternative to evaluate first. Re-scored 88 → 90 | _this commit_ |
 | 2026-09-05 | `ROLLBACK.md` written — the last documented gap in deployment practice. Deployment 82 → 90, overall 90 → 91 | _this commit_ |
+| 2026-09-05 | **`OPS-001` confirmed broken.** The 03:30 UTC slot passed and cleared nothing — still 1,639 stale rows, oldest 22 July. Established that the retention code is correct, all three cron routes are deployed and return 401 unauthenticated, and the Vercel team is on the `hobby` plan. Cause is Vercel-side: either `CRON_SECRET` mismatches or the third cron was never scheduled. **`PRIV-001`'s GDPR position is therefore not currently being honoured** | _this commit_ |
