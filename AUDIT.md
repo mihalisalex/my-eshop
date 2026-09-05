@@ -1003,8 +1003,52 @@ milliseconds, because only that removes the render from the request path entirel
 Recording this because the tempting version of this entry says "tier 1 complete" and moves on,
 and the next person would reasonably assume performance had been improved. It has not been.
 
-**Fixed:** _tier 1 done (`92cf413`) with no measurable effect; tier 2 open and is where the
-gain actually is_
+### Tier 2 attempted and reverted — 2026-09-05
+
+Enabled `cacheComponents: true` and let the build report the real scope rather than guessing
+at it. Two things came back.
+
+**The trivial one.** `app/api/health/route.ts` exports `dynamic = "force-dynamic"`, which
+Cache Components rejects outright — every route is dynamic by default now, so the export is
+simply deleted. One line.
+
+**The real one.** The build then fails prerendering `/products/[slug]`:
+
+> Next.js encountered uncached or runtime data during prerendering. `cookies()`, `headers()`,
+> `params`, `searchParams` accessed outside of `<Suspense>` prevents the route from being
+> prerendered.
+
+**And the structural obstacle underneath it.** The fix Next prescribes is to move runtime data
+access inside a `<Suspense>` boundary. That works for a dashboard widget. It does not work for
+this app's locale, because `getLocale()` feeds two things that cannot go behind Suspense:
+`<html lang={locale}>` and the `NextIntlClientProvider` that wraps the entire tree. **A
+static shell needs to know its language before it can render, and next-intl's cookie-based mode
+only knows it at request time.**
+
+So tier 2 is not "add Suspense boundaries". It is a decision about localisation:
+
+| Option | Cost |
+| --- | --- |
+| Render the shell in Greek always, swap English chrome client-side | English visitors see Greek chrome for one paint. Crawlers get Greek, which `i18n/config.ts` already argues is what should be indexed. |
+| Locale-prefixed routing (`app/[locale]/`) | The approach `i18n/request.ts` already names as correct *once content is translated*. Today it creates two near-duplicate URL sets, which that comment warns costs rankings. |
+
+Then, separately, every page's own data access needs `use cache` or a Suspense boundary —
+across 148 routes.
+
+**Reverted rather than left half-done.** The build is green and the working tree is clean. A
+partially migrated rendering model on a live shop is worse than an unmigrated one, and this is
+a multi-session refactor touching i18n, every page's data fetching, and the metadata layer.
+
+**The sanctioned path, when it is taken.** Next ships an adoption skill for exactly this
+migration, and its incremental mode is the shape this shop needs — opt every route out of
+validation in one mechanical change, then convert one feature at a time:
+
+```bash
+npx skills add vercel/next.js --skill next-cache-components-adoption
+```
+
+**Fixed:** _tier 1 done (`92cf413`) with no measurable effect. Tier 2 attempted, scoped and
+reverted: it is a localisation decision before it is a caching change._
 
 ---
 
@@ -1199,3 +1243,4 @@ Reconciled 2026-09-05. Everything above this line is done; below is only what re
 | 2026-09-05 | Reliability re-scored 86 → 92. It had been marked down when the retention cron was unproven; since then `REL-001` bounded every provider call, uptime monitoring went live and was verified, and the restore path was drilled. Still short of the mid-90s for two honest reasons: no cron slot has been observed firing unaided, and there are no circuit breakers | _this commit_ |
 | 2026-09-05 | Asked why Performance was the lowest score and **measured instead of repeating the existing answer**. Opened `PERF-002`: **zero of 148 routes are prerendered**, because the root layout reads a cookie for the locale — so every page view is a serverless render with `no-store` and `X-Vercel-Cache: MISS`, TTFB ~1s warm and 4.2s cold. The rendering model of the whole site was a side effect of a localisation choice nobody weighed. This also **corrects `SEC-003`**, whose decisive argument was a cost that had already been paid months earlier | _this commit_ |
 | 2026-09-05 | `PERF-002` tier 1 done (`92cf413`) — both root-layout queries cached with `updateTag` invalidation on write. **Measured afterwards: no meaningful TTFB change** (0.89–1.05s before, 0.93–1.13s after). Two queries were not the bottleneck; the serverless render is. Kept because it removes real load from a free-tier database and is a prerequisite for tier 2 — but recorded plainly as not having fixed the finding | _this commit_ |
+| 2026-09-05 | `PERF-002` tier 2 **attempted and reverted**. Enabling `cacheComponents` surfaced the real scope: one trivial fix (`force-dynamic` in the health route) and one structural obstacle — `getLocale()` feeds `<html lang>` and the i18n provider, neither of which can sit behind `<Suspense>`, so **a static shell cannot know its language while the locale comes from a cookie**. Tier 2 is a localisation decision before it is a caching change. Build green, tree clean; the sanctioned adoption skill recorded for when it is taken | _this commit_ |
