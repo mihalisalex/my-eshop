@@ -1,10 +1,10 @@
 # Production Readiness Audit
 
 **Audited:** 2026-09-03 · commit `be0d546` · Next 16.3, Prisma 7.9, Neon Postgres, Vercel
-**Remediated:** 2026-09-04 · Phases 1–4 complete · `782d243` → `c731ab0` → `493ae9c` → `03ad4c4` → `4684a25` → `817e50b` → `e7ae303` → `efd30c0`
-**Re-checked against production:** 2026-09-04 — added `OPS-001`, `OBS-003`, `REL-001`
+**Remediated:** 2026-09-04 → 2026-09-05 · Phases 1–4 plus post-audit findings
+**Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`) and 2026-09-05 (added `BUG-002`, `A11Y-002`)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` 436/436 ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · real-browser checks
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **448/448** ✓ · `playwright` **40/40** on live production ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
 ## Verdict
 
@@ -14,33 +14,28 @@ The original audit found no P0 and rated the shop 74/100, blocked not by its cod
 things: it could not be seen failing, and its riskiest code had no automated coverage. Both
 are now closed.
 
-**All 3 P1 launch blockers are closed. 12 of 14 P2s are closed.** The one deferred
-(`SEC-003`, the CSP nonce) turned out to carry a cost nobody had priced — see its entry.
+**All 3 P1 launch blockers are closed. 13 of 16 P2s are closed**, with one deferred
+(`SEC-003`, the CSP nonce) and two open.
 
-**The one still open, `OPS-001`, was confirmed as a real defect at 03:40 UTC on 5 September**:
-the data-retention cron had never executed. It was opened as a *suspicion* the day before, on
-the grounds that a subsystem nobody has watched run is not a subsystem known to work — and it
-ran down to a live bug. A manual trigger has since cleared ~1,700 rows and proved the code, the
-route and `CRON_SECRET` all correct, so what remains is the schedule alone.
+**`OPS-001` — the retention cron.** Opened as a *suspicion* on 4 September, on the grounds that a
+subsystem nobody has watched run is not a subsystem known to work. It ran down to a live bug:
+the job had never executed, so the GDPR retention `PRIV-001` describes was not actually being
+honoured. A manual trigger has since cleared ~1,700 rows and proved the code, the route and
+`CRON_SECRET` all correct. What remains unverified is the schedule alone.
 
-**Every remaining item needs an account, a setting, a decision, or one more cron slot to
-elapse. None of it is code — unless the schedule turns out to need the three cron jobs folded
-into two, which is the one code fix still on the table.**
+**`PRIV-002` — GDPR access and erasure** have no tooling behind them. Lawful as it stands, since
+the privacy policy directs people to email, but there is no way to actually carry a request out.
 
-**Three findings were discovered by running the system, not by auditing it** — `SEC-005`,
-`BUG-001`, and the `SENTRY_DNS` typo that had silently disabled all error reporting. That last
-one is the reason `OPS-001` now exists: `Sentry.init` treats a missing DSN as *disabled* rather
-than an error, so the shop looked fully instrumented while reporting nothing, and only a forced
-test event exposed it. That same "wired, plausible, never actually observed" condition was then found to apply to the
-retention cron — which turned out to be genuinely broken. Twice now, the thing that looked
-instrumented was not running.
+**The habit that produced most of this file.** Eight findings were opened *after* the original
+audit, and every one came from running or measuring the system rather than reading it again:
+a CSP policy the browser silently discarded, a wishlist race seen in a real 500, a Sentry
+integration reporting nothing behind a one-letter typo, a cron that had never fired, an audit
+verb nothing ever wrote, unbounded provider calls, a buy button that swallowed clicks, and
+colour swatches that announced as nothing. **A clean read is not a clean run**, and the file
+now carries a standing rule to that effect: `Fixed` means shipped, not working.
 
 > With bank-transfer only + manual reconciliation: **ready.**
 > Before enabling card payments: PAY-001 is fixed, so that gate is open too.
-
-The honest lesson of this exercise: **a clean read is not the same as a clean run.** Every
-finding added after the original audit came from running or measuring the system, and none
-would have been caught by reading the code again more carefully.
 
 ---
 
@@ -50,16 +45,20 @@ would have been caught by reading the code again more carefully.
 |---|---:|---:|---:|---:|
 | P0 — Critical | 0 | 0 | 0 | 0 |
 | P1 — Launch blocker | 3 | 0 | **3** | 0 |
-| P2 — Medium | 15 | 1 | **13** | 1 |
+| P2 — Medium | 16 | 2 | **13** | 1 |
 | P3 — Low | 7 | 1 | **6** | 0 |
 | INFO | 6 | — | — | — |
 
-All three P2s opened on 2026-09-04 came from measuring production rather than re-reading code.
-`REL-001` and `OBS-003` are closed. **The single open P2 is `OPS-001`**, which as of 2026-09-05
-is half resolved: confirmed broken when the slot passed and cleared nothing, then proven
-working by a manual trigger. Only automatic scheduling is still unverified.
+**Every finding opened after the original audit came from running or measuring the system** —
+`SEC-005`, `BUG-001`, `OPS-001`, `OBS-003`, `REL-001`, `BUG-002`, `A11Y-002` and `PRIV-002`. Not one would have been
+found by reading the code again more carefully.
 
-The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions.
+**Two P2s are open.** `OPS-001` is half resolved — the retention job is proven to work by a
+manual trigger, and only its schedule is still unverified. `PRIV-002` is new: GDPR
+data-subject rights have no tooling behind them.
+
+The open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending decisions rather
+than engineering ones.
 
 **Status legend:** `[ ]` open · `[~]` in progress · `[x]` done · `[-]` deferred (reason required)
 
@@ -81,40 +80,41 @@ So every `Fixed:` line should carry its evidence — a forced event, a row count
 a screenshot — and a finding that cannot yet be observed stays open, however complete the code
 is. `OPS-001` exists purely to enforce this, and it caught a real defect within a day.
 
-The same rule is why `BUG-002` was findable at all: it is invisible to 443 unit tests and
+The same rule is why `BUG-002` was findable at all: it was invisible to 443 unit tests and
 visible on the first browser click.
 
 ---
 
 ## Before going live — what is actually left
 
-Ordered by what would hurt most if skipped. Nothing here is a P0, and the shop is already
-taking real orders (**6** in the database), so treat this as hardening rather than a gate.
+Nothing here is a P0, and the shop is already taking real orders (**6** in the database), so
+treat this as hardening rather than a gate.
 
-| # | Item | Owner | Status |
+### Still open
+
+| # | Item | Owner | Where it stands |
 |---|---|---|---|
-| 0 | ~~The buy button swallows an early click~~ (`BUG-002`) | — | ✅ **Fixed 2026-09-05.** Cart mutations now await the bootstrap instead of bailing on `if (!cart) return`. Proven by the same spec with no settle: fails on production, passes on the fix. |
-| 1 | **Retention cron: runs manually, has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 **Half resolved.** A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are all correct. The 03:30 trigger still did not fire on its own. Next slot is the test. |
-| 2 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
+| 1 | **Retention cron has never fired on schedule** (`OPS-001`) | You — watch one slot | 🟡 A manual trigger cleared all 1,639 stale rows, proving the code, the route and `CRON_SECRET` are correct. The 03:30 trigger still has not fired unaided. One query settles it. |
+| 2 | **Pin `sslmode=verify-full`** | You — Vercel env | 🔴 Already writing **error-level** lines on live product-page requests, and Sentry will now mail you about them. |
 | 3 | **Uptime monitor on `/api/health`** | You — account | ⏳ Sentry reports what *throws*; it cannot report a site that is down. |
-| 4 | ~~Delete the 9 seeded fake reviews~~ | — | ✅ **Done** 2026-09-04. All 9 removed, both product pages verified. |
-| 5 | ~~Timeouts on payment/courier calls~~ (`REL-001`) | — | ✅ **Done** `2f5f0b6`. Widened to OAuth too. |
-| 6 | ~~Widen the admin audit log~~ (`OBS-003`) | — | ✅ **Done** `12502bc`. 2 surfaces → 8. |
-| 7 | **Pin `sslmode=verify-full`** | You — Vercel env | ⏳ `pg` warns the current value will silently weaken in v9. |
-| 8 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ Biggest single score gain available (Performance 74 → ~85). |
-| 9 | **SEC-003, the CSP nonce** | You — **cost decision** | ⛔ Attempted and stopped. A nonce forces **every page to render dynamically**, disabling static generation and CDN caching — on an account already over its image quota. See the entry. |
+| 4 | **Narrow the Sentry alert rule** | You — setting | ⏳ Default is "email on every new issue". A muted alert is no alert. |
+| 5 | **GDPR access and erasure tooling** (`PRIV-002`) | Code — me | 🟡 Lawful today, but fulfilling a request means hand-editing six tables while preserving what tax law requires kept. |
+| 6 | **Backup-restore drill** | Code — me | ⏳ The only disaster path never exercised. Now safe to run, thanks to the test branch. |
+| 7 | **Re-enable image optimization** (`PERF-001`) | You — billing | ⏳ The largest single score gain left: Performance 74 → ~85. |
+| 8 | **The CSP nonce** (`SEC-003`) | You — **cost decision** | ⛔ Attempted and stopped: a nonce forces every page to render dynamically, on an account already over its image quota. Evaluate hash-based SRI first. |
 
-**Item 1 is half resolved.** It became a live defect at 03:40 UTC — the retention job had never
-executed, so `PRIV-001`'s GDPR position was not being honoured. A manual trigger has now run
-it: ~1,700 rows of IP addresses cleared, and the policy is in effect. What remains unproven is
-whether the schedule fires unaided, which one more slot will settle.
+**Items 1–4 are minutes each and worth more than anything on the code half of that list.**
 
-Items 2, 3 and 7 are about half an hour of clicking. Items 8 and 9 are spending decisions
-rather than engineering ones, and 9 is the one to *not* rush.
+### Closed on 4–5 September
 
-**On the deletion in item 4:** it went through the database directly, before `OBS-003` shipped,
-so nothing recorded it. That is a small demonstration of the finding rather than an accident —
-the next review deletion will leave an entry naming the actor, the rating and the product.
+| Item | Evidence |
+|---|---|
+| `BUG-002` — the buy button swallowed early clicks | Same spec with no settle: fails on production, passes on the fix, passes on production after deploy |
+| `A11Y-002` — colour swatches announced as nothing | Found by the axe scan on its first run; zero WCAG 2.1 A/AA violations across six pages now |
+| `TEST-001` — `completeCheckout` had no end-to-end test | Ten concurrent buyers, one unit → one order, stock floors at zero, against the real service |
+| `REL-001` — unbounded provider calls | Stripe 15s, ACS 10s, OAuth 8s, each justified by consequence |
+| `OBS-003` — audit log covered 2 of ~12 admin surfaces | Widened to 8; also found a verb declared since OBS-002 that nothing ever wrote |
+| The 9 seeded fake reviews | Deleted; both product pages verified to omit `aggregateRating` rather than emit a zero |
 
 ---
 
@@ -553,7 +553,7 @@ why nobody had noticed.
 report, so the likeliest outcomes are a second tap, or leaving. On mobile, where taps land
 faster than mouse travel, the window is easiest to hit.
 
-**Why every existing test missed it.** 443 Vitest specs, none of which opens a browser. This
+**Why every existing test missed it.** 443 Vitest specs at the time, none of which opens a browser. This
 is not a logic bug; it is a timing bug between hydration and user input, and it is invisible
 to anything that does not actually click.
 
@@ -749,6 +749,52 @@ Every capture of prior state happens *before* the write, for one reason: afterwa
 
 ---
 
+## [ ] PRIV-002 · No way to answer a GDPR access or erasure request
+
+**Category:** Privacy / Compliance
+**Location:** repo-wide — no account deletion, no data export, no admin tooling
+**Confidence:** Confirmed — searched for it specifically and it does not exist
+**Found:** 2026-09-05, by hunting for what the audit's own dimensions could not see
+
+**Problem.** `PRIV-001` treated GDPR as a *retention* problem and solved that. But
+retention is one obligation among several, and the two most likely to actually arrive as a
+request from a person are absent: **Article 15** (a copy of their data) and **Article 17**
+(erasure).
+
+The privacy policy already tells customers to email to exercise these rights, which is
+lawful — a manual process satisfies GDPR provided it is honoured. What does not exist is any
+way to *carry it out*.
+
+**Failure scenario.** A customer asks to be deleted. Fulfilling it by hand means working
+across `customers`, `customer_addresses`, `carts`, `wishlists`,
+`product_reviews` and `orders` — while *not* deleting the order records Greek tax
+law requires be kept for years. That tension, under a 30-day clock, on a live database, by
+hand, is where a mistake becomes either a compliance breach or lost accounting records.
+
+**Why the audit missed it.** Not an oversight in reading — a gap in the instrument. All ten
+scoring dimensions are engineering (Security, Correctness, Reliability, Performance, Testing,
+Maintainability, Observability, Deployment, Accessibility, SEO). **There is no axis for
+compliance**, so an obligation with no code behind it could not lower any number and never
+surfaced. Worth remembering when reading the scores: they measure what they measure.
+
+**Fix.** Two admin actions behind `admin:settings`:
+- **Export** — assemble everything keyed to a customer into one JSON download.
+- **Erase** — anonymise rather than delete: null the personal fields on the customer and its
+  addresses, drop carts, wishlists and reviews, and leave orders in place with the identity
+  scrubbed. That satisfies erasure while preserving the transaction record tax law wants.
+
+Both should write to the admin audit log (`OBS-003`), because "we honoured the request
+on this date" is exactly the kind of thing you need to be able to show.
+
+**Verify.** Run an export for a test customer on the Neon branch and read it. Run an erasure
+and confirm the orders survive with the identity removed.
+
+**Risk of change:** Medium — it deletes customer data by design, so it wants the test branch
+and a careful read before it ever runs against production.
+**Fixed:** _pending_
+
+---
+
 ## [x] REL-001 · No timeouts on payment or courier provider calls
 
 **Category:** Reliability
@@ -940,52 +986,47 @@ Re-scored after Phases 1–4. The original number is kept beside each so the mov
 
 ---
 
-# Maximizing the score from here
+# What is left, and what it is worth
 
-Ranked by points gained per unit of work. Nothing here is a launch blocker.
+Reconciled 2026-09-05. Everything above this line is done; below is only what remains.
 
-### Yours — no code needed, biggest effect
+### Yours — no code, and the first four are minutes each
 
-1. **Confirm the retention cron ran** (`OPS-001`) → Reliability, and it makes the PRIV-001
-   GDPR claim *true* rather than merely implemented. One SQL query after 03:30.
-2. **An uptime monitor on `/api/health`** → Reliability 88 → ~93.
-   Sentry reports what throws; it cannot report a site that is down, because nothing is
-   running to throw. UptimeRobot's free tier is enough.
-3. **Narrow the Sentry alert rule** → no score change, but it decides whether the
-   Observability score means anything in practice. An alert that fires on everything is one
-   you will mute within a fortnight.
-4. **Re-enable image optimization** → Performance 74 → ~85. Billing decision (PERF-001).
+1. **Confirm the retention cron fired on its own** (`OPS-001`) — one SQL query after
+   03:30 UTC. It closes the last open P2 either way: zero means the schedule works, non-zero
+   means the three cron jobs need folding into two, which is then a small code change.
+2. **Pin `sslmode=verify-full`** in `DATABASE_URL` and `DIRECT_URL`. Not
+   future-tense: the warning is being written at **error level on live product-page requests
+   right now**, and now that Sentry works it will mail you about it.
+3. **An uptime monitor on `/api/health`** → Reliability +4. Sentry reports what throws;
+   it cannot report a site that is down, because nothing is running to throw.
+4. **Narrow the Sentry alert rule.** No score change, but it decides whether the Observability
+   score means anything. An alert that fires on everything is one you mute within a fortnight.
+5. **Re-enable image optimization** (`PERF-001`) → Performance 74 → ~85. Purely a
+   billing decision, and the largest single number left on the board.
 
-### Highest value in code
+### Code — ranked by value per unit of work
 
-4. **End-to-end tests for `completeCheckout`** → Testing 78 → ~90.
-   Needs a dedicated test database (a Neon branch). The races are pinned at the database
-   level already; this closes the service layer above them.
-5. **Playwright on the purchase path** → Testing → ~95, Reliability +3.
-   Browse → cart → checkout → order, plus the failure branches. The one thing no current
-   test touches is a browser — and note that **both** post-audit findings came from running
-   the app rather than reading it.
-6. **Timeouts on provider calls** (`REL-001`) → Reliability 88 → ~93.
-   `services/instagram.ts` sets `AbortSignal.timeout`; the payment and courier providers do
-   not. A hung provider currently holds a checkout request open until the platform kills it.
-   Small, well-precedented, and the difference between a supplier's outage being their
-   incident or yours. **The best value-for-effort code change on this list.**
+6. **Run the backup-restore drill** → Deployment 90 → ~96. Now possible without risk: restore
+   into a second Neon branch, confirm the data comes back, and write the result into
+   `ROLLBACK.md`. It is the only disaster path never exercised, and this session's whole
+   lesson is that unexercised things do not work.
+7. **GDPR data-subject tooling** (`PRIV-002`) → Compliance. There is no way to fulfil an
+   access or erasure request without hand-deleting across six tables while preserving what
+   Greek tax law requires you to keep. Small feature, real obligation.
+8. **Correlation IDs** through request → log → Sentry → audit entry → Observability 94 → ~97.
+   Turns "a customer says their order failed around 14:30" into one query instead of a hunt.
+9. **`SEC-003`, the CSP nonce** → Security 93 → ~97. **A spending decision before an
+   engineering one** — it forces every page to render dynamically, on an account already over
+   its image quota. Evaluate hash-based SRI first; see the entry.
+10. **Integer cents instead of floats** → Correctness 97 → ~98. Large refactor, small gain now
+    that `round2` is correct. Genuinely not worth it yet.
 
-7. **Widen the admin audit log** (`OBS-003`) → Observability 90 → ~94. One line per admin
-   action; the helper already resolves the actor and never throws.
+### Needs a person, not a machine
 
-### Medium
-
-8. **SEC-003, the CSP nonce** → Security 93 → ~97. Deliberate session; see its entry.
-9. ~~**Document the rollback procedure**~~ → **done**, `ROLLBACK.md`. Deployment 82 → 90.
-10. **Correlation IDs** through request → log → Sentry → audit entry → Observability 90 → ~97.
-
-### Lower
-
-11. **Accessibility pass with a real screen reader** → 80 → ~90. Focus traps in dialogs,
-    live-region announcements on cart updates, contrast audit.
-12. **Integer cents instead of floats** → Correctness 96 → ~98. Large refactor, small gain
-    now that `round2` is correct.
+11. **An accessibility pass with a real screen reader** → 89 → ~95. The axe scan covers the
+    machine-checkable half of WCAG and runs on every commit; the other half is whether the
+    checkout *makes sense* read aloud. Nobody has listened to it.
 
 ---
 
@@ -1015,3 +1056,4 @@ Ranked by points gained per unit of work. Nothing here is a launch blocker.
 | 2026-09-05 | `BUG-002` fixed — cart mutations await the bootstrap rather than silently dropping an early click. Verified by the same Playwright spec with no settle: fails against production, passes against the fix. Correctness 96 → 97 | _this commit_ |
 | 2026-09-05 | Browser suite extended to the cart and checkout (8 specs) and an axe WCAG 2.1 A/AA scan over six pages (6 specs) — 32 in total across desktop and mobile. **The scan found `A11Y-002` on its first run**: colour swatches carried `aria-label` on a bare `<span>`, which ARIA prohibits, so they announced as nothing. Accessibility 80 → 89, Testing 86 → 91, overall 90 → 92 | _this commit_ |
 | 2026-09-05 | Neon **test branch** wired in. All database tests moved off production onto it, guarded by a check that refuses to run if the URL resolves to the production endpoint (verified by pointing it at production and confirming the abort), and with email forced to the non-sending provider. `completeCheckout` covered end to end at last — ten concurrent buyers on one unit, duplicate submits, and the two incomplete-checkout refusals. TEST-001 fully closed. Testing 91 → 96, overall 92 → 93 | _this commit_ |
+| 2026-09-05 | **Audit reconciled end to end.** Header, verdict, progress table, the "before going live" split into open/closed, and the roadmap all brought back in line — four roadmap items had been completed and were still listed as pending. Opened `PRIV-002` (GDPR access and erasure have no tooling), found by hunting for what the audit's own dimensions could not see: all ten scoring axes are engineering, so a compliance gap with no code behind it could not lower any number | _this commit_ |
