@@ -65,6 +65,25 @@ The one open P3 (`PERF-001`) and the deferred P2 (`SEC-003`) are both spending d
 
 **How to use this file:** fix one item, tick its box, fill in its `Fixed:` line with the commit hash, and update the Progress table in the same commit. Anything marked `[-]` needs a one-line reason so it is never silently re-opened.
 
+### The standing rule this audit learned the hard way
+
+> **`Fixed` means the code shipped. It does not mean the thing works.**
+> Nothing is finished until it has been *observed working in production*, and the entry says
+> how it was observed.
+
+Three times in two days, something was wired, type-checked, built, deployed, reviewed and
+wrong: Sentry reported nothing for a day because the variable was named `SENTRY_DNS`; the
+retention cron had never once executed; and the audit log's `order.status_changed` verb had
+existed since `OBS-002` without a single line of code ever writing it. Each was marked done and
+counted in the score before anyone watched it run.
+
+So every `Fixed:` line should carry its evidence — a forced event, a row count, a query result,
+a screenshot — and a finding that cannot yet be observed stays open, however complete the code
+is. `OPS-001` exists purely to enforce this, and it caught a real defect within a day.
+
+The same rule is why `BUG-002` was findable at all: it is invisible to 443 unit tests and
+visible on the first browser click.
+
 ---
 
 ## Before going live — what is actually left
