@@ -33,8 +33,6 @@ import {
 } from "@/lib/payments/types";
 import type { Money } from "@/types";
 
-export { derivePaymentIdempotencyKey };
-
 /**
  * The payment service — the single seam between the rest of the application and
  * the provider layer.
@@ -438,7 +436,7 @@ async function applyStatus(
   return toPaymentRecord(updated);
 }
 
-export interface RecordTransactionInput {
+interface RecordTransactionInput {
   eventType: PaymentEventType;
   status?: PaymentStatus | null;
   actorType?: PaymentActorType;
@@ -448,7 +446,7 @@ export interface RecordTransactionInput {
   data?: Record<string, unknown>;
 }
 
-export async function recordTransaction(paymentId: string, input: RecordTransactionInput): Promise<void> {
+async function recordTransaction(paymentId: string, input: RecordTransactionInput): Promise<void> {
   await prisma.paymentTransaction.create({
     data: {
       paymentId,

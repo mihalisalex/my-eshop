@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "scripts/**/*.ts",
+    "prisma.config.ts",
+    "instrumentation.ts",
+    "instrumentation-client.ts",
+    "sentry.*.config.ts"
+  ],
+  "project": ["**/*.{ts,tsx}"],
+  "ignore": [
+    "lib/generated/**",
+    ".image-migration-*/**",
+    ".bag-images/**",
+    "components/ui/**"
+  ],
+  "ignoreDependencies": [
+    "@prisma/client",
+    "tailwindcss",
+    "tw-animate-css",
+    "shadcn"
+  ]
+}

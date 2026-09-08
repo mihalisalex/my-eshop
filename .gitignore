@@ -57,3 +57,6 @@ playwright-report/
 
 # Rollback map for scripts/reframe-bag-images.ts
 .bag-images/
+
+# One-off migration artefacts — the rollback maps stay on disk, not in the repo
+.image-migration-*/
