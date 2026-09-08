@@ -1,6 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { Prisma } from "@/lib/generated/prisma/client";
@@ -15,9 +16,6 @@ export interface UserActionState {
   error?: string;
   success?: string;
 }
-
-/** Matches the sign-in path, so a password created here verifies at the same cost. */
-const BCRYPT_ROUNDS = 12;
 
 /**
  * Changing an admin's role — previously this was `useState` in RoleSelect that never
@@ -92,7 +90,7 @@ export async function createAdminUser(formData: FormData): Promise<UserActionSta
 
   try {
     await prisma.adminUser.create({
-      data: { name, email, role, passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) },
+      data: { name, email, role, passwordHash: await hashPassword(password) },
     });
   } catch (error) {
     // The unique constraint is the authority on duplicates rather than a prior lookup,
@@ -180,7 +178,7 @@ export async function changeOwnPassword(formData: FormData): Promise<UserActionS
   await prisma.adminUser.update({
     where: { id: session.sub },
     // Retires every session issued before now (AUTH-001).
-    data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, BCRYPT_ROUNDS), sessionsValidFrom: new Date() },
+    data: { passwordHash: await hashPassword(parsed.data.newPassword), sessionsValidFrom: new Date() },
   });
 
   const cookieStore = await cookies();

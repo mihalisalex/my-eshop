@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 import {
@@ -301,7 +301,7 @@ async function seedAdminUser() {
   await prisma.adminUser.create({
     data: {
       email,
-      passwordHash: await bcrypt.hash(password, 12),
+      passwordHash: await hashPassword(password),
       name: "Alexandris Admin",
       role: "admin",
     },

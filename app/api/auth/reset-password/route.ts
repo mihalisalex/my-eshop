@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { cookies } from "next/headers";
 import { resetPasswordInputSchema } from "@/lib/validation/auth";
 import { consumePasswordResetToken } from "@/lib/password-reset";
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     if (limit.limited) return rateLimitedResponse(limit.retryAfterSeconds);
     await recordAttempt(key);
 
-    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+    const passwordHash = await hashPassword(parsed.data.password);
     const customerId = await consumePasswordResetToken(parsed.data.token, passwordHash);
     if (!customerId) {
       return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { cookies } from "next/headers";
 import { signUpInputSchema } from "@/lib/validation/auth";
 import { createCustomer, getCustomerByEmail } from "@/services/customers";
@@ -14,8 +14,6 @@ import { getClientIp, isRateLimited, recordAttempt } from "@/lib/rate-limit";
 import { getEmailProvider, welcomeEmail, accountAlreadyExistsEmail } from "@/lib/email";
 import { getSiteSettings } from "@/services/settings";
 import { recordReferralSignup } from "@/services/referrals";
-
-const BCRYPT_COST = 12;
 
 export async function POST(request: Request) {
   try {
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
       // distinguishable at the body-shape level (no `customer`/session) but not at the
       // status-code level, and never signs the requester in. Spend the same bcrypt cost
       // the real account-creation path would have, removing the timing side channel.
-      await bcrypt.hash(parsed.data.password, BCRYPT_COST);
+      await hashPassword(parsed.data.password);
       try {
         const settings = await getSiteSettings();
         const message = accountAlreadyExistsEmail({
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, requiresLogin: true });
     }
 
-    const passwordHash = await bcrypt.hash(parsed.data.password, BCRYPT_COST);
+    const passwordHash = await hashPassword(parsed.data.password);
     const customer = await createCustomer({
       email,
       passwordHash,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { requireCustomerSession } from "@/lib/customer-session";
 import { changePasswordInputSchema } from "@/lib/validation/auth";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+    const passwordHash = await hashPassword(parsed.data.newPassword);
     await updateCustomerPasswordHash(session.sub, passwordHash);
     return NextResponse.json({ ok: true });
   } catch (error) {

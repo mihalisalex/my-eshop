@@ -1,11 +1,15 @@
 import bcrypt from "bcryptjs";
 
 /**
- * The work factor every password in this app is hashed at. Shared so a future increase
- * moves the dummy hash below with it — a dummy cheaper than the real ones would reopen
- * exactly the timing gap this module exists to close.
+ * The work factor every password in this app is hashed at.
+ *
+ * Deliberately not exported. Every hash goes through `hashPassword` below, so raising this
+ * moves the dummy hash, the sign-up anti-enumeration burn, and every stored password in
+ * one edit. It used to be exported and copied — `BCRYPT_COST` in the sign-up route, a second
+ * `BCRYPT_ROUNDS` in the admin user actions, and a bare `12` in three more places — which
+ * left the equal-cost promise below resting on five separate literals staying in agreement.
  */
-export const BCRYPT_ROUNDS = 12;
+const BCRYPT_ROUNDS = 12;
 
 /**
  * A real bcrypt hash of 32 random bytes nobody kept. Safe in source: it protects nothing
