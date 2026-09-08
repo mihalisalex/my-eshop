@@ -4,7 +4,7 @@
 **Remediated:** 2026-09-04 → 2026-09-08 · Phases 1–4, post-audit findings, and a day of owner-driven changes
 **Re-checked against production:** 2026-09-04 (added `OPS-001`, `OBS-003`, `REL-001`), 2026-09-05 (added `BUG-002`, `A11Y-002`), 2026-09-06 (`OPS-001` escalated) and 2026-09-07 (`OPS-001` **de-escalated** — its evidence of failure turned out to be three measurement defects, and Vercel's scheduler is demonstrably firing) and 2026-09-08 (**all three `OPS-001` jobs observed running on the scheduler**, one confirmation night left)
 **Scope:** 564 TS/TSX files, ~52,000 LOC, 52 API routes, 22 server-action files, full config surface
-**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **526/526** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
+**Verified with:** `tsc --noEmit` ✓ · `eslint` ✓ · `vitest` **531/531** ✓ (30s hook timeout — see `TEST-001`; on the 10s default the two DB suites fail on a cold Neon branch) · `playwright` **42 specs**, green in two halves rather than one run — see below ✓ · `next build` ✓ · `npm audit` · live production DB queries · a forced Sentry event · an axe WCAG 2.1 A/AA scan · a Neon test branch for anything that writes
 
 ## Verdict
 
@@ -53,9 +53,13 @@ That day also produced a corollary to the rule this finding taught. At 08:25 UTC
 precision is ±59 minutes. It fired at 08:56. **Ask what a passing result would look like —
 and whether a failing one was even possible yet.**
 
-**`PRIV-002` — GDPR access and erasure — is now built.** Export and erasure as admin actions,
-with erasure implemented as anonymisation where tax law requires the record kept: the order
-survives with its accounting facts, stripped of every identifying field.
+**`PRIV-002` — GDPR access and erasure — is now built, and on 8 September it turned out not to
+have been.** Export and erasure as admin actions, with erasure implemented as anonymisation
+where tax law requires the record kept: the order survives with its accounting facts, stripped
+of every identifying field. All of that was true and none of it was reachable — the two actions
+had no caller, so for three days this file recorded a fixed finding whose stated symptom, *no
+way to answer the request*, was still exactly true. It is reachable now. **This file's own
+standing rule caught this file:** `Fixed` means shipped, not working.
 
 **The habit that produced most of this file.** Eight findings were opened *after* the original
 audit, and every one came from running or measuring the system rather than reading it again:
@@ -87,6 +91,17 @@ button felt slow, which is the one source of findings no audit pass replaces. No
 are the clearest cases: both came from asking why a score was low and then measuring, and the
 same habit later showed that `PERF-002`'s fix had **already worked** while this file was still
 recording it as a deliberate no-op.
+
+**One exception arrived on 8 September, and it sharpens the claim rather than weakening it.**
+`PRIV-002` had to be re-opened because its two admin actions had no caller, and that was found
+by `knip` — a static pass, the very thing this paragraph says found nothing. The sentence above
+is still true of every *behavioural* defect in the list: none of them would have surfaced from
+reading more carefully, and a dead-code tool would have reported nothing about any of them.
+What the exception adds is that **"run it" and "read it" fail in different directions.** An
+unwired action renders no page, so exercising the shop cannot find it; a mis-priced shipping
+rate is perfectly well-formed code, so no static pass can. The mistake was not preferring
+running over reading — it was never running the cheap deterministic pass at all, for four days,
+while doing the expensive one repeatedly.
 
 **One P2 is open**, and on 7 September it moved in the opposite direction to the one this file
 had been recording. Its evidence of continued failure turned out to be three separate
@@ -190,7 +205,7 @@ timing.
 | Uptime monitoring live | 9 probes in 45 minutes, all 200, every 5 minutes |
 | Sentry alert throttled | `Send a notification for high priority issues` changed from *notify on every trigger* to **1 day**; sidebar confirms "Throttling: 1 day" |
 | **Backup restore drilled** | Branch from a past point ready in **2.5s**; data genuinely rewound (789 rate-limit rows vs 1,080 live); branch deleted |
-| `PRIV-002` — no way to answer a GDPR access or erasure request | Export and erasure as admin actions; orders kept and anonymised rather than deleted, per Art. 17(3)(b). 7 tests on the branch |
+| `PRIV-002` — no way to answer a GDPR access or erasure request | Export and erasure as admin actions; orders kept and anonymised rather than deleted, per Art. 17(3)(b). 7 tests on the branch. **Re-opened and re-closed 2026-09-08** — the actions had no caller until then, so the symptom survived its own fix |
 | `BUG-002` — the buy button swallowed early clicks | Same spec with no settle: fails on production, passes on the fix, passes on production after deploy |
 | `A11Y-002` — colour swatches announced as nothing | Found by the axe scan on its first run; zero WCAG 2.1 A/AA violations across six pages now |
 | `TEST-001` — `completeCheckout` had no end-to-end test | Ten concurrent buyers, one unit → one order, stock floors at zero, against the real service |
@@ -1363,6 +1378,48 @@ reading: the toast's right edge sits at 448px against a drawer starting at 528px
 **The rule this leaves behind:** an unexplained fix is not a fix. Reverting and saying so cost
 one exchange; shipping it would have left a comment in the codebase asserting something untrue.
 
+### Late on the same day: the cheapest possible pass found the most expensive thing
+
+A question about whether a different model would find different bugs was answered by running
+`knip` instead — a dead-code pass that needs no model at all. It reported 146 lines. Five
+mattered, and one of them was `PRIV-002` having no caller (above). The rest:
+
+**A documented invariant with nothing behind it.** `lib/password.ts` exported `BCRYPT_ROUNDS`
+under a comment promising it was shared *"so a future increase moves the dummy hash below with
+it"*. It was shared by nobody. Six call sites each held their own copy — a second
+`BCRYPT_ROUNDS` in the admin user actions, a `BCRYPT_COST` in the sign-up route, a bare `12` in
+change-password, reset-password and the seed. All five read 12, so nothing was broken; what was
+broken is the mechanism. **Two separate timing defences depend on that number matching.**
+`verifyPassword` compares against a dummy hash so a missing account costs the same as a present
+one (`AUTH-002`), and the sign-up route burns an equivalent hash on the already-registered
+branch for the same reason. Raising the work factor in one place — the obvious thing to do, and
+the thing the comment invited — would have silently ended both, with no test and no type error
+to say so. Every hash now goes through `hashPassword` and the constant is private. (`96680c6`)
+
+**A dependency that resolved only by luck.** `prisma.config.ts` imports `@prisma/config`, which
+was never declared in `package.json` and arrives transitively under `prisma`. A version bump
+that stops hoisting it breaks `prisma generate` on a clean install — and Vercel installs clean,
+so the first symptom would have been a failed deploy with nothing in the diff to explain it.
+Also removed `@types/bcryptjs`, a v2-era stub shadowing the types bcryptjs 3.x ships itself, and
+untracked `.image-migration-2026-09-06/`, whose rollback map had been committed. (`9dc3906`)
+
+**The tool is only useful configured.** Run bare it called all 34 one-off scripts in `scripts/`
+dead — they are deliberate CLI tools with no importer — and that cascade then reported `sharp`
+as an unused dependency, because the only file using it had just been declared a corpse. With
+entries declared the report went 146 lines to 95, and 36 "unused files" to the one real one.
+An unconfigured tool that cries wolf about 35 things gets ignored on the 36th, which is the one
+that mattered here. `knip.json` is committed so the next run starts honest.
+
+**What this says about the audit's method.** This file already carries the rule that a clean
+read is not a clean run, learned from findings that only appeared under traffic. `knip` is the
+opposite lesson and does not contradict it: **a static pass finds a different class of defect
+than exercising the shop, and neither substitutes for the other.** Nothing in this section would
+have been found by clicking through the site — an unwired action renders no page, a duplicated
+constant behaves correctly, a transitively-resolved import works until it doesn't. And nothing
+`knip` reports would have caught the gift-wrap charge, the un-repriced shipping rate, or the
+AADE empty element. The cheap deterministic pass should have been running from day one; it costs
+nothing and it was never run.
+
 ---
 
 ## [x] OBS-003 · The admin audit log covers 2 of ~12 admin surfaces
@@ -1447,6 +1504,37 @@ and a careful read before it ever runs against production.
 **Fixed:** `services/data-subject.ts` plus two admin actions behind `admin:settings`, both recorded to the audit log under the new `dataSubject.*` verbs.
 
 **Erasure is anonymisation where the law requires the record kept.** Orders are *not* deleted: Greek tax law requires transaction records be retained, and GDPR Art. 17(3)(b) exempts processing required by a legal obligation. So the order survives with its line items, totals, dates and status intact — the accounting facts — while every identifying field is overwritten, including the address inside the JSON snapshot, which is replaced wholesale rather than patched so no street name survives. Everything with no such obligation behind it (addresses, carts, wishlists, reviews, newsletter, contact and concierge messages, OAuth links, the customer row itself) is deleted outright. One transaction: a half-erased customer is worse than a failed request, because nobody can tell by looking which half succeeded.
+
+### It was closed for three days without a caller (2026-09-08)
+
+The service, both actions, the capability gate, the audit-log entries and seven passing tests
+all landed on 5 September. Nothing imported the actions. There was no button, no form, no route
+— so the finding's own headline, *no way to answer a GDPR access or erasure request*, remained
+literally true while this file listed it as fixed.
+
+Found by `knip`, which reported `app/admin/(dashboard)/customers/actions.ts` as an unused file.
+Not found by `tsc`, `eslint`, the seven tests, or four days of reading this document.
+
+Three things are worth taking from it.
+
+**Tests are not reachability.** The seven tests import the service and call it directly, which
+is the right way to test erasure and says nothing about whether a person can invoke it. Every
+one of them would have gone on passing for as long as the feature existed unwired.
+
+**A "fix" made of parts is not finished when the parts exist.** Each piece was individually
+complete and correctly built. Nothing in the review of any single piece would reveal that the
+last edge of the graph was missing, because that edge lives in a file none of them mention.
+
+**This is precisely the failure the standing rule names**, arrived at from the other direction.
+The rule was written after a cron that had never fired: `Fixed` means shipped, not working. Here
+the code shipped and still did not work, and the same sentence covers it — with the corollary
+that the cheapest check is often the dumbest one. A dead-code pass that costs nothing found in
+seconds what careful reading had missed for three days.
+
+**Wired:** `663b22a` — two forms on `/admin/customers`, gated on `admin:settings`, working from
+an email address rather than a table row so guests, newsletter subscribers and contact-form
+senders are reachable too; `findDataSubject` always searched all of them, and a per-row button
+could only have asked about people who have accounts.
 
 **Guest data is followed by email, not just by foreign key.** Reviews, newsletter subscriptions and contact messages are keyed by email alone — written by people who never made an account. An erasure that followed only `customerId` would tell someone "we hold nothing about you" while their name sat on a product page.
 
@@ -2315,7 +2403,7 @@ different ways. Anyone changing a dimension should recompute the total rather th
 | Deployment | 80 | **94** | Both migrations dry-run in rolled-back transactions before applying; a third cron added; **`ROLLBACK.md` now documents the procedure** — how to tell a code problem from a schema, infra or data one, and why promoting a previous Vercel deployment beats every other first move. |
 | Accessibility | 75 | **89** | Skip link (WCAG 2.4.1 Level A), plus an **axe scan at WCAG 2.1 A/AA across six pages** on every run — which immediately found `A11Y-002`, colour swatches that announced as nothing. Held below 90 deliberately: axe checks the machine-checkable half, and a real screen-reader pass is still the next gain. |
 | SEO | 92 | **94** | SEC-005 fixed a policy that would have blanked the Instagram feed. |
-| **Compliance** (new) | — | **91** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. **Raised 88 → 91 on 2026-09-07**, when retention was finally *watched* doing its job: an unattended pass cleared 492 rows of IP addresses past their stated window down to zero. The 88 was explicitly held pending that. Still short of higher because erasure is exercised by tests rather than by a real Article 17 request, and because the retention that now runs reliably is a fallback rather than the schedule `PRIV-001` describes. |
+| **Compliance** (new) | — | **91** | Added on 2026-09-05, because `PRIV-002` showed the scoring had no axis for it: an obligation with no code behind it could not lower any number. GDPR retention (`PRIV-001`), access and erasure (`PRIV-002`) are implemented; legal pages are live in Greek with controller identity and lawful bases. **Raised 88 → 91 on 2026-09-07**, when retention was finally *watched* doing its job: an unattended pass cleared 492 rows of IP addresses past their stated window down to zero. The 88 was explicitly held pending that. Still short of higher because erasure is exercised by tests rather than by a real Article 17 request, and because the retention that now runs reliably is a fallback rather than the schedule `PRIV-001` describes. **Held at 91 on 2026-09-08** rather than raised for the data-subject UI: that work made a claim this axis had already been scored on actually true, and correcting an overstatement earns no points. |
 | **Overall** | **74** | **93** | **Ready to launch.** 1024 / 11 = **93.09**, against 92.27 the previous pass (which itself corrected a 91.64 that had been *printed* as 95). Four dimensions moved on 2026-09-07 and every one of them only after the thing being scored was **observed running in production**, never on a deploy: Reliability 88 → 91, Observability 96 → 98, Compliance 88 → 91, Testing 96 → 97. Reliability and Compliance had both been explicitly frozen that morning pending exactly that evidence, which is the rule working rather than being applied to itself. |
 
 ---
@@ -2438,3 +2526,6 @@ placeholder that named nothing once the file was pushed.
 | 2026-09-07 | **`purge-e2e-data` run: 146 of 516 carts removed** — 6 carrying a test/QA checkout and 140 empty guest carts over a week old. Verified afterwards rather than trusting the summary, which is what turned up **`BUG-004`**: one order's `checkoutId` resolves to nothing. Not caused by the purge (`completeCheckout` copies the checkout's email onto the order, and that order's address is real, so it cannot have come from any of the six reserved-address checkouts deleted). The mechanism is `mergeCarts`, which deletes the guest cart on sign-in and cascades its checkouts away — including ones an order points at, because `Order.checkoutId` has no foreign key while `checkouts.cartId` cascades. No impact today: `Order` carries its own snapshots of line items, totals and both addresses, and nothing joins back. The hazard was the **comment** calling that pointer permanent, since code gets written against documented guarantees; corrected, mechanism left open as a decision | `02add7d` |
 | 2026-09-07 | **`BUG-004` fixed at the merge.** `mergeCarts` now **empties** a guest cart whose checkout an order points at, instead of deleting it and cascading that order's session row away. Emptying rather than merely keeping is the part that is easy to miss: the cascade was doing two jobs, removing the row *and* its line items, so leaving them would hand the shopper their basket twice — the guard clears the same three tables `clearCart` does. Two extra round trips, and only on carts that have ever reached checkout. Pinned by `services/cart-merge.test.ts`, **checked to fail against the pre-fix code** rather than assumed to cover it, and asserting both directions, since a guard that never deleted anything would pass a one-sided test while leaking a cart row on every sign-in. The foreign key (`ON DELETE RESTRICT`) is still the correct answer and is deliberately deferred: it needs a hand-applied migration on a live shop and turns a silent harmless outcome into a failed sign-in — worth doing next time a migration is being applied anyway. The one existing dangling pointer is left as it is; repointing it would invent a session that never existed | `34b5aa4` |
 | 2026-09-07 | **Scores moved for the first time on observation rather than on shipping.** Reliability **88 → 91**, Observability **96 → 98**, Compliance **88 → 91**, Testing **96 → 97**; overall **92 → 93** (1024/11 = 93.09). Reliability and Compliance had been frozen that morning with the reason written down — "it moves when the run log shows it working" — and moved only after the deployed `/api/health` was read back serving `staleCronJobs` and an unattended retention pass cleared 492 overdue rows to zero. Not restored to their pre-`OPS-001` values: a traffic-driven fallback is genuinely weaker than a schedule, since a shop with no visitors for two days does not run retention. Also records the **ACS courier integration** as INFO — request side verified against ACS's published spec, response side unverifiable from it, and a 3-character `ACS_API_KEY` placeholder that would defeat the half-configured fallback if anyone set `COURIER_PROVIDER=acs` today — and retires the stale "rate-limit pruning is opportunistic, harmless" INFO bullet, which was neither | `70e1a60` |
+| 2026-09-08 | **A day shaped by the owner using the shop, not by remediation** — eighteen commits, ten of them from looking at a screen and saying what was wrong with it. Two money-or-data defects (gift wrap chargeable with no way to remove it; a stored shipping rate never re-priced when the address changed), three places the Greek shop still spoke English, ΑΦΜ autofill against AADE, customer delivery notes, and a toast fix that was reverted before it was fixed. All three `OPS-001` crons observed running on the scheduler. Narrated in full under **What shipped — 2026-09-08** | *see section* |
+| 2026-09-08 | **`knip` added, and the cheapest possible pass found the most expensive thing.** A question about model choice for bug-hunting was answered by running a dead-code tool instead. 146 lines of report, five that mattered. `lib/password.ts` documented a shared bcrypt work factor that was shared by nobody — six call sites, five separate literals, and **two timing defences that silently stop equalising the moment anyone raises one of them**. `@prisma/config` was imported by `prisma.config.ts` and never declared, resolving only transitively, which makes a Vercel clean install a failed deploy waiting for a hoisting change. Configured rather than run bare: unconfigured it called all 34 `scripts/` CLI tools dead and then reported `sharp` unused as a consequence | `96680c6`, `9dc3906` |
+| 2026-09-08 | **`PRIV-002` re-opened and re-closed: the fix had no caller for three days.** The service, both actions, the capability gate, the audit entries and seven passing tests all shipped on 5 September, and nothing imported them — so the finding's own headline, *no way to answer a GDPR access or erasure request*, stayed literally true while this file listed it as fixed. Found by `knip` reporting the actions file unused; not by `tsc`, `eslint`, the seven tests, or four days of reading this document. Now two forms on `/admin/customers` behind `admin:settings`, working from an email address rather than a table row so guests and newsletter subscribers are reachable. **This file's own standing rule caught this file:** `Fixed` means shipped, not working. Compliance held at 91 rather than raised — correcting an overstatement earns no points | `663b22a` |
