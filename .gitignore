@@ -60,3 +60,7 @@ playwright-report/
 
 # One-off migration artefacts — the rollback maps stay on disk, not in the repo
 .image-migration-*/
+
+# Working directories for scripts/align-product-images.ts
+.align-cache/
+.align-images/

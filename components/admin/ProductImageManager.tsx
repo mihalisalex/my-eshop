@@ -10,9 +10,10 @@ import {
   type UseFormRegister,
   type UseFormSetValue,
 } from "react-hook-form";
-import { ImageUp, Link2, Star, X } from "lucide-react";
+import { AlignVerticalSpaceAround, ImageUp, Link2, Star, X } from "lucide-react";
 import { uploadMediaFiles } from "@/components/admin/MediaUploadButton";
 import { MediaLibraryPicker } from "@/components/admin/MediaLibraryPicker";
+import { alignProductImages } from "@/app/admin/(dashboard)/products/image-actions";
 import { composeIdentifierAlt } from "@/lib/seo/product-content";
 import type { ProductFormValues } from "@/lib/validation/product";
 import type { MediaAssetWithUsage } from "@/types/media";
@@ -112,6 +113,49 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
   const [showUrlField, setShowUrlField] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isAligning, setIsAligning] = useState(false);
+  const [alignNote, setAlignNote] = useState<string | null>(null);
+  const [alignSkips, setAlignSkips] = useState<string[]>([]);
+
+  const category = useWatch({ control, name: "category" });
+
+  /**
+   * Puts these photographs on the same baseline as the rest of the catalogue.
+   *
+   * Deliberately a button rather than something that happens on upload. It rewrites the
+   * picture, and a merchandiser who has just cropped a shot exactly how they want it should
+   * not have that undone by a side effect of saving. It also only ever changes the form's
+   * values — nothing is written to the product until they save, so pressing it and disliking
+   * the result costs a page refresh.
+   */
+  async function alignImages() {
+    const sources = (images ?? []).map((image) => image?.src ?? "").filter(Boolean);
+    if (sources.length === 0) {
+      setAlignNote("Add a photo first.");
+      return;
+    }
+    setIsAligning(true);
+    setAlignNote(null);
+    setAlignSkips([]);
+    try {
+      const state = await alignProductImages(sources, category ?? "");
+      if (state.error) {
+        setAlignNote(state.error);
+        return;
+      }
+      for (const result of state.results ?? []) {
+        if (!result.moved) continue;
+        const index = (images ?? []).findIndex((image) => image?.src === result.src);
+        if (index >= 0) setValue(`images.${index}.src`, result.nextSrc, { shouldDirty: true });
+      }
+      setAlignNote(state.summary ?? null);
+      setAlignSkips((state.results ?? []).filter((r) => !r.moved && r.reason).map((r) => r.reason!));
+    } catch {
+      setAlignNote("Aligning failed — try again.");
+    } finally {
+      setIsAligning(false);
+    }
+  }
 
   /**
    * Renames the stored file to match the alt text it was just given, so the URL itself
@@ -322,6 +366,37 @@ export function ProductImageManager({ control, register, setValue, errors }: Pro
               </div>
             );
           })}
+        </div>
+      ) : null}
+
+      {images.some((image) => image?.src) ? (
+        <div className="border border-border p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={isAligning}
+              onClick={alignImages}
+              className="flex h-9 items-center gap-1.5 border border-luxe-black px-4 text-xs font-medium tracking-[0.05em] uppercase disabled:opacity-50"
+            >
+              <AlignVerticalSpaceAround className="size-3.5" strokeWidth={1.5} />
+              {isAligning ? "Aligning…" : "Align to baseline"}
+            </button>
+            <p className="text-xs text-luxe-gray-dark">
+              Puts the shoe on the same line as the rest of the shop. Side-on photos only.
+            </p>
+          </div>
+          {alignNote ? (
+            <p aria-live="polite" className="mt-3 text-xs">
+              {alignNote}
+            </p>
+          ) : null}
+          {alignSkips.length ? (
+            <ul className="mt-1 space-y-0.5 text-xs text-luxe-gray-dark">
+              {alignSkips.map((reason, i) => (
+                <li key={`${reason}-${i}`}>Left alone — {reason}.</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 
