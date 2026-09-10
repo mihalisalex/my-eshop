@@ -269,31 +269,41 @@ export async function analyseShape(input: Buffer): Promise<Shape> {
   }
 
   /**
-   * The sole is the widest row, and that is true whether or not the photograph carries a
-   * reflection.
+   * Where the subject stops, which on a photograph with no mirror is where it meets the floor.
    *
-   * A shoe in profile is longest where it meets the floor, and a mirrored copy below narrows
-   * away from that same line — so the contact line is the widest row in both cases. Deriving
-   * the baseline this way instead of from the reflection classifier is what makes the pass
-   * safe: a missed reflection no longer aligns the mirror's bottom edge to the target and
-   * floats the shoe. The classifier still runs, but only to decide what to skip, and being
-   * wrong about that now costs nothing worse than an image left alone.
+   * This was the widest row for a while, on the reasoning that a shoe is longest where it
+   * touches the ground. That is not true and the catalogue says so: on a pointed boot with a
+   * tapered heel the silhouette is widest well *above* the floor, and how far above is a
+   * property of the shoe — 9.2 points of frame on one bootie, 1.5 on a loafer. Aligning the
+   * widest rows put those two soles 8 points apart on the shelf, which is exactly what the
+   * merchant saw.
    *
-   * Taken as the topmost row reaching the maximum width, and deliberately not the lowest row
-   * near it: a reflection is widest immediately below the contact line too, so any downward
-   * tolerance walks straight into the mirror and lands the baseline under the shoe. Anchoring
-   * on the same feature in every photograph is what makes them line up — whether that feature
-   * sits at the very top of the sole band or a few pixels into it does not matter, so long as
-   * it is the same few pixels every time.
+   * The widest row was adopted to survive a reflection, whose bottom edge is not the sole. But
+   * reflected photographs are skipped rather than aligned, so that was a defence against a case
+   * this pass never handles, bought at the cost of the case it always handles. When a mirror
+   * *is* detected the axis is still the right answer, so it is used — nothing else needs it.
    */
-  let sole = bottom;
+  const sole = reflection ? best.y : bottom;
+
+  /**
+   * The footprint row — where the silhouette is at its longest.
+   *
+   * Kept separate from `sole` because the two answer different questions. The baseline asks
+   * *where does this shoe stand*, which is the bottom of it. The side-on test asks *is this a
+   * profile photograph at all*, and that is about the shape of the silhouette rather than its
+   * lowest point: a shoe seen side-on runs long and low, one seen from above is widest across
+   * its middle. Deriving both from one row conflated them, and moving the baseline to the floor
+   * silently redefined the test — 56 photographs went from side-on to not-side-on without
+   * anything about them changing.
+   */
+  let footprint = bottom;
   for (let y = top; y <= bottom; y++) {
-    if ((widths[y] ?? 0) >= widest * 0.98) { sole = y; break; }
+    if ((widths[y] ?? 0) >= widest * 0.98) { footprint = y; break; }
   }
 
   let soleWidth = 0;
   const band = Math.max(3, Math.round(height * 0.015));
-  for (let y = Math.max(top, sole - band); y <= sole; y++) soleWidth = Math.max(soleWidth, widths[y] ?? 0);
+  for (let y = Math.max(top, footprint - band); y <= footprint; y++) soleWidth = Math.max(soleWidth, widths[y] ?? 0);
   const flatness = soleWidth / widest;
   /**
    * Where the widest row sits within the subject, which is what separates a side-on shot from
@@ -306,7 +316,7 @@ export async function analyseShape(input: Buffer): Promise<Shape> {
    * knee-high boot in the shop — a boot in profile is taller than it is wide, and was being
    * read as "not side-on" for it.
    */
-  const soleRatio = (sole - top) / Math.max(1, bottom - top);
+  const soleRatio = (footprint - top) / Math.max(1, bottom - top);
   /**
    * Either signal on its own is enough, and it takes both to be sure of a rejection.
    *

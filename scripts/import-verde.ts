@@ -7,6 +7,7 @@ import { put } from "@vercel/blob";
 import { slugify } from "@/lib/slug";
 import { SIZE_RUNS, expandSizeRun } from "@/constants/size-runs";
 import { alignToBaseline, analyseShape, targetFor } from "@/lib/images/align";
+import { prisma } from "@/lib/prisma";
 import { writeProductRow } from "@/lib/products-import/write";
 import type { ProductFormValues } from "@/lib/validation/product";
 
@@ -145,8 +146,12 @@ async function main() {
       );
 
       if (apply) {
-        const { id } = await writeProductRow(values);
-        console.log(`    written ${id}`);
+        // Idempotent on the SKU, so re-running after a fix to the framing updates the product
+        // instead of colliding with its own slug. The SKU is the one thing here that is stable
+        // across runs — it is built from Verde's code and their colour label.
+        const existing = await prisma.product.findUnique({ where: { sku }, select: { id: true } });
+        const { id } = await writeProductRow(values, existing?.id);
+        console.log(`    ${existing ? "updated" : "written"} ${id}`);
       }
     }
   }
@@ -167,18 +172,51 @@ async function prepareImages(barcode: string, category: string, code: string, la
     if (!response.ok) break;
     const original = Buffer.from(await response.arrayBuffer());
 
-    // Padded to 3:4 before anything is measured, so the baseline is set on the frame the shop
-    // will actually show rather than on Verde's taller one.
+    /**
+     * Padded to 3:4 before anything is measured, so the baseline is set on the frame the shop
+     * will actually show rather than on Verde's taller one.
+     *
+     * Scaled to 94% of the width first, deliberately. Verde shoots 960 wide against the shop's
+     * 1000, so filling the frame edge to edge is only a 4% enlargement — but their loafers
+     * already run the full width of their own frame, and the enlarged copy then touched both
+     * edges. A subject touching an edge has no margin to be moved into, so the aligner declined
+     * it and two loafers stayed 7 points off everything else. The inset also brings Verde's
+     * products closer to the shop's own photography, which carries 3–11% at the sides.
+     */
     const probe = await analyseShape(original);
-    const reframed = await sharp(original)
-      .resize({ width: 1000, height: 1333, fit: "contain", background: probe.backdrop })
+    /**
+     * Two passes rather than a chain, and the second must not enlarge.
+     *
+     * Both halves of that bit me. A second `.resize()` on one pipeline *replaces* the first
+     * rather than composing with it; and `fit: "contain"` scales the image up to fill the box
+     * before padding what is left, so even as a separate pass it put the inset straight back to
+     * full width. `withoutEnlargement` is what turns "contain" into the pad-only operation this
+     * wants. Both failures were silent and produced a plausible-looking 1000x1333 image.
+     */
+    const inset = await sharp(original).resize({ width: 940, height: 1253, fit: "inside" }).toBuffer();
+    const reframed = await sharp(inset)
+      .resize({ width: 1000, height: 1333, fit: "contain", withoutEnlargement: true, background: probe.backdrop })
       .webp({ quality: 85 })
       .toBuffer();
 
-    const shape = await analyseShape(reframed);
+    /**
+     * The mirror test is not run on Verde's photography, because Verde does not shoot mirrors.
+     *
+     * Checked rather than assumed: across the 46 images in this order the test flagged six, and
+     * every one is a clean shoe on flat grey with nothing beneath it — a dark suede moccasin
+     * scores 0.68 purely on its own upper-against-sole symmetry. There were no true positives
+     * to lose. Left on, it declined to align those six and left them sitting up to 10 points off
+     * the rest of the shelf, which is the visible fault it exists to prevent.
+     *
+     * So the baseline here is simply where the subject ends. Should Verde ever start shooting on
+     * a reflective floor, this is the line to revisit — the detector still runs for the shop's
+     * own catalogue, where the mirrors are real.
+     */
+    const measured = await analyseShape(reframed);
+    const shape = { ...measured, sole: measured.bottom, reflection: false };
     const target = targetFor(category, shape);
     let final: Buffer = reframed;
-    if (target && shape.sideProfile && !shape.reflection && !shape.touchesEdge) {
+    if (target && shape.sideProfile && !shape.touchesEdge) {
       const aligned = await alignToBaseline(reframed, shape, target);
       if (!aligned.reason) final = aligned.buffer;
     }
