@@ -12,8 +12,58 @@ import sharp from "sharp";
  * No `server-only` marker: the scripts run this under plain `tsx`, outside the app.
  */
 
-/** The grey every product photograph in this catalogue is matted on. */
+/** The grey this shop's own product photography is matted on. */
 export const BACKDROP = { r: 241, g: 241, b: 241 } as const;
+
+export interface Rgb {
+  r: number;
+  g: number;
+  b: number;
+}
+
+/**
+ * The photograph's own backdrop, read from its corners rather than assumed.
+ *
+ * The shop's images are matted on #F1F1F1, but supplier photography is not: Verde's is
+ * #E8E8E8, nine levels darker. Nine levels is invisible on its own and glaring as a seam once
+ * you pad one grey out with another, and it also sits right at the edge of the ink threshold
+ * below — measure a #E8E8E8 photograph against a hardcoded #F1F1F1 and every background pixel
+ * lands 9 away from it, one short of counting as subject. That works by luck, and stops
+ * working for the first supplier whose grey is a little lighter.
+ *
+ * The median of the four corners, so a stray watermark or a shadow reaching one corner cannot
+ * carry the answer on its own.
+ */
+export function detectBackdrop(raw: Buffer, width: number, height: number, channels: number): Rgb {
+  const patch = Math.max(4, Math.round(Math.min(width, height) * 0.02));
+  const corners: Rgb[] = [];
+  for (const [ox, oy] of [
+    [0, 0],
+    [width - patch, 0],
+    [0, height - patch],
+    [width - patch, height - patch],
+  ]) {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let n = 0;
+    for (let y = oy; y < oy + patch; y++) {
+      for (let x = ox; x < ox + patch; x++) {
+        const i = (y * width + x) * channels;
+        r += raw[i];
+        g += raw[i + 1];
+        b += raw[i + 2];
+        n++;
+      }
+    }
+    corners.push({ r: r / n, g: g / n, b: b / n });
+  }
+  const median = (pick: (c: Rgb) => number) => {
+    const values = corners.map(pick).sort((a, b) => a - b);
+    return Math.round((values[1] + values[2]) / 2);
+  };
+  return { r: median((c) => c.r), g: median((c) => c.g), b: median((c) => c.b) };
+}
 
 /** Distance from the backdrop at which a pixel counts as subject rather than field. */
 const INK = 10;
@@ -34,6 +84,8 @@ export interface Shape {
   fade: number;
   /** Subject runs into a frame edge, so it is a crop and there is no margin to move it into. */
   touchesEdge: boolean;
+  /** The photograph's own matte colour, read from its corners — not assumed to be the shop's. */
+  backdrop: Rgb;
   /** Shot side-on, resting on its sole — the only view where a shared baseline means anything. */
   sideProfile: boolean;
   /** How much of the subject's width its lowest rows occupy. Flat sole high, curved toe low. */
@@ -76,11 +128,15 @@ export function targetFor(categorySlug: string): AlignTarget | null {
  * mistakes are not equally expensive.
  */
 export async function analyseShape(input: Buffer): Promise<Shape> {
+  // Flattened against the shop's own grey, which only has an effect on an image with alpha —
+  // and a transparent cut-out has no backdrop of its own, so the shop's is the right answer
+  // for it. Anything opaque keeps its own corners, which is what gets measured next.
   const image = sharp(input).flatten({ background: BACKDROP });
   const meta = await image.metadata();
   const width = meta.width!;
   const height = meta.height!;
   const raw = await image.raw().toBuffer();
+  const backdrop = detectBackdrop(raw, width, height, 3);
 
   const distance = new Float32Array(width * height);
   const rowHits = new Int32Array(height);
@@ -89,9 +145,9 @@ export async function analyseShape(input: Buffer): Promise<Shape> {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 3;
       const d = Math.max(
-        Math.abs(raw[i] - BACKDROP.r),
-        Math.abs(raw[i + 1] - BACKDROP.g),
-        Math.abs(raw[i + 2] - BACKDROP.b)
+        Math.abs(raw[i] - backdrop.r),
+        Math.abs(raw[i + 1] - backdrop.g),
+        Math.abs(raw[i + 2] - backdrop.b)
       );
       distance[y * width + x] = d;
       if (d > INK) {
@@ -252,7 +308,7 @@ export async function analyseShape(input: Buffer): Promise<Shape> {
 
   return {
     width, height, top, bottom, left, right,
-    sole,
+    sole, backdrop,
     reflection, score: best.score, fade: best.fade, touchesEdge, sideProfile, flatness,
   };
 }
@@ -286,20 +342,32 @@ export async function alignToBaseline(input: Buffer, shape: Shape, target: Align
   const desiredLeft = Math.round((width - subjectWidth) / 2);
   const dx = desiredLeft - left;
 
-  if (Math.abs(dy) < 4 && Math.abs(dx) < 4) {
+  /**
+   * Close enough is aligned.
+   *
+   * The threshold was 4px, which is about 0.3% of the frame and below what anyone can see in a
+   * grid — but far above the noise floor of the measurement itself, so re-measuring the same
+   * photograph after any change to how the backdrop is read would nudge a dozen images across
+   * it and re-upload every one for a correction nobody could point at. 1% of the frame is still
+   * invisible and sits well clear of that.
+   */
+  const tolerance = Math.max(4, Math.round(height * 0.01));
+  if (Math.abs(dy) < tolerance && Math.abs(dx) < tolerance) {
     return { buffer: input, fromGap, toGap, reason: "already-aligned" };
   }
   if (top + dy < 0 || bottom + dy > height - 1 || left + dx < 0 || right + dx > width - 1) {
     return { buffer: input, fromGap, toGap, reason: "no-room" };
   }
 
+  // Padded with the photograph's own grey, not the shop's. Nine levels between #E8E8E8 and
+  // #F1F1F1 is invisible until they meet, at which point it is a hard edge across the frame.
   const subject = await sharp(input)
-    .flatten({ background: BACKDROP })
+    .flatten({ background: shape.backdrop })
     .extract({ left, top, width: subjectWidth, height: bottom - top + 1 })
     .toBuffer();
 
   const buffer = await sharp({
-    create: { width, height, channels: 3, background: BACKDROP },
+    create: { width, height, channels: 3, background: shape.backdrop },
   })
     .composite([{ input: subject, left: left + dx, top: top + dy }])
     .webp({ quality: 85 })
