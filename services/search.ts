@@ -161,8 +161,16 @@ function orderBy(sort: SearchOptions["sort"]): Prisma.Sql {
     case "discount":
       return Prisma.sql`${DISCOUNT_RATIO} DESC, ${EFFECTIVE_PRICE} ASC, p.id ASC`;
     default:
-      // `p.id` is the tiebreaker on every branch. Without a total order, two products
-      // with the same price can swap between pages and one of them is never seen.
+      /**
+       * Oldest first. This branch used to answer to `relevance`, which is what it was called
+       * everywhere from the URL to the dropdown — and there has never been any text ranking
+       * behind it. It sorted the shop's oldest stock to the front of every category page while
+       * calling itself the sensible default, and nobody could tell from the name that it was
+       * doing so. It is `oldest` now, and says what it does.
+       *
+       * `p.id` is the tiebreaker on every branch. Without a total order, two products with the
+       * same price can swap between pages and one of them is never seen.
+       */
       return Prisma.sql`p."createdAt" ASC, p.id ASC`;
   }
 }

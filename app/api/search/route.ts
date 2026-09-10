@@ -28,7 +28,15 @@ function numeric(value: string | null): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const SORTS = new Set(["relevance", "newest", "discount", "price-asc", "price-desc"]);
+const SORTS = new Set(["oldest", "newest", "discount", "price-asc", "price-desc"]);
+
+/**
+ * `relevance` was this sort's name until it was renamed to say what it does. Anything already
+ * carrying the old value in a URL — a bookmark, a shared link, a page open in another tab —
+ * still means the same ordering, so it is translated rather than dropped on the floor and
+ * silently answered in a different order.
+ */
+const LEGACY_SORTS: Record<string, string> = { relevance: "oldest" };
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,7 +51,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ suggestions: await searchSuggestions(query, limit) });
     }
 
-    const sort = params.get("sort");
+    const rawSort = params.get("sort");
+    const sort = rawSort ? (LEGACY_SORTS[rawSort] ?? rawSort) : null;
     const options: SearchOptions = {
       category: params.get("category") ?? undefined,
       gender: (params.get("gender") as SearchOptions["gender"]) ?? undefined,

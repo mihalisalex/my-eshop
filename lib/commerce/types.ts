@@ -290,7 +290,7 @@ export interface SearchOptions {
   isSale?: boolean;
   minPrice?: number;
   maxPrice?: number;
-  sort?: "relevance" | "price-asc" | "price-desc" | "newest" | "discount";
+  sort?: "oldest" | "price-asc" | "price-desc" | "newest" | "discount";
   limit?: number;
   /** 1-indexed. Combined with `pageSize` for PLP pagination/infinite scroll; omit both to keep the old `limit`-only behavior (search overlay). */
   page?: number;
