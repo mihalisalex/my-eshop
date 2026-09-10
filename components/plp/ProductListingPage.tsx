@@ -52,7 +52,15 @@ export function ProductListingPage({
   description,
   baseFilters,
   showHeader = true,
-  defaultSort = "relevance",
+  /**
+   * Newest first, everywhere that does not deliberately choose otherwise.
+   *
+   * The previous default was `relevance`, which on a listing with no search term behind it is
+   * `createdAt ASC` — the oldest stock in the shop, shown first, on every category page. With
+   * 175 products sharing one import date it reads as no order at all, which is exactly how the
+   * merchant described it. `/new-in` and `/sale` still pass their own.
+   */
+  defaultSort = "newest",
   initialListing,
 }: ProductListingPageProps) {
   const t = useTranslations("Plp");

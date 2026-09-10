@@ -60,7 +60,9 @@ export async function ProductListingSection({
   description,
   baseFilters,
   showHeader = true,
-  defaultSort = "relevance",
+  /** Newest first — see the note on `ProductListingPage`, which this must agree with or the
+   *  server's first page and the client's first re-fetch would be sorted differently. */
+  defaultSort = "newest",
   searchParams,
 }: ProductListingSectionProps) {
   const query = parseListingQuery(searchParamReader(searchParams), defaultSort);

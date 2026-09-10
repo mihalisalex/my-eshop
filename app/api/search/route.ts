@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
       isSale: params.get("isSale") === "true",
       minPrice: numeric(params.get("minPrice")),
       maxPrice: numeric(params.get("maxPrice")),
-      sort: sort && SORTS.has(sort) ? (sort as SearchOptions["sort"]) : "relevance",
+      // Matches the listing components' default, so a request that omits `sort` gets the same
+      // order the page was rendered in rather than silently falling back to oldest-first.
+      sort: sort && SORTS.has(sort) ? (sort as SearchOptions["sort"]) : "newest",
       page: Math.max(1, numeric(params.get("page")) ?? 1),
       pageSize: Math.min(numeric(params.get("pageSize")) ?? 24, MAX_PAGE_SIZE),
     };
