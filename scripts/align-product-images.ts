@@ -84,6 +84,9 @@ async function main() {
       try {
         const original = await download(image.src);
         const shape = await analyseShape(original);
+        // Re-asked with the measurement in hand: a boot's target depends on whether the
+        // photograph shows a knee-high boot or an ankle one, which the category cannot say.
+        const measured = targetFor(cat, shape) ?? target;
         if (shape.reflection) { skips.reflection++; continue; }
         if (shape.touchesEdge) { skips.cropped++; continue; }
         // Only the side-on shots. A shoe photographed from above has no sole line in the
@@ -91,11 +94,11 @@ async function main() {
         // specifically, and they are also the only ones the idea is meaningful for.
         if (!shape.sideProfile) { skips["not-side-on"]++; continue; }
 
-        const result = await alignToBaseline(original, shape, target);
+        const result = await alignToBaseline(original, shape, measured);
         if (result.reason) { skips[result.reason === "no-room" ? "no-room" : "already-aligned"]++; continue; }
 
-        planned.push({ productId: product.id, src: image.src, cat, from: result.fromGap, to: result.toGap, buf: result.buffer });
-        if (samples.length < 12) samples.push({ before: original, after: result.buffer, label: `${cat} ${result.fromGap.toFixed(1)}→${result.toGap.toFixed(1)}%` });
+        planned.push({ productId: product.id, src: image.src, cat: `${cat} · ${measured.label}`, from: result.fromGap, to: result.toGap, buf: result.buffer });
+        if (samples.length < 12) samples.push({ before: original, after: result.buffer, label: `${measured.label} ${result.fromGap.toFixed(1)}→${result.toGap.toFixed(1)}%` });
       } catch {
         skips.failed++;
       }

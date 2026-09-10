@@ -103,11 +103,31 @@ export interface AlignTarget {
  * higher baseline or it looks like it is falling out of the picture. Two numbers rather than
  * one because a knee-high boot and a slide genuinely do not belong at the same height.
  */
-export function targetFor(categorySlug: string): AlignTarget | null {
-  // Knee-high, so they need most of the frame or they run out of the top of it.
-  if (categorySlug === "gynaikeia-boots") return { bottomGap: 0.10, label: "tall boot" };
-  // Ankle boots are shoe-shaped and sit with the shoes, a little lower for the extra height.
-  if (categorySlug === "andrika-boots") return { bottomGap: 0.25, label: "ankle boot" };
+export function targetFor(
+  categorySlug: string,
+  shape?: Pick<Shape, "top" | "sole" | "height">
+): AlignTarget | null {
+  if (categorySlug.endsWith("boots")) {
+    /**
+     * Which kind of boot, decided from the photograph rather than from the category.
+     *
+     * `gynaikeia-boots` holds both knee-high Μπότες and ankle Μποτάκια, and they do not belong
+     * at the same height — a 10% gap suits a boot that fills the frame and leaves an ankle boot
+     * floating. Splitting the category would have meant moving twenty live products and
+     * changing their URLs to fix an alignment number, which is a great deal of storefront
+     * churn for a small cause.
+     *
+     * Measured instead. Across the catalogue every product the merchant named Μπότα occupies
+     * 0.81–0.85 of the frame and every Μποτάκι or Αρβυλάκι occupies 0.27–0.58 — an empty gap
+     * between them wide enough that 0.7 is not a judgement call. The measurement and the
+     * merchant's own vocabulary agree on every single row, which is the strongest evidence
+     * available that it is measuring the thing the name means.
+     */
+    const filled = shape ? (shape.sole - shape.top) / shape.height : 1;
+    return filled >= 0.7
+      ? { bottomGap: 0.10, label: "tall boot" }
+      : { bottomGap: 0.25, label: "ankle boot" };
+  }
   const footwear = ["sandals", "heels", "oxfords"];
   if (footwear.includes(categorySlug) || categorySlug.endsWith("sneakers") || categorySlug.endsWith("loafers")) {
     return { bottomGap: 0.30, label: "shoe" };

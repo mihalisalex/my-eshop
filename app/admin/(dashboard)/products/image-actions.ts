@@ -78,7 +78,9 @@ export async function alignProductImages(sources: string[], category: string): P
         continue;
       }
 
-      const aligned = await alignToBaseline(original, shape, target);
+      // Asked again with the measurement: a knee-high boot and an ankle boot share a category
+      // and do not share a baseline, and only the photograph can tell them apart.
+      const aligned = await alignToBaseline(original, shape, targetFor(record!.slug, shape) ?? target);
       if (aligned.reason) {
         results.push({ src, nextSrc: src, moved: false, reason: REASONS[aligned.reason] });
         continue;
