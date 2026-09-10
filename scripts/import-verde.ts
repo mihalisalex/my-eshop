@@ -98,7 +98,9 @@ async function main() {
     for (const colour of item.colours) {
       const name = item.nameEl.replace("{colour}", colour.el);
       const slug = slugify(name);
-      const sku = `VERDE-${item.code}-${colour.label}`;
+      // Verde's own label, hyphenated: "ANIMAL PRINT" is a colour name on their swatch and a
+      // space in the middle of a SKU everywhere else.
+      const sku = `VERDE-${item.code}-${colour.label.replace(/\s+/g, "-")}`;
 
       const images = await prepareImages(colour.barcode, item.category, item.code, colour.label);
       if (images.length === 0) {
