@@ -64,3 +64,6 @@ playwright-report/
 # Working directories for scripts/align-product-images.ts
 .align-cache/
 .align-images/
+
+# Verde B2B import working files (order data, image previews)
+.verde/
