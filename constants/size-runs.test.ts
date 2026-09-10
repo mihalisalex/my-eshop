@@ -12,6 +12,20 @@ describe("size runs", () => {
     expect(totalPairs("A")).toBe(8);
     expect(totalPairs("B")).toBe(8);
     expect(totalPairs("C")).toBe(12);
+    expect(totalPairs("VERDE8")).toBe(8);
+  });
+
+  it("Verde8 spreads its eight pairs one size wider than B does", () => {
+    // The distinction that stops the two eight-pair women's runs being used interchangeably:
+    // Verde8 reaches 41, and pays for it by singling 37 where B doubles it.
+    expect(expandSizeRun(SIZE_RUNS.find((r) => r.id === "VERDE8")!)).toEqual([
+      { name: "36", quantity: 1 },
+      { name: "37", quantity: 1 },
+      { name: "38", quantity: 2 },
+      { name: "39", quantity: 2 },
+      { name: "40", quantity: 1 },
+      { name: "41", quantity: 1 },
+    ]);
   });
 
   it("A is the men's run, weighted to the middle sizes", () => {

@@ -41,6 +41,15 @@ export const SIZE_RUNS: SizeRun[] = [
     notation: "36-37-37-38-38-38-39-39-39-40-40-41",
     sizes: [36, 37, 37, 38, 38, 38, 39, 39, 39, 40, 40, 41],
   },
+  {
+    id: "VERDE8",
+    // Named for the supplier rather than lettered like the three above, because it is their
+    // run and not one of the shop's own — it reaches 41 on eight pairs where run B stops at
+    // 40, so the two are not interchangeable even though both are eight-pair women's buys.
+    label: "Verde8",
+    notation: "36-37-38-38-39-39-40-41",
+    sizes: [36, 37, 38, 38, 39, 39, 40, 41],
+  },
 ];
 
 export interface RunSize {
