@@ -52,7 +52,10 @@ export interface AlignTarget {
  * one because a knee-high boot and a slide genuinely do not belong at the same height.
  */
 export function targetFor(categorySlug: string): AlignTarget | null {
-  if (categorySlug.endsWith("boots")) return { bottomGap: 0.10, label: "boot" };
+  // Knee-high, so they need most of the frame or they run out of the top of it.
+  if (categorySlug === "gynaikeia-boots") return { bottomGap: 0.10, label: "tall boot" };
+  // Ankle boots are shoe-shaped and sit with the shoes, a little lower for the extra height.
+  if (categorySlug === "andrika-boots") return { bottomGap: 0.25, label: "ankle boot" };
   const footwear = ["sandals", "heels", "oxfords"];
   if (footwear.includes(categorySlug) || categorySlug.endsWith("sneakers") || categorySlug.endsWith("loafers")) {
     return { bottomGap: 0.30, label: "shoe" };
@@ -216,11 +219,36 @@ export async function analyseShape(input: Buffer): Promise<Shape> {
   const band = Math.max(3, Math.round(height * 0.015));
   for (let y = Math.max(top, sole - band); y <= sole; y++) soleWidth = Math.max(soleWidth, widths[y] ?? 0);
   const flatness = soleWidth / widest;
-  const aspect = widest / Math.max(1, sole - top + 1);
-  // 0.5 rather than something tidier because a chunky trainer's sole curves up at the toe and
-  // heel, so even a dead-on profile only lays about half its width on the floor. The aspect
-  // test is what actually excludes the overhead shots, several of which are flatter than this.
-  const sideProfile = flatness >= 0.5 && aspect >= 1.2;
+  /**
+   * Where the widest row sits within the subject, which is what separates a side-on shot from
+   * an overhead one.
+   *
+   * Photograph anything in profile and it is widest where it touches the floor, so the widest
+   * row is the last one. Photograph a shoe from above and it is widest across its middle, with
+   * the toe and heel curving away from it in both directions. This replaced an earlier test on
+   * the subject's width-to-height ratio, which worked for shoes and quietly excluded every
+   * knee-high boot in the shop — a boot in profile is taller than it is wide, and was being
+   * read as "not side-on" for it.
+   */
+  const soleRatio = (sole - top) / Math.max(1, bottom - top);
+  /**
+   * Either signal on its own is enough, and it takes both to be sure of a rejection.
+   *
+   * A sole laying 80% of the shoe's width flat on the floor is a profile shot and nothing
+   * else — no overhead photograph in this catalogue comes close, the flattest managing 0.57.
+   * Below that the picture is ambiguous (a chunky trainer's sole curves up at the toe and heel,
+   * so a dead-on profile can lay only half its width down) and the position of the widest row
+   * decides it instead.
+   *
+   * Needing both would have excluded the men's ankle boots, whose reflections are faint enough
+   * to slip under the mirror threshold but still pull `bottom` down far enough to spoil
+   * `soleRatio` — 0.98 flat and 0.78 by ratio, which is a profile shot by any reading.
+   */
+  const sideProfile =
+    // Whatever the flatness says, a widest row in the upper half of the subject is not a sole.
+    // One boot detail shot measured 0.98 flat with its widest row at 0.06 — the top of the
+    // frame — and would have been dragged the length of the picture to put it on the floor.
+    soleRatio >= 0.4 && (flatness >= 0.8 || (flatness >= 0.5 && soleRatio >= 0.85));
 
   return {
     width, height, top, bottom, left, right,
